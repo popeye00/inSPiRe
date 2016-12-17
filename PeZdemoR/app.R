@@ -1,5 +1,5 @@
 options(shiny.sanitize.errors = TRUE) # http://shiny.rstudio.com/articles/sanitize-errors.html
-options(rgl.useNULL = TRUE)
+# options(rgl.useNULL = TRUE)
 memory.limit(size = 1e+05)
 
 # ADD-ON PACKAGES **************************************************** ----
@@ -320,7 +320,7 @@ plot_imp <-
         ), na.rm = TRUE)),
         xlab = "n",
         ylab = "h[n]",
-        main = "Impulse Response",
+        main = "Impulse-Response",
         col = input$ForegroundColor,
         lwd = input$LineWidth
       )
@@ -342,44 +342,46 @@ plot_imp <-
              by = 3)] <- NaN
       plot(
         x,
-        tempi,
+        Re(handleshn), # tempi,
         type = "p",
         pch = 21,
         bg = input$BackgroundColor,
         xlim = c(0, pt),
-        ylim = c(min(c(-1, yy, tempi), na.rm = TRUE) *
-                   1.2, max(c(1, yy, tempi), na.rm = TRUE) * 1.2),
-        col = "magenta",
+        # ylim = c(min(c(-1, yy, tempi), na.rm = TRUE) *
+        #            1.2, max(c(1, yy, tempi), na.rm = TRUE) * 1.2),
+        ylim = c(min(c(-1, yy, Re(handleshn)), na.rm = TRUE) *
+                   1.2, max(c(1, yy, Re(handleshn)), na.rm = TRUE) * 1.2),
+        col = "transparent", # "magenta",
         lwd = input$LineWidth,
         xlab = "n",
         ylab = "h[n]",
-        main = "Impulse Response"
+        main = "Impulse-Response (Real-Part)"
       )
       grid(col = input$grcolor)
       abline(h = 0)
       abline(v = 0)
-      if (input$showLegend)
-        legend(
-          "topright",
-          c("real", "imag"),
-          col = c(input$ForegroundColor,
-                  "magenta"),
-          lty = c("solid", "dashed"),
-          bty = "n",
-          cex = 0.8
-        )
-      lines(
-        type = "h",
-        x,
-        tempi,
-        col = "magenta",
-        lwd = input$LineWidth *
-          2 / 3,
-        lty = "dashed"
-      )
+      # if (input$showLegend)
+      #   legend(
+      #     "topright",
+      #     c("real", "imag"),
+      #     col = c(input$ForegroundColor,
+      #             "magenta"),
+      #     lty = c("solid", "dashed"),
+      #     bty = "n",
+      #     cex = 0.8
+      #   )
+      # lines(
+      #   type = "h",
+      #   x,
+      #   tempi,
+      #   col = "magenta",
+      #   lwd = input$LineWidth *
+      #     2 / 3,
+      #   lty = "dashed"
+      # )
       output$system_real <- renderUI({
         tags$span(style = "color:magenta",
-                  "[has imaginary-components (Note: not properly plotted here)]")
+                  "[has imaginary-components (Note: not plotted here)]")
       })
     }
     yy <- matrix(0, nrow = 1, ncol = 3 * pt)
@@ -402,6 +404,131 @@ plot_imp <-
     points(
       x,
       Re(handleshn),
+      pch = 21,
+      bg = input$BackgroundColor,
+      col = input$ForegroundColor,
+      lwd = input$LineWidth
+    )
+  }
+
+plot_step <-
+  function(handleshnu,
+           hnimag,
+           handlespoleloc,
+           input,
+           output) {
+    # taken mostly from `\private\` subdirectory of `pezdemo.m` app of `SP-First` fame
+    pt <- min(input$maxLengthImpulseResponse, length(handleshnu))
+    x <- 0:(pt - 1)
+    tempi <- Im(handleshnu)
+    xx <- matrix(0, nrow = 1, ncol = (3 * pt))
+    xx[seq(from = 1, to = 3 * pt, by = 3)] <- x
+    xx[seq(from = 2, to = 3 * pt, by = 3)] <- x
+    xx[seq(from = 3, to = 3 * pt, by = 3)] <- NaN
+    handlestol <- 1e-04
+    # if (Mod(hnimag[2]) < handlestol) {
+      plot(
+        x,
+        if (any(is.infinite(Re(handleshnu)))) {
+          1e+12
+        }
+        else {
+          Re(handleshnu)
+        },
+        type = "s", # "s" for stair-steps, # "h", # "h" for histogram-like spikes
+        xlim = c(0, pt),
+        ylim = c(max(c(
+          -1e+12, min(c(0,
+                        Re(handleshnu)), na.rm = TRUE)
+        ), na.rm = TRUE), min(c(
+          1e+12,
+          max(c(0, Re(handleshnu)), na.rm = TRUE)
+        ), na.rm = TRUE)),
+        xlab = "n",
+        ylab = "hu[n]",
+        main = "Unit-Step Response",
+        col = input$ForegroundColor,
+        lwd = input$LineWidth
+      )
+      grid(col = input$grcolor)
+      abline(h = 0)
+      abline(v = 0)
+      text(pt-1,Re(handleshnu[pt]),labels=round(Re(handleshnu[pt]),3),pos=4) # steady-state value
+      # output$system_real <- renderUI({
+      #   tags$span(style = paste0("color:", input$ForegroundColor),
+      #             "real-valued")
+      # })
+    # }
+    # else {
+    #   yy <- matrix(0, nrow = 1, ncol = 3 * pt)
+    #   yy[seq(from = 2,
+    #          to = 3 * pt,
+    #          by = 3)] <- tempi
+    #   yy[seq(from = 3,
+    #          to = 3 * pt,
+    #          by = 3)] <- NaN
+    #   plot(
+    #     x,
+    #     tempi,
+    #     type = "p",
+    #     pch = 21,
+    #     bg = input$BackgroundColor,
+    #     xlim = c(0, pt),
+    #     ylim = c(min(c(-1, yy, tempi), na.rm = TRUE) *
+    #                1.2, max(c(1, yy, tempi), na.rm = TRUE) * 1.2),
+    #     col = "magenta",
+    #     lwd = input$LineWidth,
+    #     xlab = "n",
+    #     ylab = "h[n]",
+    #     main = "Unit-Step Response"
+    #   )
+    #   grid(col = input$grcolor)
+    #   abline(h = 0)
+    #   abline(v = 0)
+    #   if (input$showLegend)
+    #     legend(
+    #       "topright",
+    #       c("real", "imag"),
+    #       col = c(input$ForegroundColor,
+    #               "magenta"),
+    #       lty = c("solid", "dashed"),
+    #       bty = "n",
+    #       cex = 0.8
+    #     )
+    #   lines(
+    #     type = "h",
+    #     x,
+    #     tempi,
+    #     col = "magenta",
+    #     lwd = input$LineWidth *
+    #       2 / 3,
+    #     lty = "dashed"
+    #   )
+    #   output$system_real <- renderUI({
+    #     tags$span(style = "color:magenta",
+    #               "[has imaginary-components (Note: not properly plotted here)]")
+    #   })
+    # }
+    yy <- matrix(0, nrow = 1, ncol = 3 * pt)
+    yy[seq(from = 2, to = 3 * pt, by = 3)] <- Re(handleshnu)
+    yy[seq(from = 3, to = 3 * pt, by = 3)] <- NaN
+    lines(
+      x,
+      Re(handleshnu),
+      type = "h",
+      col = input$ForegroundColor,
+      lwd = input$LineWidth
+    )
+    lines(
+      x,
+      Re(handleshnu),
+      col = "grey",
+      lwd = input$LineWidth * 2 / 3,
+      lty = "dashed"
+    )
+    points(
+      x,
+      Re(handleshnu),
       pch = 21,
       bg = input$BackgroundColor,
       col = input$ForegroundColor,
@@ -585,7 +712,7 @@ $('#loadmessage').fadeOut(500).fadeIn(500, blink);
                           )
                         ),
                         br()
-                      ),
+                      ), # end hidden
                       tags$span(
                         title = "tooltip: remove _all_ Poles",
                         shinyBS::bsButton(
@@ -749,7 +876,7 @@ $('#loadmessage').fadeOut(500).fadeIn(500, blink);
                                 inline = TRUE
                               )
                             ))
-                          )),
+                          )), # end hidden
                           shinyBS::bsCollapse(
                             id = "sidePanelPlotCollapse",
                             multiple = TRUE,
@@ -761,7 +888,7 @@ $('#loadmessage').fadeOut(500).fadeIn(500, blink);
                               wellPanel( # http://www.w3schools.com/bootstrap/bootstrap_wells.asp
                                 style = paste0("background-color: ",
                                                WellPanelBackgroundColor, ";"),
-                                if ((scalePlotsToVerticalHeight)) {
+                                if (scalePlotsToVerticalHeight) {
                                   tags$head(tags$style(
                                     paste0(
                                       "#axes_pzplot{height:",
@@ -1001,7 +1128,7 @@ $('#loadmessage').fadeOut(500).fadeIn(500, blink);
                           )
                         )
                       )
-                    )),
+                    )), # end hidden
                     tabPanel(
                       style = paste0("background-color: ",
                                      TabPanelBackgroundColor, ";"),
@@ -1262,7 +1389,8 @@ $('#loadmessage').fadeOut(500).fadeIn(500, blink);
                               `Cascaded Integrator-Comb CIC/ Hogenauer (MovAvg filter), ratio R=5 (b,a)` = "R=5;M=1;Arma(b=c(1,rep(0,times=R*M-1),-1), a=c(1,-(1-eps)))",
                               `Cascaded Integrator-Comb CIC/ Hogenauer (MovAvg filter), ratio R=8 (Zpg)` = "N=8;Zpg(zero=c(1,-1,1i,-1i,1/sqrt(2)+1/sqrt(2)*1i,1/sqrt(2)-1/sqrt(2)*1i,-1/sqrt(2)+1/sqrt(2)*1i,-1/sqrt(2)-1/sqrt(2)*1i), pole=c(1-eps), gain=1/N)",
                               `Comb-Filter, 5 poles w/3 zeros` = "Arma(b=c(1,0,0, 0.5^3), a=c(1,0,0,0,0, 0.9^5))",
-                              `Integrator 1/s, given b,a` = "Arma(b=c(1,1), a=c(1,-(1-eps)))",
+                              `Integrator 1/s, given b,a; pole at +1, zero at -1` = "Arma(b=c(1,1), a=c(1,-(1-eps)))",
+                              `pole at -1, zero at +1`= "Zpg(zero=c(1), pole=c(-(1-eps)), gain=1)",
                               `Notch-Filter, Fractional-Sample Delay-line, D=2pi/omega0, (Pei Tseng '98 Fig 2)` = "omega0=0.22*pi;D=2*pi/omega0;rho=0.99;Arma(b=c(1,rep(0,times=floor(D-1)),-1), a=c(1,rep(0,times=floor(D-1)),-(rho)^D))",
                               `Peaking-Filter, fc=0.22` = "theta=0.22;rp=0.999;rz=0.997;Zpg(zero=c(rz*exp(theta*pi*1i),rz*exp(-theta*pi*1i)), pole=c(rp*exp(theta*pi*1i),rp*exp(-theta*pi*1i)), gain=1)",
                               `Notch-Out Filter, fc=0.22` = "theta=0.22;rp=0.997;rz=0.999;Zpg(zero=c(rz*exp(theta*pi*1i),rz*exp(-theta*pi*1i)), pole=c(rp*exp(theta*pi*1i),rp*exp(-theta*pi*1i)), gain=1)",
@@ -1311,7 +1439,7 @@ $('#loadmessage').fadeOut(500).fadeIn(500, blink);
                               `vonHann(ing)-window (raised-cosine, sine-squared), 41-point` = "hanning(41)",
                               `Hamming-window, 41-point` = "hamming(41)",
                               `Triangle-window (Bartlett, but no zero-endpoint), 41-point` = "triang(41)",
-                              `Windowed-Sinc (e.g. Blackman, to reduce Gibbs Effect), 41-point, 0.3` = "N=40;sinc(0.3*(-(N/2):(N/2)))*0.3*blackman(N+1)",
+                              `Windowed-Sinc (e.g. using Blackman), 19-point, 0.3` = "N=18;leftside=sin(pi*(0.3*(-(N/2):(-1))))/(pi*(0.3*(-(N/2):(-1))));c(leftside,1,rev(leftside))*blackman(N+1)", # "N=18;sinc(0.3*(-(N/2):(N/2)))*0.3*blackman(N+1)",
                               `Spencer 15-point Moving-Average Filter` = "spencerFilter()",
                               `Spencer MA, given b` = "Ma(b=c(-3, -6, -5, 3, 21, 46, 67, 74, 67, 46, 21, 3, -5, -6, -3) / 320)",
                               `( random-filter from this list )` = paste0(
@@ -1391,7 +1519,7 @@ $('#loadmessage').fadeOut(500).fadeIn(500, blink);
                                   "hanning(41)",
                                   "hamming(41)",
                                   "triang(41)",
-                                  "N=40;sinc(0.3*(-(N/2):(N/2)))*0.3*blackman(N+1)",
+                                  "N=18;leftside=sin(pi*(0.3*(-(N/2):(-1))))/(pi*(0.3*(-(N/2):(-1))));c(leftside,1,rev(leftside))*blackman(N+1)", # "N=18;sinc(0.3*(-(N/2):(N/2)))*0.3*blackman(N+1)",
                                   "spencerFilter()",
                                   "Ma(b=c(-3, -6, -5, 3, 21, 46, 67, 74, 67, 46, 21, 3, -5, -6, -3) / 320)",
                                   sep = "','"
@@ -1471,7 +1599,7 @@ $('#loadmessage').fadeOut(500).fadeIn(500, blink);
                                 "hanning(41)",
                                 "hamming(41)",
                                 "triang(41)",
-                                "N=40;sinc(0.3*(-(N/2):(N/2)))*0.3*blackman(N+1)",
+                                "N=18;leftside=sin(pi*(0.3*(-(N/2):(-1))))/(pi*(0.3*(-(N/2):(-1))));c(leftside,1,rev(leftside))*blackman(N+1)", # "N=18;sinc(0.3*(-(N/2):(N/2)))*0.3*blackman(N+1)",
                                 "spencerFilter()",
                                 "Ma(b=c(-3, -6, -5, 3, 21, 46, 67, 74, 67, 46, 21, 3, -5, -6, -3) / 320)"
                               ),
@@ -1970,13 +2098,38 @@ $('#loadmessage').fadeOut(500).fadeIn(500, blink);
                           ),
                           hr(),
                           tags$span(
+                            title = "tooltip: Unit-Step Response.",
+                            shinyBS::bsCollapse(
+                              id = "stepPlotCollapse",
+                              multiple = TRUE,
+                              shinyBS::bsCollapsePanel(
+                                value = "stepCollapse",
+                                title = "Unit-Step Response (click to expand/ collapse):",
+                                style = "info",
+                                if ((scalePlotsToVerticalHeight)) {
+                                  tags$head(tags$style(
+                                    paste0("#axes_step{height:",
+                                           verticalHeightOfPlots, " !important;}")
+                                  ))
+                                },
+                                plotOutput(
+                                  outputId = "axes_step",
+                                  width = "100%",
+                                  height = "500px",
+                                  inline = FALSE
+                                )
+                              )
+                            )
+                          ),
+                          hr(),
+                          tags$span(
                             title = "tooltip: In the estimation of a moving-average/ MA model, the ACF can be used to determine appropriate number of lagged error-terms that need to be included;\nPACF can help determine the appropriate lags, p, in an auto-regressive (recursive) AR(p) model, or in an extended ARIMA(p,d,q) model;\nThe confidence-interval (blue dashed-line) is based upon an uncorrelated-series, and should be treated with caution.",
                             shinyBS::bsCollapse(
                               id = "acfPlotsCollapse",
                               multiple = TRUE,
                               shinyBS::bsCollapsePanel(
                                 value = "acfCollapse",
-                                title = "Auto-Correlation-Function (click to expand/ collapse):",
+                                title = "Auto-Correlation Function (click to expand/ collapse):",
                                 style = "info",
                                 if ((scalePlotsToVerticalHeight)) {
                                   tags$head(tags$style(
@@ -2211,7 +2364,7 @@ $('#loadmessage').fadeOut(500).fadeIn(500, blink);
                                 title = "tooltip: List of current b-coefficients",
                                 selectInput(
                                   inputId = "listbox_b",
-                                  label = "b Coefficients",
+                                  label = "b Coefficients (moving-average MA)",
                                   choices = c("0"),
                                   selectize = FALSE,
                                   size = 10
@@ -2271,7 +2424,7 @@ $('#loadmessage').fadeOut(500).fadeIn(500, blink);
                                 title = "tooltip: List of current a-coefficients",
                                 selectInput(
                                   inputId = "listbox_a",
-                                  label = "a Coefficients",
+                                  label = "a Coefficients (autoregressive AR)",
                                   choices = c("0"),
                                   selectize = FALSE,
                                   size = 10
@@ -2294,12 +2447,11 @@ $('#loadmessage').fadeOut(500).fadeIn(500, blink);
                                lib = "font-awesome"),
             helpText("Welcome to the Background/ Theory Page...")
           ),
+          # Settings Page ----
           tabPanel(
-            style = paste("background-color:", NavBarPageBackgroundColor,
-                          ";"),
+            style = paste("background-color:", NavBarPageBackgroundColor, ";"),
             title = "My Settings",
-            icon = shiny::icon("table",
-                               lib = "font-awesome"),
+            icon = shiny::icon("table", lib = "font-awesome"),
             wellPanel(
               style = paste("background-color:",
                             WellPanelBackgroundColor, ";"),
@@ -2309,15 +2461,24 @@ $('#loadmessage').fadeOut(500).fadeIn(500, blink);
                 inputId = "grcolor",
                 label = "Grid-Colour for plots (or just choose 'transparent' for none)",
                 palette = "limited",
-                allowedCols = grey.colors(40, start = 0,
-                                          end = 1),
+                allowedCols = grey.colors(40, start = 0, end = 1),
                 value = "#BCBCBC",
                 allowTransparent = TRUE,
                 returnName = TRUE
               ),
               checkboxInput(
                 inputId = "degreesgrid",
-                label = "Use degrees for grid-labels (otherwise, radians)",
+                label = "Use degrees for polar grid-labels (otherwise, radians)",
+                value = FALSE
+              ),
+              checkboxInput(
+                inputId = "polargrid",
+                label = "Add polar-grid (\\(r,\\theta\\))",
+                value = TRUE
+              ),
+              checkboxInput(
+                inputId = "rootlocusgrid",
+                label = "Add root-locus grid: damping-ratio (\\(\\zeta\\)), and natural-frequency (\\(\\omega_n\\)), from s-plane to z-plane",
                 value = FALSE
               ),
               checkboxInput(
@@ -2348,7 +2509,7 @@ $('#loadmessage').fadeOut(500).fadeIn(500, blink);
               checkboxInput(
                 inputId = "secondaryaxis",
                 label = "Include secondary axis",
-                value = FALSE
+                value = TRUE
               ),
               checkboxInput(
                 inputId = "scaletoverticalheight",
@@ -2759,7 +2920,7 @@ server <- shinyServer(function(input, output, session) {
                      handles$zeroloc <- c(0)
                    }
                    else {
-                     handles$zeroloc <- polyroot(rev(b))
+                     handles$zeroloc <- polyroot(rev(b)) # numerical stability may be an issue for all but low-degree polynomials
                    }
                  }
                  else if (grepl("FftFilter", chosenFilter)) {
@@ -2769,7 +2930,7 @@ server <- shinyServer(function(input, output, session) {
                      handles$zeroloc <- c(0)
                    }
                    else {
-                     handles$zeroloc <- polyroot(rev(b))
+                     handles$zeroloc <- polyroot(rev(b)) # numerical stability may be an issue for all but low-degree polynomials
                    }
                  }
                  else {
@@ -2778,14 +2939,14 @@ server <- shinyServer(function(input, output, session) {
                      handles$poleloc <- c(0)
                    }
                    else {
-                     handles$poleloc <- polyroot(rev(a))
+                     handles$poleloc <- polyroot(rev(a)) # numerical stability may be an issue for all but low-degree polynomials
                    }
                    b <- eval(parse(text = paste0(chosenFilter, "$b")))
                    if (length(b) < 2) {
                      handles$zeroloc <- c(0)
                    }
                    else {
-                     handles$zeroloc <- polyroot(rev(b))
+                     handles$zeroloc <- polyroot(rev(b)) # numerical stability may be an issue for all but low-degree polynomials
                    }
                  }
                  updateNumericInput(session, inputId = "edit_gain", value = if (abs(b[1]) >=
@@ -4784,6 +4945,8 @@ server <- shinyServer(function(input, output, session) {
 
 '---
 title: "Dynamic Report 112"
+author: ', rmarkdown::metadata$author, '
+date: "`r Sys.Date()`"
 output:
 ', 
         switch(input$reportFormat,
@@ -6094,11 +6257,11 @@ par(mfrow = c(1,1))
 ***
 
 \```{r bCoefficients}
-kable(params$handlesb, caption = "b Coefficients")
+kable(params$handlesb, caption = "b Coefficients (moving-average MA)")
 \```
 
 \```{r aCoefficients}
-kable(params$handlesa, caption = "a Coefficients")
+kable(params$handlesa, caption = "a Coefficients (autoregressive AR)")
 \```
 
 \```{r MinimumValues}
@@ -6493,18 +6656,46 @@ license()
       rep(0, N - length(handlesa()))
     ))))
   })
+  
   hnimag <- reactive({
     pt <- input$maxLengthImpulseResponse
     if ((length(handlesb()) >= 2) && (length(handlesa()) >= 2)) {
       temphnimag <-
         signal::filter(c(handlesb()[1], Im(handlesb()[2:length(handlesb())])),
                        c(handlesa()[1], Im(handlesa()[2:length(handlesa())])),
-                       c(1, rep(0, times = (pt - 1))))
+                       c(1, rep(0, times = (pt - 1)))) # impulse
     }
     else if (length(handlesa()) >= 2) {
       temphnimag <-
         signal::filter(handlesb(), c(handlesa()[1], Im(handlesa()[2:length(handlesa())])),
-                       c(1, rep(0, times = (pt - 1))))
+                       c(1, rep(0, times = (pt - 1)))) # impulse
+    }
+    else {
+      temphnimag <- signal::filter(handlesb(), handlesa(), c(1, rep(0,
+                                                                    times = (pt - 1))))
+    }
+    if (length(temphnimag) < 2) {
+      temphnimag <- temphnimag * 0
+    }
+    else if (max(abs(temphnimag[2:length(temphnimag)])) > 0) {
+      temphnimag <- temphnimag * 0
+      temphnimag[2] <- (0 + 1i) * Im(handles$poleloc[1])
+    }
+    temphnimag
+  })
+  
+  hnimagu <- reactive({
+    pt <- input$maxLengthImpulseResponse
+    if ((length(handlesb()) >= 2) && (length(handlesa()) >= 2)) {
+      temphnimag <-
+        signal::filter(c(handlesb()[1], Im(handlesb()[2:length(handlesb())])),
+                       c(handlesa()[1], Im(handlesa()[2:length(handlesa())])),
+                       c(1, rep(1, times = (pt - 1)))) # step
+    }
+    else if (length(handlesa()) >= 2) {
+      temphnimag <-
+        signal::filter(handlesb(), c(handlesa()[1], Im(handlesa()[2:length(handlesa())])),
+                       c(1, rep(1, times = (pt - 1)))) # step
     }
     else {
       temphnimag <- signal::filter(handlesb(), handlesa(), c(1, rep(0,
@@ -6523,15 +6714,30 @@ license()
   # handleshn reactive ----
   handleshn <- reactive({
     pt <- input$maxLengthImpulseResponse
-    signal::impz(
+    # signal::impz(
+    #   filt = input$edit_gain * handlesb(),
+    #   a = handlesa(),
+    #   n = pt - 1
+    # )
+    signal::filter( # real-parts only - imaginary-parts are "discarded in coercion"
       filt = input$edit_gain * handlesb(),
       a = handlesa(),
-      n = pt - 1
+      x = c(1, rep(0, times = (pt - 1))) # impulse
     )
+  })
+  
+  # handleshnu reactive ----
+  handleshnu <- reactive({
+    pt <- input$maxLengthImpulseResponse
+    # signal::impz(
+    #   filt = input$edit_gain * handlesb(),
+    #   a = handlesa(),
+    #   n = pt - 1
+    # )
     signal::filter(
       filt = input$edit_gain * handlesb(),
       a = handlesa(),
-      x = c(1, rep(0, times = (pt - 1)))
+      x = c(1, rep(1, times = (pt - 1))) # unit-step
     )
   })
   
@@ -6737,7 +6943,7 @@ license()
       rstep <- rmin
       rmax <- 10 - rstep
       for (r in (seq(rmin, rmax, by = rstep))) {
-        lines(r * cc, lty = "dotted", col = input$grcolor)
+        lines(r * cc, lty = "dotted", col = if (input$polargrid) {input$grcolor} else {"transparent"})
       }
       lines(
         1 * cc,
@@ -6759,7 +6965,7 @@ license()
       tmin <- pi / 12
       for (t in (seq(tmin, 2 * pi, by = tmin))) {
         r <- cos(t) * ell + (0 + (0 + 1i)) * sin(t) * ell
-        lines(Re(r), Im(r), lty = "dotted", col = input$grcolor)
+        lines(Re(r), Im(r), lty = "dotted", col = if (input$polargrid) {input$grcolor} else {"transparent"})
         text(
           cos(t),
           sin(t),
@@ -6788,19 +6994,17 @@ license()
                          ))
             }
             else if ((t >= pi) && (t <= 2 * pi)) {
-              substitute(paste(MYVALUE, pi), list(MYVALUE = round((t / pi),
-                                                                  2)))
+              substitute(paste(MYVALUE, pi), list(MYVALUE = round((t / pi), 2)))
             }
           },
-          col = input$grcolor,
-          adj = c(0.5 - 0.73 * cos(t), 0.5 -
-                    0.73 * sin(t))
+          col = if (input$polargrid) {input$grcolor} else {"transparent"},
+          adj = c(0.5 - 0.73 * cos(t), 0.5 - 0.73 * sin(t))
         )
       }
       tmin <- pi / 8
       for (t in (seq(tmin, 2 * pi, by = tmin))) {
         r <- cos(t) * ell + (0 + (0 + 1i)) * sin(t) * ell
-        lines(Re(r), Im(r), lty = "dotted", col = input$grcolor)
+        lines(Re(r), Im(r), lty = "dotted", col = if (input$polargrid) {input$grcolor} else {"transparent"})
         text(
           cos(t),
           sin(t),
@@ -6809,8 +7013,7 @@ license()
           }
           else {
             if (t <= pi / 3) {
-              substitute(paste(frac(pi, MYVALUE)), list(MYVALUE = round(pi / t,
-                                                                        1)))
+              substitute(paste(frac(pi, MYVALUE)), list(MYVALUE = round(pi/t, 1)))
             }
             else if ((t > pi / 3) && (t < pi)) {
               substitute(paste(frac(MYVALUE1 * pi, MYVALUE2)),
@@ -6829,18 +7032,142 @@ license()
                          ))
             }
             else if ((t >= pi) && (t <= 2 * pi)) {
-              substitute(paste(MYVALUE * pi), list(MYVALUE = round((t / pi),
-                                                                   2)))
+              substitute(paste(MYVALUE * pi), list(MYVALUE = round((t / pi), 2)))
             }
           },
-          col = input$grcolor,
-          adj = c(0.46 - 0.73 * cos(t), 0.5 -
-                    0.73 * sin(t))
+          col = if (input$polargrid) {input$grcolor} else {"transparent"},
+          adj = c(0.46 - 0.73 * cos(t), 0.5 - 0.73 * sin(t))
         )
       }
       grid(col = input$grcolor)
       abline(h = 0, col = "black")
       abline(v = 0, col = "black")
+      
+      if (input$rootlocusgrid) { # http://octave.1599824.n4.nabble.com/new-function-zgrid-m-td1646613.html
+        # ported from MATLAB after Tarmigan Casebolt, 2007
+        texton <- 1
+        
+        zeta <- seq(0.1,1, by=0.1)
+        # wn_a <- pracma::linspace(0,2*pi,n=100)
+        wn_a <- seq(0,2, length.out=100) * pi
+        
+        # plot the lines for z
+        rv <- pracma::meshgrid(zeta,wn_a)
+        zz <- rv$X
+        wwn <- rv$Y
+        
+        s <- -zz * wwn + 1i*wwn * sqrt(1 - zz^2)
+        z <- exp(s)
+        
+        # Do this so that we don't wrap around.
+        # z(imag(z)<0) <- real(z(imag(z)<0));
+        # We do this ugly `for` loop, so that we don't make an ugly dark-line
+        # on the real-axis.
+        for (q in 1:dim(z)[2]) {
+          y <- z[,q]
+          y[Im(y)<0] <- Re(y[which( Im(y)<0 ,1)])
+          z[,q] <- y
+        }
+        
+        # par(pty="s")
+        matlines(
+          Re(z), Im(z),
+          # type="l",
+          col=input$grcolor,
+          lwd=input$LineWidth/2
+          # ,xlim=c(-1,1)
+          # ,ylim=c(-1,1)
+          ,lty = "dotted"
+        )
+        matlines(
+          Re(Conj(z)), Im(Conj(z)),
+          col=input$grcolor,
+          lty = "dotted",
+          lwd=input$LineWidth/2
+        )
+        
+        if (texton > 0) {
+          # put in text labels for zeta
+          for (q in 1:(dim(z)[2])) {
+            loc <- z[pracma::ceil(dim(z)[1]/4),q]
+            if (texton == 2) {
+              text(Re(loc),Im(loc),
+                   # paste0('zeta = ',pracma::num2str(zeta[q]))
+                   substitute(zeta== ZETAQ, 
+                              list(ZETAQ=zeta[q]))
+                   , cex=1.0
+                   , col=input$grcolor
+                   , adj = c(0.46 - 0.65 * cos(Arg(loc)), 0.5 - 0.65 * sin(Arg(loc)))
+                   )
+            } else {
+              text(Re(loc),Im(loc),
+                   # paste0(pracma::num2str(zeta[q]))
+                   zeta[q]
+                   , cex=1.0
+                   , col=input$grcolor
+                   , adj = c(0.46 - 0.65 * cos(Arg(loc)), 0.5 - 0.65 * sin(Arg(loc)))
+                   )
+            }
+          }
+        }
+        
+        # zeta_a <- pracma::linspace(0,1, n=50)
+        zeta_a <- seq(0,1, length.out=50)
+        wn <- seq(0,1, by=0.1) * pi
+        
+        # plot the lines for wn.
+        rv <- pracma::meshgrid(zeta_a,wn)
+        zz <- rv$X
+        wwn <- rv$Y
+        
+        s <- -zz*wwn + 1i*wwn*sqrt(1-zz^2)
+        z <- exp(s)
+        
+        matlines(
+          Re(t(z)), Im(t(z)),
+          col=input$grcolor,
+          lty = "dotted",
+          lwd=input$LineWidth/2
+        )
+        matlines(
+          Re(Conj(t(z))),Im(Conj(t(z))),
+          col=input$grcolor,
+          lty = "dotted",
+          lwd=input$LineWidth/2
+        )
+        
+        if (texton) {
+          # put in the text labels for wn
+          for (q in 1:(dim(z)[1])) {
+            if (texton == 2) {
+              text(Re(z[q,1]),0.03+Im(z[q,1]),
+                   # paste0('wn = ',10,pracma::num2str(wn[q]/pi),'*pi/T')
+                   substitute(w[n]== WNQbyPi*scriptstyle(over(pi,T)),
+                              list(WNQbyPi=wn[q]/pi)
+                   )
+                   , cex=1.0
+                   , col=input$grcolor
+                   , adj = c(0.46 - 0.65 * cos(Arg(z[q,1])), 0.5 - 0.65 * sin(Arg(z[q,1])))
+                   )
+            } else {
+              text(Re(z[q,1]),Im(z[q,1]),
+                   # paste0(pracma::num2str(wn[q]/pi),'*pi/T')
+                   substitute(WNQbyPi*scriptstyle(over(pi,T)),
+                              list(WNQbyPi=wn[q]/pi)
+                   )
+                   , cex=1.0
+                   , col=input$grcolor
+                   , adj = c(0.46 - 0.65 * cos(Arg(z[q,1])), 0.5 - 0.65 * sin(Arg(z[q,1])))
+                   )
+            }
+          }
+        }
+        grid(col = input$grcolor)
+        abline(h = 0, col = "black")
+        abline(v = 0, col = input$grcolor)
+
+      }
+      
       points(
         Re(handles$zeroloc),
         Im(handles$zeroloc),
@@ -7432,7 +7759,7 @@ license()
                  rstep <- rmin
                  rmax <- 10 - rstep
                  for (r in (seq(rmin, rmax, by = rstep))) {
-                   lines(r * cc, lty = "dotted", col = input$grcolor)
+                   lines(r * cc, lty = "dotted", col = if (input$polargrid) {input$grcolor} else {"transparent"})
                  }
                  if (input$showUnitCircle) {
                    lines(
@@ -7457,7 +7784,7 @@ license()
                  tmin <- pi / 12
                  for (t in (seq(tmin, 2 * pi, by = tmin))) {
                    r <- cos(t) * ell + (0 + (0 + 1i)) * sin(t) * ell
-                   lines(Re(r), Im(r), lty = "dotted", col = input$grcolor)
+                   lines(Re(r), Im(r), lty = "dotted", col = if (input$polargrid) {input$grcolor} else {"transparent"})
                    text(
                      cos(t),
                      sin(t),
@@ -7492,15 +7819,14 @@ license()
                                                                              2)))
                        }
                      },
-                     col = input$grcolor,
-                     adj = c(0.5 - 1 * cos(t), 0.5 -
-                               1 * sin(t))
+                     col = if (input$polargrid) {input$grcolor} else {"transparent"},
+                     adj = c(0.5 - 1 * cos(t), 0.5 - 1 * sin(t))
                    )
                  }
                  tmin <- pi / 8
                  for (t in (seq(tmin, 2 * pi, by = tmin))) {
                    r <- cos(t) * ell + (0 + (0 + 1i)) * sin(t) * ell
-                   lines(Re(r), Im(r), lty = "dotted", col = input$grcolor)
+                   lines(Re(r), Im(r), lty = "dotted", col = if (input$polargrid) {input$grcolor} else {"transparent"})
                    text(
                      cos(t),
                      sin(t),
@@ -7535,12 +7861,11 @@ license()
                                                                              2)))
                        }
                      },
-                     col = input$grcolor,
-                     adj = c(0.5 - 1.05 * cos(t), 0.5 -
-                               1.05 * sin(t))
+                     col = if (input$polargrid) {input$grcolor} else {"transparent"},
+                     adj = c(0.5 - 1.05 * cos(t), 0.5 - 1.05 * sin(t))
                    )
                  }
-                 grid(col = input$grcolor)
+                 grid(col = if (input$polargrid) {input$grcolor} else {"transparent"})
                  abline(h = 0, col = "black")
                  abline(v = 0, col = "black")
                  points(
@@ -7813,7 +8138,7 @@ license()
                      lwd = input$LineWidth
                    )
                  }
-                 grid(col = input$grcolor)
+                 grid(col = if (input$polargrid) {input$grcolor} else {"transparent"})
                  abline(h = 0, col = "black")
                  abline(v = 0, col = "black")
                  pracma::polar(
@@ -7911,7 +8236,7 @@ license()
                    labels = c(-60,-50,-40,-30,-20,-10, 0),
                    las = 1
                  )
-                 grid(col = input$grcolor)
+                 grid(col = if (input$polargrid) {input$grcolor} else {"transparent"})
                  abline(h = 0, col = "black")
                  abline(v = 0, col = "black")
                })
@@ -10081,6 +10406,42 @@ license()
                    abline(v = 0, col = MyColourForUnstableSystem)
                  }
                })
+
+    # output$axes_step ----
+  output$axes_step <-
+    renderPlot(width = "auto",
+               height = "auto",
+               expr = {
+                 plot_step(handleshnu(), hnimagu(), handles$poleloc, input, output)
+                 if (stabilityCheck(handlesa())) {
+                   output$system_stable <- renderUI({
+                     tags$span(style = paste0("color:", input$ForegroundColor),
+                               "stable-system")
+                   })
+                 }
+                 else {
+                   output$system_stable <- renderUI({
+                     tags$span(style = "color:red", "unstable-system")
+                   })
+                   box(
+                     which = "plot",
+                     col = MyColourForUnstableSystem,
+                     lwd = 3 *
+                       input$LineWidth,
+                     lty = "dashed"
+                   )
+                   box(
+                     which = "inner",
+                     col = MyColourForUnstableSystem,
+                     lwd = 3 *
+                       input$LineWidth,
+                     lty = "dotted"
+                   )
+                   grid(col = MyColourForUnstableSystem)
+                   abline(h = 0, col = MyColourForUnstableSystem)
+                   abline(v = 0, col = MyColourForUnstableSystem)
+                 }
+               })
   
   # output$axes_acf ----
   output$axes_acf <- renderPlot(width = "auto", height = "auto", {
@@ -11176,7 +11537,7 @@ license()
           accumulatorstring
         },
         "\\\\",
-        "\\underbrace{}_{a_{[0]}=1}y_{[n]}",
+        "\\underbrace{}_{a_{[0]}\\equiv1}y_{[n]}",
         {
           accumulatorstring <- NULL
           for (i in 2:length(handlesa())) {
@@ -11524,7 +11885,7 @@ license()
           handles$zeroloc <- c(0)
         }
         else {
-          handles$zeroloc <- polyroot(rev(b))
+          handles$zeroloc <- polyroot(rev(b)) # numerical stability may be an issue for all but low-degree polynomials
         }
       }
       else if (grepl("FftFilter", inputFilterCommandString)) {
@@ -11534,7 +11895,7 @@ license()
           handles$zeroloc <- c(0)
         }
         else {
-          handles$zeroloc <- polyroot(rev(b))
+          handles$zeroloc <- polyroot(rev(b)) # numerical stability may be an issue for all but low-degree polynomials
         }
       }
       else {
@@ -11544,7 +11905,7 @@ license()
           handles$poleloc <- c(0)
         }
         else {
-          handles$poleloc <- polyroot(rev(a))
+          handles$poleloc <- polyroot(rev(a)) # numerical stability may be an issue for all but low-degree polynomials
         }
         b <- eval(parse(text = paste0(inputFilterCommandString,
                                       "$b")))
@@ -11552,7 +11913,7 @@ license()
           handles$zeroloc <- c(0)
         }
         else {
-          handles$zeroloc <- polyroot(rev(b))
+          handles$zeroloc <- polyroot(rev(b)) # numerical stability may be an issue for all but low-degree polynomials
         }
       }
       updateSelectInput(session,
@@ -11761,7 +12122,7 @@ license()
           handles$zeroloc <- c(0)
         }
         else {
-          handles$zeroloc <- polyroot(rev(b))
+          handles$zeroloc <- polyroot(rev(b)) # numerical stability may be an issue for all but low-degree polynomials
         }
       }
       else if (grepl("FftFilter", inputFilterCommandString)) {
@@ -11771,7 +12132,7 @@ license()
           handles$zeroloc <- c(0)
         }
         else {
-          handles$zeroloc <- polyroot(rev(b))
+          handles$zeroloc <- polyroot(rev(b)) # numerical stability may be an issue for all but low-degree polynomials
         }
       }
       else {
@@ -11780,14 +12141,14 @@ license()
           handles$poleloc <- c(0)
         }
         else {
-          handles$poleloc <- polyroot(rev(a))
+          handles$poleloc <- polyroot(rev(a)) # numerical stability may be an issue for all but low-degree polynomials
         }
         b <- eval(parse(text = paste0(inputFilterCommandString, "$b")))
         if (length(b) < 2) {
           handles$zeroloc <- c(0)
         }
         else {
-          handles$zeroloc <- polyroot(rev(b))
+          handles$zeroloc <- polyroot(rev(b)) # numerical stability may be an issue for all but low-degree polynomials
         }
       }
       updateSelectInput(session,
