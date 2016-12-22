@@ -6,15 +6,15 @@ memory.limit(size = 1e+05)
 library(shiny)
 library(shinyBS) # bsModal, bsButton, bsCollapse/ bsCollapsePanel, updateButton, createAlert/ closeAlert
 library(shinyjs) # reset, info, delay, show, hide, disable, onevent, hidden
-library(signal) # fir1, fir2, butter, cheby1, cheby2, ellip, remez, spencerFilter, freqz, unwrap, filter, fftfilt, impz, Zpg, Arma, Ma
-library(pracma) # isempty, polar, meshgrid, polyval, fftshift, Poly, str2num, findpeaks
+library(signal) # fir1, fir2, butter, cheby1, cheby2, ellip, butterord, cheby1ord, ellipord, remez, spencerFilter, sgolay, bilinear, sftrans, freqz, unwrap, filter, fftfilt, impz, bartlett, blackman, boxcar, chebwin, flattopwin, gausswin, hanning, hamming, triang, Zpg, Arma, Ma, sgolay
+library(pracma) # zeros, fliplr/ flipud, ifft, Toeplitz, inv, isempty, polar, meshgrid, polyval, fftshift, Poly, polymul, str2num, findpeaks, linspace
 library(MASS) # fractions
 library(colourpicker) # colourInput
-library(colorspace) # rainbow_hcl, diverge_hcl
-library(RColorBrewer) # brewer.pal
+#library(colorspace) # rainbow_hcl, diverge_hcl
+#library(RColorBrewer) # brewer.pal
 library(threejs) # scatterplotThreeOutput/ renderScatterplotThree, scatterplot3js
 library(rgl) # rglwidgetOutput, renderRglwidget, persp3d, plot3d, surface3d, rglwidget, playwidget, scene3d, rgl.close, clear3d
-library(knitr) # include_graphics
+# library(knitr) # include_graphics; Note: automatic calculation of the output width requires the png package (for PNG images)
 library(R.matlab) # readMat, writeMat
 library(yaml) # yaml.load_file, as.yaml
 library(rmarkdown) # render, pandoc_available
@@ -37,7 +37,7 @@ assign("fpmaxx", .Machine$double.xmax) # largest normalized floating-point numbe
 
 # CUSTOMIZATION ****************************************************** ----
 scalePlotsToVerticalHeight <- TRUE
-verticalHeightOfPlots <- "80vh"
+verticalHeightOfPlots <- "80vh" # =80% of browser's full vertical-height
 AppBackgroundColor <- "#D4D0C8" # http://www.w3schools.com/cssref/css_colors.asp
 AppBackgroundImage <- "cubes_light_texture_background_hd-wallpaper-48413.jpg" # http://hd-walls.com/wp-content/uploads/2016/02/10/22/gray_cubes_light_texture_background_hd-wallpaper-48413.jpg
 PlotBackgroundColor <- "white"
@@ -49,8 +49,8 @@ TabPanelBackgroundColor <- NULL
 SubTabPanelBackgroundColor <- NULL
 AvailableThemes <-
   c(
-    NULL,
-    "cerulean",
+    NULL, # equals the default "vanilla-style" bootstrap-theme
+    "cerulean", # https://bootswatch.com/
     "cosmo",
     "flatly",
     "lumen",
@@ -59,6 +59,23 @@ AvailableThemes <-
     "spacelab",
     "united",
     "yeti"
+    # ,"creative" # okay? # https://startbootstrap.com/
+    # ,"new-age" # okay?
+    # ,"clean-blog" # okay?
+    # ,"sb-admin"
+    # ,"scrolling-nav"
+    # ,"freelancer"
+    # ,"grayscale"
+    # ,"business-casual"
+    # ,"sb-admin-2"
+    # ,"stylish-portfolio"
+    # ,"simple-sidebar"
+    # ,"landing-page"
+    # ,"small-business"
+    # ,"modern-business"
+    # ,"agency"
+    # ,"logo-nav"
+    # ,"business-frontpage"
   )
 MyChosenTheme <- sample(AvailableThemes, 1)
 MyAppNameAndTheme <- paste(MyChosenTheme, "<b>P</b>e<b>Z</b>")
@@ -149,7 +166,8 @@ myfreqz <- function(B,
                     N = 1024,
                     whole = 1,
                     fs = 1) {
-    # https://ccrma.stanford.edu/~jos/fp/Frequency_Response_Matlab.html; "Introduction to Digital Filters with Audio Applications", Julius O. Smith III, (Sept/2007)
+  # https://ccrma.stanford.edu/~jos/fp/Frequency_Response_Matlab.html
+  # "Introduction to Digital Filters with Audio Applications", Julius O. Smith III, (Sept/2007)
   na <- length(A)
   nb <- length(B)
   if ((is.complex(B)) || (is.complex(A))) {
@@ -291,7 +309,7 @@ plot_imp <-
            handlespoleloc,
            input,
            output) {
-    # taken mostly from `\private\` subdirectory of `pezdemo.m` app of `SP-First` fame
+    # taken mostly from `\private\` subdirectory of `pezdemo.m` app of `SP-First` fame, https://github.com/DeepHorizons/spfirst/tree/master/spfirst/pezdemo/private
     pt <- min(input$maxLengthImpulseResponse, length(handleshn))
     x <- 0:(pt - 1)
     tempi <- Im(handleshn)
@@ -417,7 +435,7 @@ plot_step <-
            handlespoleloc,
            input,
            output) {
-    # taken mostly from `\private\` subdirectory of `pezdemo.m` app of `SP-First` fame
+    # taken mostly from `\private\` subdirectory of `pezdemo.m` app of `SP-First` fame, https://github.com/DeepHorizons/spfirst/tree/master/spfirst/pezdemo/private
     pt <- min(input$maxLengthImpulseResponse, length(handleshnu))
     x <- 0:(pt - 1)
     tempi <- Im(handleshnu)
@@ -624,16 +642,20 @@ $('#loadmessage').fadeOut(500).fadeIn(500, blink);
           )
         )
       ),
+      # navbarPage ----
       navbarPage(
         id = "mainNavBarPage",
         title = div(HTML(MyAppNameAndTheme),
-                    img(src = "bigorb.png", height = 20)),
+                    img(src = "bigorb.png", height = 20
+                        , alt = "R-logo big orb"
+                    )),
         windowTitle = paste(MyChosenTheme,
                             "PeZ Demo"),
         position = "static-top",
         inverse = FALSE,
         collapsible = TRUE,
         fluid = TRUE,
+        # 'Plots' tabPanel ----
         tabPanel(
           style = paste0("background-color: ", NavBarPageBackgroundColor,
                          ";"),
@@ -648,9 +670,11 @@ $('#loadmessage').fadeOut(500).fadeIn(500, blink);
             downloadButton(outputId = "downloadShowgphPlot", label = "Download")
           ),
           fluidPage(title = "PeZDemo Plots Page", fluidRow(
+            # . sidebarLayout ----
             sidebarLayout(
               position = "left",
               fluid = TRUE,
+              # .. sidebarPanel ----
               sidebarPanel(
                 style = paste0("background-color: ",
                                MainSidePanelBackgroundColor, ";"),
@@ -745,7 +769,7 @@ $('#loadmessage').fadeOut(500).fadeIn(500, blink);
                         title = "tooltip: remove _all_ Poles and Zeros",
                         shinyBS::bsButton(
                           inputId = "pb_ma",
-                          label = "-**PZ**",
+                          label = "-PZ**",
                           width = "31.5%",
                           style = "danger",
                           size = "small",
@@ -1881,6 +1905,7 @@ $('#loadmessage').fadeOut(500).fadeIn(500, blink);
                   )
                 )
               ),
+              # .. mainPanel ----
               mainPanel(
                 id = "mainPanel",
                 style = paste0("background-color: ", MainSidePanelBackgroundColor,
@@ -2303,7 +2328,9 @@ $('#loadmessage').fadeOut(500).fadeIn(500, blink);
                     title = "Form",
                     tags$div(
                       title = "tooltip: IIR digital-filter, Direct-Form I\n(use browser's right-mouse-click/ context-menu for image download-options)",
-                      img(src = "DirectFormI.png", align = "right", width = "100%")
+                      img(src = "DirectFormI.png", align = "right", width = "100%"
+                        , alt = "IIR digital-filter, Direct-Form I"
+                      )
                     ),
                     hr()
                   )
@@ -2436,6 +2463,7 @@ $('#loadmessage').fadeOut(500).fadeIn(500, blink);
             )
           )
         ),
+        # 'More' navbarMenu ----
         navbarMenu(
           title = "More",
           icon = shiny::icon("navicon", lib = "font-awesome"),
@@ -2447,7 +2475,7 @@ $('#loadmessage').fadeOut(500).fadeIn(500, blink);
                                lib = "font-awesome"),
             helpText("Welcome to the Background/ Theory Page...")
           ),
-          # Settings Page ----
+          # . Settings Page ----
           tabPanel(
             style = paste("background-color:", NavBarPageBackgroundColor, ";"),
             title = "My Settings",
@@ -2593,7 +2621,7 @@ $('#loadmessage').fadeOut(500).fadeIn(500, blink);
                   "\\(2\\pi\\)",
                   ", as appropriate, in order to remove 'jumps')"
                 ),
-                value = TRUE
+                value = FALSE
               ),
               checkboxInput(
                 inputId = "normalizedMagPlotAmplitude",
@@ -2676,9 +2704,9 @@ $('#loadmessage').fadeOut(500).fadeIn(500, blink);
             )
           )
         ),
+        # 'About' tabPanel ----
         tabPanel(
-          style = paste("background-color:", NavBarPageBackgroundColor,
-                        ";"),
+          style = paste("background-color:", NavBarPageBackgroundColor, ";"),
           title = "About",
           icon = shiny::icon("info", lib = "font-awesome"),
           tags$span(
@@ -2707,7 +2735,7 @@ $('#loadmessage').fadeOut(500).fadeIn(500, blink);
             h2("Features"),
             tags$ul(
               tags$li(
-                "Build useful web applications with only a few lines of ",
+                "Build useful web-applications with only a few lines of ",
                 code("code"),
                 " -- no ",
                 code("JavaScript"),
@@ -2732,6 +2760,23 @@ $('#loadmessage').fadeOut(500).fadeIn(500, blink);
             ))
           )
         ),
+        # # http://stackoverflow.com/questions/28967949/add-a-twitter-share-button-to-shiny-r-navbar
+        # tags$script(HTML("var header = $('.navbar > .container');
+        #                header.append('<div style=\"float: right\"><a href=\"https://twitter.com/share\" class=\"twitter-share-button\" aling=\"middle\" data-url=\"www.mywebsite.com\" data-text=\"Visit www.mywebsite.com\" data-size=\"large\">Tweet</a></div>');
+        #                console.log(header)")),
+        # tags$script(HTML("!function(d,s,id){
+        #     var js,fjs=d.getElementsByTagName(s)[0],p=/^http:/.test(d.location)?'http':'https';
+        #     if(!d.getElementById(id)){
+        #             js=d.createElement(s);
+        #             js.id=id;
+        #             js.src=p+'://platform.twitter.com/widgets.js';
+        #             fjs.parentNode.insertBefore(js,fjs);
+        #     }
+        #   }(document, 'script', 'twitter-wjs');"
+        #                  )
+        #             ),
+        
+        # (navbar) Footer - common below all tabPanels ----
         footer = div(
           class = "footer",
           style = "font-size:8pt;",
@@ -2742,9 +2787,34 @@ $('#loadmessage').fadeOut(500).fadeIn(500, blink);
                       style = paste0("background-color: ",
                                      WellPanelBackgroundColor, ";"),
                       uiOutput("pixelratio")
-                    ))
-        )
-      )
+                      )
+          ),
+          # https://www.addtoany.com/buttons/for/website
+          # tag$div(
+            HTML('<!-- AddToAny BEGIN -->
+<div class="a2a_kit a2a_kit_size_32 a2a_default_style">
+<a class="a2a_dd" href="https://www.addtoany.com/share?linkurl=https%3A%2F%2Finspire.shinyapps.io%2FPeZdemoR%2F&amp;linkname=PeZdemoR"></a>
+<a class="a2a_button_facebook"></a>
+<a class="a2a_button_twitter"></a>
+<a class="a2a_button_google_plus"></a>
+<a class="a2a_button_linkedin"></a>
+<a class="a2a_button_email"></a>
+</div>
+<script>
+var a2a_config = a2a_config || {};
+a2a_config.linkname = "PeZdemoR";
+a2a_config.linkurl = "https://inspire.shinyapps.io/PeZdemoR/";
+a2a_config.prioritize = ["facebook", "twitter", "google_plus", "linkedin", "email"];
+</script>
+<script async src="https://static.addtoany.com/menu/page.js"></script>
+<!-- AddToAny END -->'
+            ),
+          hr()
+          # # https://github.com/daattali/shiny-server/blob/master/simple-index.html
+          # ,HTML('<script type="text/javascript" src="//s7.addthis.com/js/300/addthis_widget.js#pubid=ra-57d65a4d97789dd1"></script>')
+          # )
+        ) # end footer
+      ) # end navbarPage
     )
   )
 
@@ -6626,8 +6696,7 @@ license()
   handlesa <- reactive({
     updateSelectInput(session,
                       inputId = "listbox_a",
-                      choices = round(pracma::Poly(handles$poleloc),
-                                      6))
+                      choices = round(pracma::Poly(handles$poleloc), 6))
     shinyjs::disable(id = "listbox_a")
     rawcalc <- pracma::Poly(handles$poleloc)
     rawcalc
@@ -12610,5 +12679,9 @@ license()
     )
   })
 })
+
 enableBookmarking(store = "url")
+
 Myapp123 <- shinyApp(ui = ui, server = server)
+
+# (c) &copy; 2016-2017 `ProductionMine`, Created by P. Squires, `DiYZed Research Group`, ECE Dept, University of Victoria?
