@@ -399,7 +399,7 @@ plot_imp <-
       # )
       output$system_real <- renderUI({
         tags$span(style = "color:magenta",
-                  "[has imaginary-components (Note: not plotted here)]")
+                  "[possible imaginary-components (Note: not plotted here)]")
       })
     }
     yy <- matrix(0, nrow = 1, ncol = 3 * pt)
@@ -1448,7 +1448,7 @@ $('#loadmessage').fadeOut(500).fadeIn(500, blink);
                               `Remez, ord. 48, symmetrical FIR (J. Dobes, 2003 Ex2)`="firstHalfCoef=c(0.00012511398639,0.00001335284427,0.00016015250121,0.00000634686622,0.00026201837991,0.00007281852105,0.00045629795460,0.00022819555936,0.00071588589103,0.00047316021190,0.00110189764986,0.00088563032407,0.00184819117706,0.00188050116629,0.00282392666400,0.00363976768981,0.00591155524557,0.00644303257612,0.01406190034797,0.00537162176461,0.03594691432517,0.06164502638211,0.08276620944465,0.13009560635626);Ma(b=c(firstHalfCoef,0.19452719610477,rev(firstHalfCoef)))",
                               `Remez, ord. 48, psychoacoustic/ physiological volume-control FIR (Dobes, 2003 Ex2)`="firstHalfZeros=c(-1.27851808211318+0.62684824819101i,-1.36614299238589+0.27717114439577i,-1.07284006705681+0.91235620647926i,-0.77267104757162+1.12541933041583i,-0.44961436355736+1.22363585379352i,-0.20330452525073+1.29600355151311i,0.14750702212683+1.34841369533889i,0.50634734941036+1.25979827310114i,0.83329614995319+1.04982507756824i,1.04560310563666+0.67293837999034i,1.20771535897979+0.24059979456907i,0.95139216401989+0.56315210274529i,0.77837030003487+0.46073626392613i,0.79640192035334+0.15865836018951i,0.67627030631208+0.43523995090672i,0.46384030886663+0.58436750039291i,0.27466939387352+0.68338074343342i,0.08016782642482+0.73284236586261i,-0.11813451163119+0.75307102211071i,-0.26456653442537+0.72002392155667i,-0.41461446573694+0.60389882069075i,-0.70304843505842+0.14263861132902i,-0.63057376627246+0.30916579614562i,-0.54091513103870+0.46000078868751i);Zpg(zero=c(firstHalfZeros,Conj(firstHalfZeros)),pole=c(0),gain=0.00012511398639)",
                               `Irregular IIR by Chained-Fractions (unstable) (J. Dobes, 2003 Ex3)`="Zpg(zero=c(0.9049098+0.1414979i,0.9049098-0.1414979i,1.192327), pole=c(0.9588639+0.7240575i,0.9588639-0.7240575i,1.511628), gain=1)",
-                              `Savitzky-Golay smoothing-filter, order 3 (cubic), length 5` = "p=3;n=5;sgolay(p,n) %*% c(1,rep(0,times=n-1))",
+                              `Savitzky-Golay smoothing-filter, order 3 (cubic), length 5` = "p=3;n=2;sgolay(p,(2*n+1)) %*% c(1,rep(0,times=(2*n+1)-1))", # https://en.wikipedia.org/wiki/Savitzky%E2%80%93Golay_filter
                               `Dolph-Chebyshev window, 50-point, 100dB attenuation` = "chebwin(n=50, at=100)",
                               `Kaiser-window, 101-point, beta 0 (very-wide=Rectangle)` = "kaiser(n=101, beta=0)",
                               `Kaiser-window, 101-point, beta 50 (narrower)` = "kaiser(n=101, beta=50)",
@@ -1459,7 +1459,7 @@ $('#loadmessage').fadeOut(500).fadeIn(500, blink);
                               `Boxcar-window (aka. Rectangular, Dirichlet), 41-point` = "boxcar(41)",
                               `Flattop-window, symmetric, 41-point` = "flattopwin(41,sym=\"symmetric\")",
                               `Flattop-window, periodic (DFT Even), 41-point` = "flattopwin(41,sym=\"periodic\")",
-                              `Gaussian-window, 41-point` = "gausswin(41,5)",
+                              `Gaussian-window, 41-point` = "sd=0.2;gausswin(41,w=1/sd)", # https://en.wikipedia.org/wiki/Window_function#Gaussian_window
                               `vonHann(ing)-window (raised-cosine, sine-squared), 41-point` = "hanning(41)",
                               `Hamming-window, 41-point` = "hamming(41)",
                               `Triangle-window (Bartlett, but no zero-endpoint), 41-point` = "triang(41)",
@@ -1528,7 +1528,7 @@ $('#loadmessage').fadeOut(500).fadeIn(500, blink);
                                   "firstHalfCoef=c(0.00012511398639,0.00001335284427,0.00016015250121,0.00000634686622,0.00026201837991,0.00007281852105,0.00045629795460,0.00022819555936,0.00071588589103,0.00047316021190,0.00110189764986,0.00088563032407,0.00184819117706,0.00188050116629,0.00282392666400,0.00363976768981,0.00591155524557,0.00644303257612,0.01406190034797,0.00537162176461,0.03594691432517,0.06164502638211,0.08276620944465,0.13009560635626);Ma(b=c(firstHalfCoef,0.19452719610477,rev(firstHalfCoef)))",
                                   "firstHalfZeros=c(-1.27851808211318+0.62684824819101i,-1.36614299238589+0.27717114439577i,-1.07284006705681+0.91235620647926i,-0.77267104757162+1.12541933041583i,-0.44961436355736+1.22363585379352i,-0.20330452525073+1.29600355151311i,0.14750702212683+1.34841369533889i,0.50634734941036+1.25979827310114i,0.83329614995319+1.04982507756824i,1.04560310563666+0.67293837999034i,1.20771535897979+0.24059979456907i,0.95139216401989+0.56315210274529i,0.77837030003487+0.46073626392613i,0.79640192035334+0.15865836018951i,0.67627030631208+0.43523995090672i,0.46384030886663+0.58436750039291i,0.27466939387352+0.68338074343342i,0.08016782642482+0.73284236586261i,-0.11813451163119+0.75307102211071i,-0.26456653442537+0.72002392155667i,-0.41461446573694+0.60389882069075i,-0.70304843505842+0.14263861132902i,-0.63057376627246+0.30916579614562i,-0.54091513103870+0.46000078868751i);Zpg(zero=c(firstHalfZeros,Conj(firstHalfZeros)),pole=c(0),gain=0.00012511398639)",
                                   "Zpg(zero=c(0.9049098+0.1414979i,0.9049098-0.1414979i,1.192327), pole=c(0.9588639+0.7240575i,0.9588639-0.7240575i,1.511628), gain=1)",
-                                  "p=3;n=5;sgolay(p,n) %*% c(1,rep(0,times=n-1))",
+                                  "p=3;n=2;sgolay(p,(2*n+1)) %*% c(1,rep(0,times=(2*n+1)-1))",
                                   "chebwin(n=50, at=100)",
                                   "kaiser(n=101, beta=0)",
                                   "kaiser(n=101, beta=50)",
@@ -1539,7 +1539,7 @@ $('#loadmessage').fadeOut(500).fadeIn(500, blink);
                                   "boxcar(41)",
                                   "flattopwin(41,sym=\"symmetric\")",
                                   "flattopwin(41,sym=\"periodic\")",
-                                  "gausswin(41,5)",
+                                  "sd=0.2;gausswin(41,w=1/sd)",
                                   "hanning(41)",
                                   "hamming(41)",
                                   "triang(41)",
@@ -1608,7 +1608,7 @@ $('#loadmessage').fadeOut(500).fadeIn(500, blink);
                                 "firstHalfCoef=c(0.00012511398639,0.00001335284427,0.00016015250121,0.00000634686622,0.00026201837991,0.00007281852105,0.00045629795460,0.00022819555936,0.00071588589103,0.00047316021190,0.00110189764986,0.00088563032407,0.00184819117706,0.00188050116629,0.00282392666400,0.00363976768981,0.00591155524557,0.00644303257612,0.01406190034797,0.00537162176461,0.03594691432517,0.06164502638211,0.08276620944465,0.13009560635626);Ma(b=c(firstHalfCoef,0.19452719610477,rev(firstHalfCoef)))",
                                 "firstHalfZeros=c(-1.27851808211318+0.62684824819101i,-1.36614299238589+0.27717114439577i,-1.07284006705681+0.91235620647926i,-0.77267104757162+1.12541933041583i,-0.44961436355736+1.22363585379352i,-0.20330452525073+1.29600355151311i,0.14750702212683+1.34841369533889i,0.50634734941036+1.25979827310114i,0.83329614995319+1.04982507756824i,1.04560310563666+0.67293837999034i,1.20771535897979+0.24059979456907i,0.95139216401989+0.56315210274529i,0.77837030003487+0.46073626392613i,0.79640192035334+0.15865836018951i,0.67627030631208+0.43523995090672i,0.46384030886663+0.58436750039291i,0.27466939387352+0.68338074343342i,0.08016782642482+0.73284236586261i,-0.11813451163119+0.75307102211071i,-0.26456653442537+0.72002392155667i,-0.41461446573694+0.60389882069075i,-0.70304843505842+0.14263861132902i,-0.63057376627246+0.30916579614562i,-0.54091513103870+0.46000078868751i);Zpg(zero=c(firstHalfZeros,Conj(firstHalfZeros)),pole=c(0),gain=0.00012511398639)",
                                 "Zpg(zero=c(0.9049098+0.1414979i,0.9049098-0.1414979i,1.192327), pole=c(0.9588639+0.7240575i,0.9588639-0.7240575i,1.511628), gain=1)",
-                                "p=3;n=5;sgolay(p,n) %*% c(1,rep(0,times=n-1))",
+                                "p=3;n=2;sgolay(p,(2*n+1)) %*% c(1,rep(0,times=(2*n+1)-1))",
                                 "chebwin(n=50, at=100)",
                                 "kaiser(n=101, beta=0)",
                                 "kaiser(n=101, beta=50)",
@@ -1619,7 +1619,7 @@ $('#loadmessage').fadeOut(500).fadeIn(500, blink);
                                 "boxcar(41)",
                                 "flattopwin(41,sym=\"symmetric\")",
                                 "flattopwin(41,sym=\"periodic\")",
-                                "gausswin(41,5)",
+                                "sd=0.2;gausswin(41,w=1/sd)",
                                 "hanning(41)",
                                 "hamming(41)",
                                 "triang(41)",
@@ -2965,7 +2965,7 @@ server <- shinyServer(function(input, output, session) {
                  shinyjs::disable(id = "pb_delpole")
                  shinyjs::disable(id = "pb_delzero")
                  if (grepl("sample", input$commonFilters)) {
-                   chosenFilter <- eval(parse(text = input$commonFilters))
+                   chosenFilter <- try(eval(parse(text = input$commonFilters)),silent=TRUE)
                    updateSelectInput(session, inputId = "commonFilters", selected = chosenFilter)
                    return(NULL)
                  }
@@ -2973,19 +2973,21 @@ server <- shinyServer(function(input, output, session) {
                    chosenFilter <- input$commonFilters
                  }
                  if (grepl("Zpg|sftrans|bilinear", chosenFilter)) {
-                   zpg <- eval(parse(text = chosenFilter))
+                   zpg <- try(eval(parse(text = chosenFilter)),silent=TRUE)
+                   if (is.list(zpg)) {
                    handles$zeroloc <- zpg$zero
                    handles$poleloc <- zpg$pole
                    updateNumericInput(session, inputId = "edit_gain", value = zpg$gain)
                    b <- zpg$gain
                    length(b) <- 1
+                   }
                  }
                  else if (grepl(
                    "fir1|fir2|remez|spencerFilter|sgolay|Ma|chebwin|kaiser|bartlett|blackman|boxcar|flattopwin|gausswin|hanning|hamming|triang|sinc",
                    chosenFilter
                  )) {
                    handles$poleloc <- c(0)
-                   b <- eval(parse(text = chosenFilter))
+                   b <- try(eval(parse(text = chosenFilter)),silent=TRUE)
                    if (length(b) < 2) {
                      handles$zeroloc <- c(0)
                    }
@@ -2995,7 +2997,7 @@ server <- shinyServer(function(input, output, session) {
                  }
                  else if (grepl("FftFilter", chosenFilter)) {
                    handles$poleloc <- c(0)
-                   b <- eval(parse(text = chosenFilter))
+                   b <- try(eval(parse(text = chosenFilter)),silent=TRUE)
                    if (length(b) < 2) {
                      handles$zeroloc <- c(0)
                    }
@@ -3004,14 +3006,14 @@ server <- shinyServer(function(input, output, session) {
                    }
                  }
                  else {
-                   a <- eval(parse(text = paste0(chosenFilter, "$a")))
+                   a <- try(eval(parse(text = paste0(chosenFilter, "$a"))),silent=TRUE)
                    if (length(a) < 2) {
                      handles$poleloc <- c(0)
                    }
                    else {
                      handles$poleloc <- polyroot(rev(a)) # numerical stability may be an issue for all but low-degree polynomials
                    }
-                   b <- eval(parse(text = paste0(chosenFilter, "$b")))
+                   b <- try(eval(parse(text = paste0(chosenFilter, "$b"))),silent=TRUE)
                    if (length(b) < 2) {
                      handles$zeroloc <- c(0)
                    }
@@ -3467,7 +3469,7 @@ server <- shinyServer(function(input, output, session) {
                        }
                        else {
                          valueToReplace <-
-                           eval(parse(text = input$edit_currentSelectionText))
+                           try(eval(parse(text = input$edit_currentSelectionText)),silent=TRUE)
                        }
                      }
                      else {
@@ -3489,7 +3491,7 @@ server <- shinyServer(function(input, output, session) {
                        }
                        else {
                          valueToReplace <-
-                           eval(parse(text = input$edit_currentSelectionText))
+                           try(eval(parse(text = input$edit_currentSelectionText)),silent=TRUE)
                        }
                      }
                    }
@@ -11769,8 +11771,8 @@ license()
                input$edit_polezerolocImag))) {
       invalidateLater(10000)
     }
-    n1 <- eval(parse(text = input$edit_polezeroloc))
-    n2 <- eval(parse(text = input$edit_polezerolocImag))
+    n1 <- try(eval(parse(text = input$edit_polezeroloc)),silent=TRUE)
+    n2 <- try(eval(parse(text = input$edit_polezerolocImag)),silent=TRUE)
     if (is.infinite(n2)) {
       a <- Re(n1)
       b <- n2
@@ -11802,8 +11804,8 @@ license()
                input$edit_polezerolocAngle))) {
       invalidateLater(10000)
     }
-    r <- eval(parse(text = input$edit_polezerolocRadius))
-    theta <- eval(parse(text = input$edit_polezerolocAngle))
+    r <- try(eval(parse(text = input$edit_polezerolocRadius)),silent=TRUE)
+    theta <- try(eval(parse(text = input$edit_polezerolocAngle)),silent=TRUE)
     a <- r * exp(j * theta)
     aReal <- Re(a)
     if (abs(aReal) <= 2 * eps) {
@@ -11819,8 +11821,8 @@ license()
   # observeEvent (button) addpole ----
   observeEvent(eventExpr = input$pb_addpole, handlerExpr = {
     if (input$tabPoleZeroEditing == "rtheta") {
-      n1 <- eval(parse(text = input$edit_polezerolocRadius))
-      n2 <- eval(parse(text = input$edit_polezerolocAngle))
+      n1 <- try(eval(parse(text = input$edit_polezerolocRadius)),silent=TRUE)
+      n2 <- try(eval(parse(text = input$edit_polezerolocAngle)),silent=TRUE)
       valueToBeAdded <- n1 * exp(n2)
       if (is.infinite(Im(n2))) {
         valueToBeAdded <- complex(1, n1, switch(sign(n2) + 2,-Inf,
@@ -11838,7 +11840,7 @@ license()
         }
         else {
           valueToBeAdded <-
-            eval(parse(text = input$edit_currentSelectionText))
+            try(eval(parse(text = input$edit_currentSelectionText)),silent=TRUE)
         }
       }
       if (Mod(valueToBeAdded) > 1e-06) {
@@ -11874,8 +11876,8 @@ license()
       }
     }
     else if (input$tabPoleZeroEditing == "RealImag") {
-      n1 <- eval(parse(text = input$edit_polezeroloc))
-      n2 <- eval(parse(text = input$edit_polezerolocImag))
+      n1 <- try(eval(parse(text = input$edit_polezeroloc)),silent=TRUE)
+      n2 <- try(eval(parse(text = input$edit_polezerolocImag)),silent=TRUE)
       if (is.infinite(Im(n2))) {
         valueToBeAdded <- complex(1, n1, switch(sign(n2) + 2,-Inf,
                                                 0, Inf))
@@ -11892,7 +11894,7 @@ license()
         }
         else {
           valueToBeAdded <-
-            eval(parse(text = input$edit_currentSelectionText))
+            try(eval(parse(text = input$edit_currentSelectionText)),silent=TRUE)
         }
       }
       if ((Mod(valueToBeAdded) > 1e-06)) {
@@ -11937,19 +11939,21 @@ license()
         inputFilterCommandString <- input$edit_currentSelectionText
       }
       if (grepl("Zpg|sftrans|bilinear", inputFilterCommandString)) {
-        zpg <- eval(parse(text = inputFilterCommandString))
+        zpg <- try(eval(parse(text = inputFilterCommandString)),silent=TRUE)
+        if (is.list(zpg)) {
         handles$zeroloc <- zpg$zero
         handles$poleloc <- zpg$pole
         updateNumericInput(session, inputId = "edit_gain", value = zpg$gain)
         b <- zpg$gain
         length(b) <- 1
+        }
       }
       else if (grepl(
         "fir1|fir2|remez|spencerFilter|sgolayfilt|sgolay|Ma|chebwin|kaiser|bartlett|blackman|boxcar|flattopwin|gausswin|hanning|hamming|triang|sinc",
         inputFilterCommandString
       )) {
         handles$poleloc <- c(0)
-        b <- eval(parse(text = inputFilterCommandString))
+        b <- try(eval(parse(text = inputFilterCommandString)),silent=TRUE)
         if (length(b) < 2) {
           handles$zeroloc <- c(0)
         }
@@ -11959,7 +11963,7 @@ license()
       }
       else if (grepl("FftFilter", inputFilterCommandString)) {
         handles$poleloc <- c(0)
-        b <- eval(parse(text = inputFilterCommandString))
+        b <- try(eval(parse(text = inputFilterCommandString)),silent=TRUE)
         if (length(b) < 2) {
           handles$zeroloc <- c(0)
         }
@@ -11968,16 +11972,14 @@ license()
         }
       }
       else {
-        a <- eval(parse(text = paste0(inputFilterCommandString,
-                                      "$a")))
+        a <- try(eval(parse(text = paste0(inputFilterCommandString,"$a"))),silent=TRUE)
         if (length(a) < 2) {
           handles$poleloc <- c(0)
         }
         else {
           handles$poleloc <- polyroot(rev(a)) # numerical stability may be an issue for all but low-degree polynomials
         }
-        b <- eval(parse(text = paste0(inputFilterCommandString,
-                                      "$b")))
+        b <- try(eval(parse(text = paste0(inputFilterCommandString,"$b"))),silent=TRUE)
         if (length(b) < 2) {
           handles$zeroloc <- c(0)
         }
@@ -12016,7 +12018,7 @@ license()
         if (input$coordsevaluateImport) {
           importedPolesValues <- rep(0, length(importedPoles))
           for (i in 1:length(importedPoles)) {
-            importedPolesValues[i] <- eval(parse(text = importedPoles[i]))
+            importedPolesValues[i] <- try(eval(parse(text = importedPoles[i])),silent=TRUE)
           }
         }
         else {
@@ -12042,7 +12044,7 @@ license()
         if (input$coordsevaluateImport) {
           importedZerosValues <- rep(0, length(importedZeros))
           for (i in 1:length(importedZeros)) {
-            importedZerosValues[i] <- eval(parse(text = importedZeros[i]))
+            importedZerosValues[i] <- try(eval(parse(text = importedZeros[i])),silent=TRUE)
           }
         }
         else {
@@ -12069,8 +12071,8 @@ license()
   # observeEvent (button) addzero ----
   observeEvent(eventExpr = input$pb_addzero, handlerExpr = {
     if (input$tabPoleZeroEditing == "rtheta") {
-      n1 <- eval(parse(text = input$edit_polezerolocRadius))
-      n2 <- eval(parse(text = input$edit_polezerolocAngle))
+      n1 <- try(eval(parse(text = input$edit_polezerolocRadius)),silent=TRUE)
+      n2 <- try(eval(parse(text = input$edit_polezerolocAngle)),silent=TRUE)
       if (n2 > 2 * pi) {
         n2 <- 2 * pi
       }
@@ -12084,7 +12086,7 @@ license()
       }
       else {
         valueToBeAdded <-
-          eval(parse(text = input$edit_currentSelectionText))
+          try(eval(parse(text = input$edit_currentSelectionText)),silent=TRUE)
       }
       if ((!is.null(valueToBeAdded)) && (!is.na(valueToBeAdded)) &&
           (Im(valueToBeAdded) == 0)) {
@@ -12111,8 +12113,8 @@ license()
     }
     else if (input$tabPoleZeroEditing == "RealImag") {
       shiny::req(input$edit_polezeroloc, input$edit_polezerolocImag)
-      n1 <- eval(parse(text = input$edit_polezeroloc))
-      n2 <- eval(parse(text = input$edit_polezerolocImag))
+      n1 <- try(eval(parse(text = input$edit_polezeroloc)),silent=TRUE)
+      n2 <- try(eval(parse(text = input$edit_polezerolocImag)),silent=TRUE)
       if (is.infinite(Im(n2))) {
         valueToBeAdded <- complex(1, n1, switch(sign(n2) + 2,-Inf,
                                                 0, Inf))
@@ -12129,7 +12131,7 @@ license()
         }
         else {
           valueToBeAdded <-
-            eval(parse(text = input$edit_currentSelectionText))
+            try(eval(parse(text = input$edit_currentSelectionText)),silent=TRUE)
         }
       }
       if (Mod(valueToBeAdded) > 1e-06) {
@@ -12174,19 +12176,21 @@ license()
         inputFilterCommandString <- input$edit_currentSelectionText
       }
       if (grepl("Zpg|sftrans|bilinear", inputFilterCommandString)) {
-        zpg <- eval(parse(text = inputFilterCommandString))
+        zpg <- try(eval(parse(text = inputFilterCommandString)),silent=TRUE)
+        if (is.list(zpg)) {
         handles$zeroloc <- zpg$zero
         handles$poleloc <- zpg$pole
         updateNumericInput(session, inputId = "edit_gain", value = zpg$gain)
         b <- zpg$gain
         length(b) <- 1
+        }
       }
       else if (grepl(
         "fir1|fir2|remez|spencerFilter|sgolayfilt|sgolay|Ma|chebwin|kaiser|bartlett|blackman|boxcar|flattopwin|gausswin|hanning|hamming|triang|sinc",
         inputFilterCommandString
       )) {
         handles$poleloc <- c(0)
-        b <- eval(parse(text = inputFilterCommandString))
+        b <- try(eval(parse(text = inputFilterCommandString)),silent=TRUE)
         if (length(b) < 2) {
           handles$zeroloc <- c(0)
         }
@@ -12196,7 +12200,7 @@ license()
       }
       else if (grepl("FftFilter", inputFilterCommandString)) {
         handles$poleloc <- c(0)
-        b <- eval(parse(text = inputFilterCommandString))
+        b <- try(eval(parse(text = inputFilterCommandString)),silent=TRUE)
         if (length(b) < 2) {
           handles$zeroloc <- c(0)
         }
@@ -12205,14 +12209,14 @@ license()
         }
       }
       else {
-        a <- eval(parse(text = paste0(inputFilterCommandString, "$a")))
+        a <- try(eval(parse(text = paste0(inputFilterCommandString, "$a"))),silent=TRUE)
         if (length(a) < 2) {
           handles$poleloc <- c(0)
         }
         else {
           handles$poleloc <- polyroot(rev(a)) # numerical stability may be an issue for all but low-degree polynomials
         }
-        b <- eval(parse(text = paste0(inputFilterCommandString, "$b")))
+        b <- try(eval(parse(text = paste0(inputFilterCommandString, "$b"))),silent=TRUE)
         if (length(b) < 2) {
           handles$zeroloc <- c(0)
         }
@@ -12251,7 +12255,7 @@ license()
         if (input$coordsevaluateImport) {
           importedPolesValues <- rep(0, length(importedPoles))
           for (i in 1:length(importedPoles)) {
-            importedPolesValues[i] <- eval(parse(text = importedPoles[i]))
+            importedPolesValues[i] <- try(eval(parse(text = importedPoles[i])),silent=TRUE)
           }
         }
         else {
@@ -12277,7 +12281,7 @@ license()
         if (input$coordsevaluateImport) {
           importedZerosValues <- rep(0, length(importedZeros))
           for (i in 1:length(importedZeros)) {
-            importedZerosValues[i] <- eval(parse(text = importedZeros[i]))
+            importedZerosValues[i] <- try(eval(parse(text = importedZeros[i])),silent=TRUE)
           }
         }
         else {
@@ -12327,7 +12331,7 @@ license()
                       value = input$listbox_pole)
     }
     else if (input$tabPoleZeroEditing == "rtheta") {
-      evaluatedinputlistbox_pole <- eval(parse(text = input$listbox_pole))
+      evaluatedinputlistbox_pole <- try(eval(parse(text = input$listbox_pole)),silent=TRUE)
       updateTextInput(
         session,
         inputId = "edit_currentSelectionText",
@@ -12366,7 +12370,7 @@ license()
                       value = input$listbox_zero)
     }
     else if (input$tabPoleZeroEditing == "rtheta") {
-      evaluatedinputlistbox_zero <- eval(parse(text = input$listbox_zero))
+      evaluatedinputlistbox_zero <- try(eval(parse(text = input$listbox_zero)),silent=TRUE)
       updateTextInput(
         session,
         inputId = "edit_currentSelectionText",
@@ -12408,22 +12412,22 @@ license()
               (is.na(input$edit_currentSelectionText)) ||
               (input$edit_currentSelectionText == "")) {
             valueToReplace <-
-              eval(parse(text = input$edit_polezerolocRadius)) *
+              try(eval(parse(text = input$edit_polezerolocRadius)) *
               exp(j * eval(parse(
                 text = input$edit_polezerolocAngle
-              )))
+              ))),silent=TRUE)
           }
           else {
             valueToReplace <-
-              eval(parse(text = input$edit_currentSelectionText))
+              try(eval(parse(text = input$edit_currentSelectionText)),silent=TRUE)
           }
         }
         else {
           if ((is.null(input$edit_currentSelectionText)) ||
               (is.na(input$edit_currentSelectionText)) ||
               (input$edit_currentSelectionText == "")) {
-            n1 <- eval(parse(text = input$edit_polezeroloc))
-            n2 <- eval(parse(text = input$edit_polezerolocImag))
+            n1 <- try(eval(parse(text = input$edit_polezeroloc)),silent=TRUE)
+            n2 <- try(eval(parse(text = input$edit_polezerolocImag)),silent=TRUE)
             if (is.infinite(Im(n2))) {
               valueToReplace <- complex(1, n1, switch(sign(n2) +
                                                         2,-Inf, 0, Inf))
@@ -12438,7 +12442,7 @@ license()
           }
           else {
             valueToReplace <-
-              eval(parse(text = input$edit_currentSelectionText))
+              try(eval(parse(text = input$edit_currentSelectionText)),silent=TRUE)
           }
         }
       }
@@ -12479,22 +12483,22 @@ license()
               (is.na(input$edit_currentSelectionText)) ||
               (input$edit_currentSelectionText == "")) {
             valueToReplace <-
-              eval(parse(text = input$edit_polezerolocRadius)) *
+              try(eval(parse(text = input$edit_polezerolocRadius)) *
               exp(j * eval(parse(
                 text = input$edit_polezerolocAngle
-              )))
+              ))),silent=TRUE)
           }
           else {
             valueToReplace <-
-              eval(parse(text = input$edit_currentSelectionText))
+              try(eval(parse(text = input$edit_currentSelectionText)),silent=TRUE)
           }
         }
         else {
           if ((is.null(input$edit_currentSelectionText)) ||
               (is.na(input$edit_currentSelectionText)) ||
               (input$edit_currentSelectionText == "")) {
-            n1 <- eval(parse(text = input$edit_polezeroloc))
-            n2 <- eval(parse(text = input$edit_polezerolocImag))
+            n1 <- try(eval(parse(text = input$edit_polezeroloc)),silent=TRUE)
+            n2 <- try(eval(parse(text = input$edit_polezerolocImag)),silent=TRUE)
             if (is.infinite(Im(n2))) {
               valueToReplace <- complex(1, n1, switch(sign(n2) +
                                                         2,-Inf, 0, Inf))
@@ -12509,7 +12513,7 @@ license()
           }
           else {
             valueToReplace <-
-              eval(parse(text = input$edit_currentSelectionText))
+              try(eval(parse(text = input$edit_currentSelectionText)),silent=TRUE)
           }
         }
       }
