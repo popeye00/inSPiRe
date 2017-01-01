@@ -6,15 +6,15 @@ memory.limit(size = 1e+05)
 library(shiny)
 library(shinyBS) # bsModal, bsButton, bsCollapse/ bsCollapsePanel, updateButton, createAlert/ closeAlert
 library(shinyjs) # reset, info, delay, show, hide, disable, onevent, hidden
-library(signal) # fir1, fir2, butter, cheby1, cheby2, ellip, butterord, cheby1ord, ellipord, remez, spencerFilter, sgolay, bilinear, sftrans, freqz, unwrap, filter, fftfilt, impz, bartlett, blackman, boxcar, chebwin, flattopwin, gausswin, hanning, hamming, triang, Zpg, Arma, Ma, sgolay
-library(pracma) # zeros, fliplr/ flipud, ifft, Toeplitz, inv, isempty, polar, meshgrid, polyval, fftshift, Poly, polymul, str2num, findpeaks, linspace
-library(MASS) # fractions
+library(signal) # fir1, fir2, butter, cheby1, cheby2, ellip, butterord, cheby1ord, ellipord, remez, spencerFilter, sgolay, bilinear, sftrans, freqz, unwrap, filter, fftfilt, impz, bartlett, blackman, boxcar, chebwin, flattopwin, gausswin, hanning, hamming, triang, Zpg, Arma, Ma, sgolay, specgram
+library(pracma) # zeros, fliplr/ flipud, ifft, Toeplitz, inv, isempty, polar, meshgrid, polyval, fftshift, Poly, polymul/ conv, str2num, findpeaks, linspace
+library(MASS) # fractions # _Modern Applied Statistics with S_, Venables, W.N. and Ripley, B.D. (2002)
 library(colourpicker) # colourInput
 #library(colorspace) # rainbow_hcl, diverge_hcl
 #library(RColorBrewer) # brewer.pal
 library(threejs) # scatterplotThreeOutput/ renderScatterplotThree, scatterplot3js
 library(rgl) # rglwidgetOutput, renderRglwidget, persp3d, plot3d, surface3d, rglwidget, playwidget, scene3d, rgl.close, clear3d
-# library(knitr) # include_graphics; Note: automatic calculation of the output width requires the png package (for PNG images)
+library(knitr) # kable, include_graphics; Note: automatic calculation of the output width requires the png package (for PNG images)
 library(R.matlab) # readMat, writeMat
 library(yaml) # yaml.load_file, as.yaml
 library(rmarkdown) # render, pandoc_available
@@ -22,6 +22,8 @@ library(markdown) # markdownToHTML
 library(devtools) # session_info
 library(png)
 library(webshot) # appshot
+library(audio) # play
+library(tuneR) # readWave, readMP3
 
 # Constant-Symbol Definitions ---------------------------------------- ----
 
@@ -58,7 +60,7 @@ AvailableThemes <-
     "readable",
     "spacelab",
     "united",
-    "yeti"
+    "yeti" #  # this 10th-slot seems to be the first to always be "randomly" chosen with any new freshly-started RStudio process
     # ,"creative" # okay? # https://startbootstrap.com/
     # ,"new-age" # okay?
     # ,"clean-blog" # okay?
@@ -77,13 +79,13 @@ AvailableThemes <-
     # ,"logo-nav"
     # ,"business-frontpage"
   )
-MyChosenTheme <- sample(AvailableThemes, 1)
+MyChosenTheme <- sample(AvailableThemes, 1L)
 MyAppNameAndTheme <- paste(MyChosenTheme, "<b>P</b>e<b>Z</b>")
-mySidebarWidth <- 5
+mySidebarWidth <- 5L
 
 # FUNCTIONS ********************************************************** ----
 sinc <- function(x) {
-  ifelse(x == 0, 1, sin(pi * x) / (pi * x))
+  ifelse(x == 0, 1, sin(pi * x) / (pi * x))  # isTRUE(all.equal( #
 }
 
 stripImagZero <- function(x) {
@@ -100,31 +102,31 @@ countZeroDigitsRightOfDecimalPoint <-
     # http://stackoverflow.com/questions/35553244/count-leading-zeros-between-the-decimal-point-and-first-nonzero-digit
     if (((abs(Re(x)) < tol) &&
          (abs(Im(x)) < tol)) || (is.infinite(x))) {
-      return(0)
+      return(0L)
     }
     else if (abs(Im(x)) < tol) {
       x <- abs(Re(x))
       if (((x - floor(x)) < tol) || abs(x) < tol) {
-        return(0)
+        return(0L)
       }
       y <- -log10(x - floor(x))
-      return(floor(y) - (y %% 1 < tol))
+      return(floor(y) - (y %% 1L < tol))
     }
     else {
       xReal <- abs(Re(x))
       if (((xReal - floor(xReal)) < tol) || (xReal < tol)) {
-        return(0)
+        return(0L)
       }
       yReal <- -log10(xReal - floor(xReal))
       xImag <- abs(Im(x))
       if (((xImag - floor(xImag)) < tol) || (xImag < tol)) {
-        return(0)
+        return(0L)
       }
       yImag <- -log10(xImag - floor(xImag))
-      return(min(4, max(c(
-        floor(yReal) - (yReal %% 1 < tol),
+      return(min(4L, max(c(
+        floor(yReal) - (yReal %% 1L < tol),
         floor(yImag) -
-          (yImag %% 1 < tol)
+          (yImag %% 1L < tol)
       ), na.rm = TRUE), na.rm = TRUE))
     }
   }
@@ -138,7 +140,7 @@ unWrap <- function(p, tol = (pi - eps)) {
   po <- 0
   thr <- pi - eps
   twopi <- 2 * pi
-  for (i in 2:N) {
+  for (i in 2L:N) {
     cp <- p[i] + po
     dp <- cp - pm1
     pm1 <- cp
@@ -163,27 +165,27 @@ unWrap <- function(p, tol = (pi - eps)) {
 
 myfreqz <- function(B,
                     A,
-                    N = 1024,
-                    whole = 1,
+                    N = 1024L,
+                    whole = 1L,
                     fs = 1) {
   # https://ccrma.stanford.edu/~jos/fp/Frequency_Response_Matlab.html
   # "Introduction to Digital Filters with Audio Applications", Julius O. Smith III, (Sept/2007)
   na <- length(A)
   nb <- length(B)
   if ((is.complex(B)) || (is.complex(A))) {
-    whole <- 1
+    whole <- 1L
   }
-  Nf <- 2 * N
-  if (whole == 1) {
+  Nf <- 2L * N
+  if (whole == 1L) {
     Nf <- N
   }
-  w <- (2 * pi * fs * (0:(Nf - 1)) / Nf)
+  w <- (2 * pi * fs * (0L:(Nf - 1L)) / Nf)
   H <-
-    fft(c(B, pracma::zeros(1, Nf - nb))) / fft(c(A, pracma::zeros(1,
+    fft(c(B, pracma::zeros(1L, Nf - nb))) / fft(c(A, pracma::zeros(1L,
                                                                   Nf - na)))
-  if (whole == 1) {
-    w <- w[1:N]
-    H <- H[1:N]
+  if (whole == 1L) {
+    w <- w[1L:N]
+    H <- H[1L:N]
   }
   if (fs == 1) {
     flab <- "Frequency (cycles/sample)"
@@ -201,10 +203,10 @@ myfreqz <- function(B,
     ylab = "Magnitude (dB)"
   )
   grid(col = "grey")
-  abline(h = 0, col = "black")
-  abline(v = 0, col = "black")
+  abline(h = 0L, col = "black")
+  abline(v = 0L, col = "black")
   plot(
-    c(0:(N - 1)) * fs / N,
+    c(0L:(N - 1L)) * fs / N,
     Arg(H),
     type = "l",
     col = "blue",
@@ -212,21 +214,21 @@ myfreqz <- function(B,
     ylab = "Phase"
   )
   grid(col = "grey")
-  abline(h = 0, col = "black")
-  abline(v = 0, col = "black")
+  abline(h = 0L, col = "black")
+  abline(v = 0L, col = "black")
   return(list(H = H, w = w))
 }
 
 myfindpeaks <-
   function(x,
-           nups = 1,
+           nups = 1L,
            ndowns = nups,
            zero = "0",
            peakpat = NULL,
            minpeakheight = -Inf,
            minpeakdistance = 1,
            threshold = 0,
-           npeaks = 0,
+           npeaks = 0L,
            sortstr = FALSE) {
     # the following is taken from the `pracma` package:
     stopifnot(is.vector(x, mode = "numeric"))
@@ -240,7 +242,7 @@ myfindpeaks <-
       peakpat <- sprintf("[+]{%d,}[-]{%d,}", nups, ndowns)
     }
     rc <- gregexpr(peakpat, xc)[[1]]
-    if (rc[1] < 0)
+    if (rc[1] < 0L)
       return(NULL)
     x1 <- rc
     x2 <- rc + attr(rc, "match.length")
@@ -248,41 +250,41 @@ myfindpeaks <-
     attributes(x2) <- NULL
     n <- length(x1)
     xv <- xp <- numeric(n)
-    for (i in 1:n) {
-      xp[i] <- which.max(x[x1[i]:x2[i]]) + x1[i] - 1
+    for (i in 1L:n) {
+      xp[i] <- which.max(x[x1[i]:x2[i]]) + x1[i] - 1L
       xv[i] <- x[xp[i]]
     }
     inds <-
       which(xv >= minpeakheight & xv - pmax(x[x1], x[x2]) >= threshold)
     X <- cbind(xv[inds], xp[inds], x1[inds], x2[inds])
-    if (minpeakdistance < 1)
+    if (minpeakdistance < 1L)
       warning("Handling 'minpeakdistance < 1' is logically not possible.")
-    if (sortstr || minpeakdistance > 1) {
+    if (sortstr || minpeakdistance > 1L) {
       sl <- sort.list(X[, 1], na.last = NA, decreasing = TRUE)
       X <- X[sl, , drop = FALSE]
     }
-    if (length(X) == 0)
+    if (length(X) == 0L)
       return(c())
     if (minpeakdistance > 1) {
       no_peaks <- nrow(X)
       badpeaks <- rep(FALSE, no_peaks)
-      for (i in 1:no_peaks) {
+      for (i in 1L:no_peaks) {
         ipos <- X[i, 2]
         if (!badpeaks[i]) {
           dpos <- abs(ipos - X[, 2])
-          badpeaks <- badpeaks | (dpos > 0 & dpos < minpeakdistance)
+          badpeaks <- badpeaks | (dpos > 0L & dpos < minpeakdistance)
         }
       }
       X <- X[!badpeaks,]
     }
     if (is.vector(X)) { # <<< different from original `pracma` package's function-code
-      if (npeaks > 0 && npeaks < length(X) / 4) { # <<< different from original `pracma` package's function-code
-        X <- X[1:npeaks, , drop = FALSE]
+      if (npeaks > 0L && npeaks < length(X) / 4) { # <<< different from original `pracma` package's function-code
+        X <- X[1L:npeaks, , drop = FALSE]
       }
     }
     else {
-      if (npeaks > 0 && npeaks < nrow(X)) { # <<< different from original `pracma` package's function-code
-        X <- X[1:npeaks, , drop = FALSE]
+      if (npeaks > 0L && npeaks < nrow(X)) { # <<< different from original `pracma` package's function-code
+        X <- X[1L:npeaks, , drop = FALSE]
       }
     }
     return(X)
@@ -290,15 +292,15 @@ myfindpeaks <-
 
 stabilityCheck <- function(A) {
   # https://www.dsprelated.com/freebooks/filters/Pole_Zero_Analysis_I.html
-  N <- length(A) - 1
-  stable <- 1
-  for (i in seq(N, 1, by = -1)) {
+  N <- length(A) - 1L
+  stable <- 1L
+  for (i in seq(N, 1L, by = -1L)) {
     rci <- A[i + 1]
     if (Mod(rci) >= 1) {
-      stable <- 0
+      stable <- 0L
       break
     }
-    A <- (A[1:i] - rci * A[seq((i + 1), 2, by = -1)]) / (1 - rci ^ 2)
+    A <- (A[1L:i] - rci * A[seq((i + 1L), 2L, by = -1L)]) / (1L - rci ^ 2)
   }
   return(stable)
 }
@@ -311,12 +313,12 @@ plot_imp <-
            output) {
     # taken mostly from `\private\` subdirectory of `pezdemo.m` app of `SP-First` fame, https://github.com/DeepHorizons/spfirst/tree/master/spfirst/pezdemo/private
     pt <- min(input$maxLengthImpulseResponse, length(handleshn))
-    x <- 0:(pt - 1)
+    x <- 0L:(pt - 1L)
     tempi <- Im(handleshn)
-    xx <- matrix(0, nrow = 1, ncol = (3 * pt))
-    xx[seq(from = 1, to = 3 * pt, by = 3)] <- x
-    xx[seq(from = 2, to = 3 * pt, by = 3)] <- x
-    xx[seq(from = 3, to = 3 * pt, by = 3)] <- NaN
+    xx <- matrix(0, nrow = 1L, ncol = (3L * pt))
+    xx[seq(from = 1L, to = 3L * pt, by = 3L)] <- x
+    xx[seq(from = 2L, to = 3L * pt, by = 3L)] <- x
+    xx[seq(from = 3L, to = 3L * pt, by = 3L)] <- NaN
     handlestol <- 1e-04
     if (Mod(hnimag[2]) < handlestol) {
       plot(
@@ -343,21 +345,21 @@ plot_imp <-
         lwd = input$LineWidth
       )
       grid(col = input$grcolor)
-      abline(h = 0)
-      abline(v = 0)
+      abline(h = 0L)
+      abline(v = 0L)
       output$system_real <- renderUI({
         tags$span(style = paste0("color:", input$ForegroundColor),
                   "real-valued")
       })
     }
     else {
-      yy <- matrix(0, nrow = 1, ncol = 3 * pt)
-      yy[seq(from = 2,
-             to = 3 * pt,
-             by = 3)] <- tempi
-      yy[seq(from = 3,
-             to = 3 * pt,
-             by = 3)] <- NaN
+      yy <- matrix(0, nrow = 1L, ncol = 3L * pt)
+      yy[seq(from = 2L,
+             to = 3L * pt,
+             by = 3L)] <- tempi
+      yy[seq(from = 3L,
+             to = 3L * pt,
+             by = 3L)] <- NaN
       plot(
         x,
         Re(handleshn), # tempi,
@@ -376,8 +378,8 @@ plot_imp <-
         main = "Impulse-Response (Real-Part)"
       )
       grid(col = input$grcolor)
-      abline(h = 0)
-      abline(v = 0)
+      abline(h = 0L)
+      abline(v = 0L)
       # if (input$showLegend)
       #   legend(
       #     "topright",
@@ -394,17 +396,17 @@ plot_imp <-
       #   tempi,
       #   col = "magenta",
       #   lwd = input$LineWidth *
-      #     2 / 3,
+      #     2/3,
       #   lty = "dashed"
       # )
       output$system_real <- renderUI({
         tags$span(style = "color:magenta",
-                  "[possible imaginary-components (Note: not plotted here)]")
+                  "[imaginary-parts discarded in coercion]")
       })
     }
-    yy <- matrix(0, nrow = 1, ncol = 3 * pt)
-    yy[seq(from = 2, to = 3 * pt, by = 3)] <- Re(handleshn)
-    yy[seq(from = 3, to = 3 * pt, by = 3)] <- NaN
+    yy <- matrix(0, nrow = 1L, ncol = 3L * pt)
+    yy[seq(from = 2L, to = 3L * pt, by = 3L)] <- Re(handleshn)
+    yy[seq(from = 3L, to = 3L * pt, by = 3L)] <- NaN
     lines(
       x,
       Re(handleshn),
@@ -416,7 +418,7 @@ plot_imp <-
       x,
       Re(handleshn),
       col = "grey",
-      lwd = input$LineWidth * 2 / 3,
+      lwd = input$LineWidth * 2/3,
       lty = "dashed"
     )
     points(
@@ -437,12 +439,12 @@ plot_step <-
            output) {
     # taken mostly from `\private\` subdirectory of `pezdemo.m` app of `SP-First` fame, https://github.com/DeepHorizons/spfirst/tree/master/spfirst/pezdemo/private
     pt <- min(input$maxLengthImpulseResponse, length(handleshnu))
-    x <- 0:(pt - 1)
+    x <- 0L:(pt - 1L)
     tempi <- Im(handleshnu)
-    xx <- matrix(0, nrow = 1, ncol = (3 * pt))
-    xx[seq(from = 1, to = 3 * pt, by = 3)] <- x
-    xx[seq(from = 2, to = 3 * pt, by = 3)] <- x
-    xx[seq(from = 3, to = 3 * pt, by = 3)] <- NaN
+    xx <- matrix(0L, nrow = 1L, ncol = (3L * pt))
+    xx[seq(from = 1L, to = 3L * pt, by = 3L)] <- x
+    xx[seq(from = 2L, to = 3L * pt, by = 3L)] <- x
+    xx[seq(from = 3L, to = 3L * pt, by = 3L)] <- NaN
     handlestol <- 1e-04
     # if (Mod(hnimag[2]) < handlestol) {
       plot(
@@ -469,31 +471,31 @@ plot_step <-
         lwd = input$LineWidth
       )
       grid(col = input$grcolor)
-      abline(h = 0)
-      abline(v = 0)
-      text(pt-1,Re(handleshnu[pt]),labels=round(Re(handleshnu[pt]),3),pos=4) # steady-state value
+      abline(h = 0L)
+      abline(v = 0L)
+      text(pt-1L,Re(handleshnu[pt]),labels=round(Re(handleshnu[pt]),3L),pos=4L) # steady-state value
       # output$system_real <- renderUI({
       #   tags$span(style = paste0("color:", input$ForegroundColor),
       #             "real-valued")
       # })
     # }
     # else {
-    #   yy <- matrix(0, nrow = 1, ncol = 3 * pt)
-    #   yy[seq(from = 2,
-    #          to = 3 * pt,
-    #          by = 3)] <- tempi
-    #   yy[seq(from = 3,
-    #          to = 3 * pt,
-    #          by = 3)] <- NaN
+    #   yy <- matrix(0, nrow = 1L, ncol = 3L * pt)
+    #   yy[seq(from = 2L,
+    #          to = 3L * pt,
+    #          by = 3L)] <- tempi
+    #   yy[seq(from = 3L,
+    #          to = 3L * pt,
+    #          by = 3L)] <- NaN
     #   plot(
     #     x,
     #     tempi,
     #     type = "p",
-    #     pch = 21,
+    #     pch = 21L,
     #     bg = input$BackgroundColor,
-    #     xlim = c(0, pt),
-    #     ylim = c(min(c(-1, yy, tempi), na.rm = TRUE) *
-    #                1.2, max(c(1, yy, tempi), na.rm = TRUE) * 1.2),
+    #     xlim = c(0L, pt),
+    #     ylim = c(min(c(-1L, yy, tempi), na.rm = TRUE) *
+    #                1.2, max(c(1L, yy, tempi), na.rm = TRUE) * 1.2),
     #     col = "magenta",
     #     lwd = input$LineWidth,
     #     xlab = "n",
@@ -501,8 +503,8 @@ plot_step <-
     #     main = "Unit-Step Response"
     #   )
     #   grid(col = input$grcolor)
-    #   abline(h = 0)
-    #   abline(v = 0)
+    #   abline(h = 0L)
+    #   abline(v = 0L)
     #   if (input$showLegend)
     #     legend(
     #       "topright",
@@ -519,7 +521,7 @@ plot_step <-
     #     tempi,
     #     col = "magenta",
     #     lwd = input$LineWidth *
-    #       2 / 3,
+    #       2/3,
     #     lty = "dashed"
     #   )
     #   output$system_real <- renderUI({
@@ -527,9 +529,9 @@ plot_step <-
     #               "[has imaginary-components (Note: not properly plotted here)]")
     #   })
     # }
-    yy <- matrix(0, nrow = 1, ncol = 3 * pt)
-    yy[seq(from = 2, to = 3 * pt, by = 3)] <- Re(handleshnu)
-    yy[seq(from = 3, to = 3 * pt, by = 3)] <- NaN
+    yy <- matrix(0, nrow = 1L, ncol = 3L * pt)
+    yy[seq(from = 2L, to = 3L * pt, by = 3L)] <- Re(handleshnu)
+    yy[seq(from = 3L, to = 3L * pt, by = 3L)] <- NaN
     lines(
       x,
       Re(handleshnu),
@@ -541,7 +543,7 @@ plot_step <-
       x,
       Re(handleshnu),
       col = "grey",
-      lwd = input$LineWidth * 2 / 3,
+      lwd = input$LineWidth * 2/3,
       lty = "dashed"
     )
     points(
@@ -646,7 +648,7 @@ $('#loadmessage').fadeOut(500).fadeIn(500, blink);
       navbarPage(
         id = "mainNavBarPage",
         title = div(HTML(MyAppNameAndTheme),
-                    img(src = "bigorb.png", height = 20
+                    img(src = "bigorb.png", height = 20L
                         , alt = "R-logo big orb"
                     )),
         windowTitle = paste(MyChosenTheme,
@@ -687,7 +689,7 @@ $('#loadmessage').fadeOut(500).fadeIn(500, blink);
                   title = "tooltip: Sidebar of the Plots page",
                   fluidRow(
                     column(
-                      width = 6,
+                      width = 6L,
                       align = "center",
                       shinyjs::hidden(
                         tags$span(
@@ -781,7 +783,7 @@ $('#loadmessage').fadeOut(500).fadeIn(500, blink);
                       )
                     ),
                     column(
-                      width = 6,
+                      width = 6L,
                       align = "center",
                       shinyjs::hidden(
                         tags$span(
@@ -875,7 +877,7 @@ $('#loadmessage').fadeOut(500).fadeIn(500, blink);
                           title = "tooltip: pole-zero Plot (z-plane) tab\n(use browser's right-mouse-click/ context-menu for image download-options)",
                           shinyjs::hidden(fluidRow(
                             column(
-                              6,
+                              6L,
                               tags$span(
                                 title = "Lock XY-Coordinates",
                                 checkboxGroupInput(
@@ -887,7 +889,7 @@ $('#loadmessage').fadeOut(500).fadeIn(500, blink);
                                   inline = TRUE
                                 )
                               )
-                            ), column(6, tags$span(
+                            ), column(6L, tags$span(
                               title = "Mirror-image point",
                               checkboxGroupInput(
                                 inputId = "MirrorImageGrp",
@@ -973,10 +975,10 @@ $('#loadmessage').fadeOut(500).fadeIn(500, blink);
                                     sliderInput(
                                       inputId = "zoomlimX",
                                       label = HTML("max X,Y-Limits   (-)&RightTee;&LeftTee;(+)"), # https://dev.w3.org/html5/html-author/charref
-                                      min = -5,
-                                      max = 5,
-                                      value = c(-1,
-                                                1),
+                                      min = -5L,
+                                      max = 5L,
+                                      value = c(-1L,
+                                                1L),
                                       step = 0.25,
                                       ticks = TRUE,
                                       animate = FALSE,
@@ -986,10 +988,10 @@ $('#loadmessage').fadeOut(500).fadeIn(500, blink);
                                     sliderInput(
                                       inputId = "zoomlimY",
                                       label = NULL,
-                                      min = -5,
-                                      max = 5,
-                                      value = c(-1,
-                                                1),
+                                      min = -5L,
+                                      max = 5L,
+                                      value = c(-1L,
+                                                1L),
                                       step = 0.25,
                                       ticks = TRUE,
                                       animate = FALSE,
@@ -1034,7 +1036,7 @@ $('#loadmessage').fadeOut(500).fadeIn(500, blink);
                           wellPanel(
                             style = paste0("background-color: ",
                                            WellPanelBackgroundColor, ";"),
-                            if ((scalePlotsToVerticalHeight)) {
+                            if (scalePlotsToVerticalHeight) {
                               tags$head(tags$style(
                                 paste0(
                                   "#axes_pzplotPolar{height:",
@@ -1066,39 +1068,39 @@ $('#loadmessage').fadeOut(500).fadeIn(500, blink);
                             fluidRow(
                               tags$span(title = "tooltip: suggested number-of-ticks, per axis",
                                         column(
-                                          width = 4,
+                                          width = 4L,
                                           numericInput(
                                             inputId = "nticks3D",
                                             label = "N ticks",
-                                            value = 6,
-                                            min = 1,
-                                            max = 20,
-                                            step = 1
+                                            value = 6L,
+                                            min = 1L,
+                                            max = 20L,
+                                            step = 1L
                                           )
                                         )),
                               tags$span(title = "tooltip: either a single hex or named color name (all points same color), or a vector of #' hex or named color names as long as the number of data points to plot.",
                                         column(
-                                          width = 4,
+                                          width = 4L,
                                           numericInput(
                                             inputId = "colors3D",
                                             label = "N colors",
-                                            value = 32,
-                                            min = 1,
-                                            max = 64,
-                                            step = 1
+                                            value = 32L,
+                                            min = 1L,
+                                            max = 64L,
+                                            step = 1L
                                           )
                                         )),
                               conditionalPanel(
                                 condition = "(input.renderer3D == 'canvas') || (input.renderer3D == 'auto')",
                                 tags$span(title = "tooltip: (only supported by the 'canvas'-type renderer)",
                                           column(
-                                            width = 4,
+                                            width = 4L,
                                             numericInput(
                                               inputId = "sizes3D",
                                               label = "Point-size",
                                               value = 0.1,
                                               min = 0.1,
-                                              max = 6,
+                                              max = 6L,
                                               step = 0.1
                                             )
                                           ))
@@ -1107,7 +1109,7 @@ $('#loadmessage').fadeOut(500).fadeIn(500, blink);
                             fluidRow(
                               tags$span(title = "tooltip: The 'canvas' renderer is the fallback rendering option when 'webgl' is not available. Select 'auto' to automatically choose between the two. The two renderers produce slightly different-looking output and have different available options (see above). Use the 'webgl' renderer for plotting large numbers of points (if available). Use the 'canvas' renderer to excercise finer-control of plotting of smaller numbers of points.",
                                         column(
-                                          width = 4,
+                                          width = 4L,
                                           selectInput(
                                             "renderer3D",
                                             label = "Render method",
@@ -1121,12 +1123,12 @@ $('#loadmessage').fadeOut(500).fadeIn(500, blink);
                                         )),
                               tags$span(title = "tooltip: display of a grid",
                                         column(
-                                          width = 4, checkboxInput("usegrid3D",
+                                          width = 4L, checkboxInput("usegrid3D",
                                                                    label = "Grid", value = FALSE)
                                         )),
                               tags$span(title = "tooltip: display of a plane at z=0\nBetter, but slower, in 'canvas' mode",
                                         column(
-                                          width = 4,
+                                          width = 4L,
                                           checkboxInput("usezerozplane",
                                                         label = "plane at z=0", value = FALSE)
                                         ))
@@ -1170,12 +1172,12 @@ $('#loadmessage').fadeOut(500).fadeIn(500, blink);
                               )
                             ))
                           },
-                          rgl::rglwidgetOutput(outputId = "axes_pzplotRGL",
+                          rgl::rglwidgetOutput(outputId = "axes_pzplotRG",
                                                width = "auto")
                         )
                       ),
                       br(),
-                      downloadButton(outputId = "downloadRGL",
+                      downloadButton(outputId = "downloadRG",
                                      label = "Save RGL interactive-plot as WebGL .html file"),
                       tags$hr()
                     )
@@ -1208,7 +1210,7 @@ $('#loadmessage').fadeOut(500).fadeIn(500, blink);
                         tags$span(title = "tooltip: Rectangular-Coordinates Tab of Sidebar",
                                   fluidRow(
                                     column(
-                                      width = 6,
+                                      width = 6L,
                                       title = "enter numbers/ R-language equations, or pull-down for previous entries",
                                       tags$span(
                                         title = "tooltip: enter numbers/ R-language equations, or pull-down for previous entries",
@@ -1219,18 +1221,18 @@ $('#loadmessage').fadeOut(500).fadeIn(500, blink);
                                             readLines("initialpolezerolocs.txt")
                                           } else {
                                             c(
-                                              0,
+                                              0L,
                                               "(1-eps)*exp(-2i*pi/3)",
                                               "(1-8*eps)*exp(-2i*pi/3)",
                                               0.5,
                                               "1-eps",
                                               "1/sqrt(2)",
-                                              "1-0.5*3.276i",
+                                              "1L-0.5*3.276i",
                                               "0.2*j+0.4",
                                               "0.475+sqrt(3)/2*0.95*1i",
-                                              "rnorm(1,mean=0,sd=0.5)",
-                                              "rnorm(1,mean=0,sd=0.5)+rnorm(1,mean=0,sd=0.5)*1i",
-                                              "runif(1,min=-0.999,max=0.999)",
+                                              "rnorm(1L,mean=0,sd=0.5)",
+                                              "rnorm(1L,mean=0,sd=0.5)+rnorm(1L,mean=0,sd=0.5)*1i",
+                                              "runif(1L,min=-0.999,max=0.999)",
                                               "cos(pi/3)+1i*sin(pi/3)",
                                               "cospi(0.5)",
                                               "sqrt(3)/2",
@@ -1247,7 +1249,7 @@ $('#loadmessage').fadeOut(500).fadeIn(500, blink);
                                       )
                                     ),
                                     column(
-                                      width = 6,
+                                      width = 6L,
                                       title = "enter numbers/ R-language equations, or pull-down for previous entries",
                                       tags$span(
                                         title = "tooltip: enter numbers/ R-language equations, or pull-down for previous entries",
@@ -1258,14 +1260,14 @@ $('#loadmessage').fadeOut(500).fadeIn(500, blink);
                                             readLines("initialpolezerolocsImag.txt")
                                           } else {
                                             c(
-                                              0,
+                                              0L,
                                               0.5,
                                               "1/sqrt(2)",
                                               "cos(pi/3)",
                                               "sinpi(0.5)",
                                               "1-eps",
-                                              "rnorm(1,mean=0,sd=0.5)",
-                                              "runif(1,min=-0.999,max=0.999)",
+                                              "rnorm(1L,mean=0,sd=0.5)",
+                                              "runif(1L,min=-0.999,max=0.999)",
                                               "-(1-eps)",
                                               "1-2*eps",
                                               "-(1-2*eps)",
@@ -1297,20 +1299,20 @@ $('#loadmessage').fadeOut(500).fadeIn(500, blink);
                         tags$span(title = "tooltip: Polar-Coordinates Tab of Sidebar",
                                   fluidRow(
                                     column(
-                                      width = 6,
+                                      width = 6L,
                                       tags$span(
                                         title = "tooltip: enter numbers/ R-language equations, or pull-down for previous entries",
                                         selectizeInput(
                                           inputId = "edit_polezerolocRadius",
                                           label = HTML("<b>&rarrbfs;</b> (radius)"),
                                           choices = c(
-                                            0,
+                                            0L,
                                             0.4,
                                             "1-eps",
                                             "1/sqrt(2)",
                                             "sqrt(3)/2",
-                                            "abs(rnorm(1,mean=0,sd=0.5))",
-                                            "runif(1,min=0,max=0.999)",
+                                            "abs(rnorm(1L,mean=0,sd=0.5))",
+                                            "runif(1L,min=0,max=0.999)",
                                             0.95,
                                             "1-2*eps",
                                             "1-8*eps",
@@ -1326,7 +1328,7 @@ $('#loadmessage').fadeOut(500).fadeIn(500, blink);
                                       )
                                     ),
                                     column(
-                                      width = 6,
+                                      width = 6L,
                                       title = "enter numbers/ R-language equations, or pull-down for previous entries",
                                       tags$span(
                                         title = "tooltip: enter numbers/ R-language equations, or pull-down for previous entries",
@@ -1338,7 +1340,7 @@ $('#loadmessage').fadeOut(500).fadeIn(500, blink);
                                             "pi",
                                             "0.25*pi",
                                             "37.2*pi/180",
-                                            "runif(1,min=0,max=1)*2*pi",
+                                            "runif(1L,min=0,max=1)*2*pi",
                                             "pi/2",
                                             "3*pi/2",
                                             "pi/3",
@@ -1388,9 +1390,9 @@ $('#loadmessage').fadeOut(500).fadeIn(500, blink);
                             label = "Common Filters/ Windows",
                             choices = c(
                               `FIR Window, order 40, LPF, 0.3, Hamming window` = "N=40;fir1(n=N,w=0.3,type=\"low\",window=hamming(N+1),scale=TRUE)",
-                              `FIR Window, order 10, BPF, 0.3 to 0.7, Hamming window` = "N=10;fir1(n=N,w=c(0.3,0.7),type=\"pass\",window=hamming(N+1),scale=TRUE)",
-                              `FIR Window, order 10, BSF, 0.3 to 0.7, Hamming window` = "N=10;fir1(n=N,w=c(0.3,0.7),type=\"stop\",window=hamming(N+1),scale=TRUE)",
-                              `FIR, arbitrary piecewise-linear (type II), order 100, BPF, 0.3 to 0.7, Hamming` = "fir2(n=100, f=c(0, 0.3, 0.3, 0.7, 0.7, 1), m=c(0, 0, 1, 0.5, 0, 0), grid_n=512, ramp_n=5, window=hamming(101))",
+                              `FIR Window, order 10, BPF, 0.3 to 0.65, Hamming window` = "N=10;fir1(n=N,w=c(0.3,0.65),type=\"pass\",window=hamming(N+1),scale=TRUE)",
+                              `FIR Window, order 10, BSF, 0.3 to 0.65, Hamming window` = "N=10;fir1(n=N,w=c(0.3,0.65),type=\"stop\",window=hamming(N+1),scale=TRUE)",
+                              `FIR, arbitrary piecewise-linear (type II), order 100, BPF, 0.3 to 0.65, Hamming` = "fir2(n=100, f=c(0, 0.3, 0.3, 0.65, 0.65, 1), m=c(0, 0, 1, 0.5, 0, 0), grid_n=512, ramp_n=5, window=hamming(101))",
                               `Arbitrary MA, given b` = "Ma(b=c(1/3,2/3,1/3))",
                               `Arbitrary ARMA, given b,a` = "Arma(b=c(1/3,2/3,1/3), a=c(1,1-eps))",
                               `Arbitrary ARMA, given poles,zeros` = "Zpg(zero=c(-1,-1), pole=c(-(1-eps)), gain=1/3)",
@@ -1401,48 +1403,64 @@ $('#loadmessage').fadeOut(500).fadeIn(500, blink);
                               `Critical-damped: multiple/ repeated/ co-located real Poles` = "Zpg(zero=c(0), pole=c(-0.92345,-0.92345), gain=1)",
                               `LPF, Bilinear z-Transform, conversion of analog-prototype, cutoff=0.4` = "omegac=0.4;omegacprime=tan(omegac*pi/2);Zpg(zero=c(-1), pole=c(-(omegacprime-1)/(omegacprime+1)), gain=omegacprime/(omegacprime+1))",
                               `LPF, Bilinear z-Transform (function), conversion of analog, cutoff=0.4` = "omegac=0.4;signal::bilinear(Sz=c(-fpmaxx/10),Sp=c(-tan(pi*omegac/2)),Sg=tan(pi*omegac/2)/(fpmaxx/10),T=2)",
-                              `Transform band-edges of s-plane LPF 0.3 to a z-plane BPF 0.3-0.7` = "omegac1=0.3;omegac2=0.7;signal::sftrans(Sz=c(-1e16),Sp=c(-tan(pi*omegac1/2)),Sg=tan(pi*omegac1/2)/(1e16),W=c(omegac1,omegac2),stop=FALSE)",
+                              `Transform band-edges of s-plane LPF 0.3 to a z-plane BPF 0.3-0.65` = "omegac1=0.3;omegac2=0.65;signal::sftrans(Sz=c(-1e16),Sp=c(-tan(pi*omegac1/2)),Sg=tan(pi*omegac1/2)/(1e16),W=c(omegac1,omegac2),stop=FALSE)",
                               `Chebyshev I, order 5, 3dB ripple, LPF, 0.3` = "cheby1(n=5,Rp=3,W=0.3,type=\"low\")",
-                              `Chebyshev I, order 5, 3dB ripple, HPF, 0.7` = "cheby1(n=5,Rp=3,W=0.7,type=\"high\")",
-                              `Chebyshev I, order 5, 3dB ripple, BPF, 0.3 to 0.7` = "cheby1(n=5,Rp=3,W=c(0.3,0.7),type=\"pass\")",
-                              `Chebyshev I, order 5, 3dB ripple, BSF, 0.3 to 0.7` = "cheby1(n=5,Rp=3,W=c(0.3,0.7),type=\"stop\")",
-                              `Sinusoidal/ Oscillator/ Resonator, 2 poles on imag-axis, near unit-circle` = "Arma(b=c(1), a=c(1,0,(1-eps)))",
-                              `Sinusoidal/ Oscillator/ Resonator, 2 conjugate-poles, arbitrary angle` = "theta=1/6;Zpg(zero=c(0), pole=0.99999999999999*c(exp(theta*pi*1i),exp(-theta*pi*1i)), gain=1)",
+                              `Chebyshev I, order 5, 3dB ripple, HPF, 0.65` = "cheby1(n=5,Rp=3,W=0.65,type=\"high\")",
+                              `Chebyshev I, order 5, 3dB ripple, BPF, 0.3 to 0.65` = "cheby1(n=5,Rp=3,W=c(0.3,0.65),type=\"pass\")",
+                              `Chebyshev I, order 5, 3dB ripple, BSF, 0.3 to 0.65` = "cheby1(n=5,Rp=3,W=c(0.3,0.65),type=\"stop\")",
+                              `Sinusoidal/ Oscillator/ Resonator, 2 poles on imag-axis, near unit-circle, frq=0.5` = "Arma(b=c(1), a=c(1,0,(1-eps)))",
+                              `Sinusoidal/ Oscillator/ Resonator, 2 conjugate-poles, frq=ray-slider` = "theta=input$slider1;Zpg(zero=c(0), pole=0.99999999999999*c(exp(theta*pi*1i),exp(-theta*pi*1i)), gain=1)",
                               `L-point Moving-Average, L=5, FIR` = "FftFilter(rep(1/5,times=5),n=512)$b",
-                              `Three-term (Delay-Line) 'IIR-equivalent' Moving-Average filter, N=5` = "N=5;Arma(b=c(1/N,rep(0,times=N-1),-1/N),a=c(1,-(1-eps)))",
+                              `Delay-Line (three-terms) 'IIR-equivalent' Mov-Avg filter, N=5` = "N=5;Arma(b=c(1/N,rep(0,times=N-1),-1/N),a=c(1,-(1-eps)))",
+                              `Echo/Slapback-effects (Delay-Line), N=450 Samples (at Fs; needs ~10-50msecs)` = "N=450;Arma(b=c(1/N,rep(0,times=N-1),-1/N),a=c(1))",
                               `Cascaded Integrator-Comb CIC/ Hogenauer (MovAvg filter), ratio R=5 (b,a)` = "R=5;M=1;Arma(b=c(1,rep(0,times=R*M-1),-1), a=c(1,-(1-eps)))",
                               `Cascaded Integrator-Comb CIC/ Hogenauer (MovAvg filter), ratio R=8 (Zpg)` = "N=8;Zpg(zero=c(1,-1,1i,-1i,1/sqrt(2)+1/sqrt(2)*1i,1/sqrt(2)-1/sqrt(2)*1i,-1/sqrt(2)+1/sqrt(2)*1i,-1/sqrt(2)-1/sqrt(2)*1i), pole=c(1-eps), gain=1/N)",
-                              `Comb-Filter, 5 poles w/3 zeros` = "Arma(b=c(1,0,0, 0.5^3), a=c(1,0,0,0,0, 0.9^5))",
+                              `IIR Comb-Filter, 5 poles w/3 zeros` = "Arma(b=c(1,0,0, 0.5^3), a=c(1,0,0,0,0, 0.9^5))",
                               `Integrator 1/s, given b,a; pole at +1, zero at -1` = "Arma(b=c(1,1), a=c(1,-(1-eps)))",
                               `pole at -1, zero at +1`= "Zpg(zero=c(1), pole=c(-(1-eps)), gain=1)",
                               `Notch-Filter, Fractional-Sample Delay-line, D=2pi/omega0, (Pei Tseng '98 Fig 2)` = "omega0=0.22*pi;D=2*pi/omega0;rho=0.99;Arma(b=c(1,rep(0,times=floor(D-1)),-1), a=c(1,rep(0,times=floor(D-1)),-(rho)^D))",
-                              `Peaking-Filter, fc=0.22` = "theta=0.22;rp=0.999;rz=0.997;Zpg(zero=c(rz*exp(theta*pi*1i),rz*exp(-theta*pi*1i)), pole=c(rp*exp(theta*pi*1i),rp*exp(-theta*pi*1i)), gain=1)",
-                              `Notch-Out Filter, fc=0.22` = "theta=0.22;rp=0.997;rz=0.999;Zpg(zero=c(rz*exp(theta*pi*1i),rz*exp(-theta*pi*1i)), pole=c(rp*exp(theta*pi*1i),rp*exp(-theta*pi*1i)), gain=1)",
-                              `Freq-Sampling IIR algorithm (unstable), ord. 12, fc=0.7, delay=7` = "N=12;D=7;fc=0.7;L=2*N;FF=matrix(data=0,nrow=N,ncol=1);for (k in seq(1,N,by=1)){f=2*k/(L+1);if (f <= fc) {FF[k]=exp(-1i*D*f*pi)}};Fb=Conj(FF);FF=c(1,FF,pracma::flipud(Fb));h=Re(pracma::ifft(FF));r1=t(h);r=c(r1[1],pracma::fliplr(as.matrix(t(r1[2:length(r1)]))));H=pracma::Toeplitz(h,r);H0=H[,1:(N+1)];H1=H0[1:(N+1),];h1=H0[seq((N+2),(L+1)),1];H2=H0[seq((N+2),(L+1)),seq(2,(N+1))];ah=-pracma::inv(H2) %*% h1;a=c(1,ah);b=H1 %*% a;list(a=a,b=b)",
-                              `Least-Squares IIR algorithm (unstable), ord. 12, fc=0.7, delay=7, 120 Samples` = "N=12;D=7;L=120;fc=0.7;L1=0.5*L;FF=matrix(data=0,nrow=L1,ncol=1);for (k in seq(1,L1)){f=2*k/(L+1);if (f <= fc) {FF[k]=exp(-1i*D*f*pi)}};Fb=Conj(FF);FF=c(1,FF,pracma::flipud(Fb));h=Re(pracma::ifft(FF));r1=t(h);r=c(r1[1],pracma::fliplr(as.matrix(t(r1[2:length(r1)]))));H=pracma::Toeplitz(h,r);H0=H[,1:(N+1)];H1=H0[1:(N+1),];h1=H0[seq((N+2),(L+1)),1];H2=H0[seq((N+2),(L+1)),seq(2,(N+1))];ah=-pracma::inv(t(H2) %*% H2) %*% t(H2) %*% h1;a=c(1,ah);b=H1 %*% a;list(a=a,b=b)",
+                              `Peaking-Filter/ Resonance, fc=ray-slider` = "theta=input$slider1;rp=0.999;rz=0.997;Zpg(zero=c(rz*exp(theta*pi*1i),rz*exp(-theta*pi*1i)), pole=c(rp*exp(theta*pi*1i),rp*exp(-theta*pi*1i)), gain=1)",
+                              `Notch-Out Filter, fc=ray-slider` = "theta=input$slider1;rp=0.997;rz=0.999;Zpg(zero=c(rz*exp(theta*pi*1i),rz*exp(-theta*pi*1i)), pole=c(rp*exp(theta*pi*1i),rp*exp(-theta*pi*1i)), gain=1)",
+                              `Freq-Sampling IIR algorithm (unstable), ord. 12, fc=0.65, delay=7` = "N=12;D=7;fc=0.65;L=2*N;FF=matrix(data=0,nrow=N,ncol=1);for (k in seq(1,N,by=1)){f=2*k/(L+1);if (f <= fc) {FF[k]=exp(-1i*D*f*pi)}};Fb=Conj(FF);FF=c(1,FF,pracma::flipud(Fb));h=Re(pracma::ifft(FF));r1=t(h);r=c(r1[1],pracma::fliplr(as.matrix(t(r1[2:length(r1)]))));H=pracma::Toeplitz(h,r);H0=H[,1:(N+1)];H1=H0[1:(N+1),];h1=H0[seq((N+2),(L+1)),1];H2=H0[seq((N+2),(L+1)),seq(2,(N+1))];ah=-pracma::inv(H2) %*% h1;a=c(1,ah);b=H1 %*% a;list(a=a,b=b)",
+                              `Least-Squares IIR algorithm (unstable), ord. 12, fc=0.65, delay=7, 120 Samples` = "N=12;D=7;L=120;fc=0.65;L1=0.5*L;FF=matrix(data=0,nrow=L1,ncol=1);for (k in seq(1,L1)){f=2*k/(L+1);if (f <= fc) {FF[k]=exp(-1i*D*f*pi)}};Fb=Conj(FF);FF=c(1,FF,pracma::flipud(Fb));h=Re(pracma::ifft(FF));r1=t(h);r=c(r1[1],pracma::fliplr(as.matrix(t(r1[2:length(r1)]))));H=pracma::Toeplitz(h,r);H0=H[,1:(N+1)];H1=H0[1:(N+1),];h1=H0[seq((N+2),(L+1)),1];H2=H0[seq((N+2),(L+1)),seq(2,(N+1))];ah=-pracma::inv(t(H2) %*% H2) %*% t(H2) %*% h1;a=c(1,ah);b=H1 %*% a;list(a=a,b=b)",
                               `All-Pass, poles within circle, zeros outside at conjugate-reciprocal` = "r1=1.3;th1=0.6;Zpg(zero=c(r1*exp(th1*pi*1i),r1*exp(-th1*pi*1i)), pole=c((1/r1)*exp(th1*pi*1i),(1/r1)*exp(-th1*pi*1i)), gain=1)",
                               `All-Pass, pole at 0, zero at infinity` = "Arma(b=c(1,-fpmaxx), a=c(1))",
                               `All-Pass, reversed-ordering of (real) filter-coefficients` = "myb=c(1,2,3,4,5,6);Arma(b=myb, a=rev(myb))",
                               `Min. Phase, Delay < 2 (Oppenheim Schafer Buck, 1989, Fig 5.30a)` = "Zpg(zero=c(0.9*exp(0.6*pi*1i),0.9*exp(-0.6*pi*1i),0.8*exp(0.8*pi*1i),0.8*exp(-0.8*pi*1i)), pole=c(0), gain=1)",
                               `Max. Phase, Delay < 12 (Oppenheim Schafer Buck, 1989, Fig 5.30b)` = "Zpg(zero=c(1/0.9*exp(0.6*pi*1i),1/0.9*exp(-0.6*pi*1i),1/0.8*exp(0.8*pi*1i),1/0.8*exp(-0.8*pi*1i)), pole=c(0), gain=1)",
-                              `Hilbert (absolute values), order 40, Hamming window` = "N=41;M=20;hz=matrix(data=0,nrow=1,ncol=M);zw=seq(1,(M-1),by=2);hz[seq(1,(M-1),by=2)]=2 / (pi*zw);hd=c(-pracma::fliplr(as.matrix(hz)),0,hz);w=signal::hamming(N);hd*w",
+                              `Hilbert (absolute values), order 40, Hamming window` = "N=41;M=20;hz=matrix(data=0,nrow=1,ncol=M);zw=seq(1,(M-1),by=2);hz[seq(1,(M-1),by=2)]=2/ (pi*zw);hd=c(-pracma::fliplr(as.matrix(hz)),0,hz);w=signal::hamming(N);hd*w",
                               `Ideal Differentiator (noiseless inputs only; else, corruption), 23pt Hamming,fs=512,fc=0.3` = "t=seq(0,2-1/512,by=1/512);fs=512;Ts=1/fs;N=23;M=(N-1)/2;n=1:M;h=cos(n*pi)/(Ts*n);h=c(-pracma::fliplr(as.matrix(t(h))),0,h);win=signal::hamming(N);win*h",
                               `Differentiator, Band-Limited, 23-pt Hamming window, fs=512, fc=0.3` = "fs=512;Ts=1/fs;N1=23;M=(N1-1)/2;n=0:(M-1);k=M-n;k2=k^2;fc=0.3*pi;h1=sin(k*fc);h2=(fc*k)*cos(k*fc);hd=(h1-h2)/(Ts*pi*k2);hd=c(hd,0,-pracma::fliplr(as.matrix(t(hd))));win=signal::hamming(N1);win*hd",
                               `Butterworth, order 5, LPF, 0.3` = "butter(n=5,W=0.3,type=\"low\")",
-                              `Butterworth, order 5, HPF, 0.7` = "butter(n=5,W=0.7,type=\"high\")",
-                              `Butterworth, order 5, BPF, 0.3 to 0.7` = "butter(n=5,W=c(0.3,0.7),type=\"pass\")",
-                              `Butterworth, order 5, BSF, 0.3 to 0.7` = "butter(n=5,W=c(0.3,0.7),type=\"stop\")",
+                              `Butterworth, order 5, HPF, 0.65` = "butter(n=5,W=0.65,type=\"high\")",
+                              `Butterworth, order 5, BPF, 0.3 to 0.65` = "butter(n=5,W=c(0.3,0.65),type=\"pass\")",
+                              `Butterworth, order 5, BSF, 0.3 to 0.65` = "butter(n=5,W=c(0.3,0.65),type=\"stop\")",
                               `Chebyshev II, order 5, 3 dB ripple, LPF, 0.3` = "cheby2(n=5,Rp=20,W=0.3,type=\"low\")",
-                              `Chebyshev II, order 5, 3 dB ripple, HPF, 0.7` = "cheby2(n=5,Rp=20,W=0.7,type=\"high\")",
-                              `Chebyshev II, order 5, 3 dB ripple, BPF, 0.3 to 0.7` = "cheby2(n=5,Rp=20,W=c(0.3,0.7),type=\"pass\")",
-                              `Chebyshev II, order 5, 3 dB ripple, BSF, 0.3 to 0.7` = "cheby2(n=5,Rp=20,W=c(0.3,0.7),type=\"stop\")",
+                              `Chebyshev II, order 5, 3 dB ripple, HPF, 0.65` = "cheby2(n=5,Rp=20,W=0.65,type=\"high\")",
+                              `Chebyshev II, order 5, 3 dB ripple, BPF, 0.3 to 0.65` = "cheby2(n=5,Rp=20,W=c(0.3,0.65),type=\"pass\")",
+                              `Chebyshev II, order 5, 3 dB ripple, BSF, 0.3 to 0.65` = "cheby2(n=5,Rp=20,W=c(0.3,0.65),type=\"stop\")",
                               `Elliptical, order 5, ripple: 3dB, (40dB stopband), LPF, 0.3` = "ellip(n=5,Rp=3,Rs=40,W=0.3,type=\"low\")",
-                              `Elliptical, order 5, ripple: 3dB, (40dB stopband), HPF, 0.7` = "ellip(n=5,Rp=3,Rs=40,W=0.7,type=\"high\")",
-                              `Elliptical, order 5, ripple: 3dB, (40dB stopband), BPF, 0.3 to 0.7` = "ellip(n=5,Rp=3,Rs=40,W=c(0.3,0.7),type=\"pass\")",
-                              `Elliptical, order 5, ripple: 3dB, (40dB stopband), BSF, 0.3 to 0.7` = "ellip(n=5,Rp=3,Rs=40,W=c(0.3,0.7),type=\"stop\")",
+                              `Elliptical, order 5, ripple: 3dB, (40dB stopband), HPF, 0.65` = "ellip(n=5,Rp=3,Rs=40,W=0.65,type=\"high\")",
+                              `Elliptical, order 5, ripple: 3dB, (40dB stopband), BPF, 0.3 to 0.65` = "ellip(n=5,Rp=3,Rs=40,W=c(0.3,0.65),type=\"pass\")",
+                              `Elliptical, order 5, ripple: 3dB, (40dB stopband), BSF, 0.3 to 0.65` = "ellip(n=5,Rp=3,Rs=40,W=c(0.3,0.65),type=\"stop\")",
                               `Min. Order, Butterworth: ripple: 0.5dB (29dB stopband), LPF, 0.3` = "butter(n=buttord(Wp=0.285, Ws=0.345, Rp=0.5, Rs=29))",
                               `Min. Order, Chebyshev I: ripple: 0.5dB (29dB stopband), LPF, 0.3` = "cheby1(n=cheb1ord(Wp=0.3, Ws=0.34, Rp=0.5, Rs=29))",
                               `Min. Order, Elliptical: ripple: 0.5dB (29dB stopband), LPF, 0.3` = "ellip(n=ellipord(Wp=0.3, Ws=0.34, Rp=0.5, Rs=29))",
+                              `LPF, Bilinear z-Transform, given b,a, cutoff=0.3, Dodge/ Jerse 1985 (Zolz2003)`="omegac=0.3;zeta=0.7;C=1/(tan(pi*omegac/2));b0=1/(1+2*zeta*C+C^2);Arma(b=c(b0,2*b0,b0),a=c(1,2*b0*(1-C^2),b0*(1-2*zeta*C+C^2)))",
+                              `1st-order All-Pass, (cutoff=0.2), Zolz2003`="omegac=0.2;omegacprime=tan(omegac*pi/2);cc=(omegacprime-1)/(omegacprime+1);Zpg(zero=c(-1/cc), pole=c(-cc), gain=cc)",
+                              `1st-order Parametric LPF, cutoff=0.2, Zolz2003`="omegac=0.2;omegacprime=tan(omegac*pi/2);cc=(omegacprime-1)/(omegacprime+1);Zpg(zero=c(-1), pole=c(-cc), gain=cc/2)",
+                              `1st-order Parametric HPF, cutoff=0.2, Zolz2003`="omegac=0.2;omegacprime=tan(omegac*pi/2);cc=(omegacprime-1)/(omegacprime+1);Zpg(zero=c(1), pole=c(-cc), gain=cc/2)",
+                              `2nd-order All-Pass, (cutoff=0.2, bandwidth=0.022), Zolz2003`="omegac=0.2;omegab=0.022;omegabprime=tan(omegab*pi);cc=(omegabprime-1)/(omegabprime+1);dd=-cos(pi*omegac);bvectr=c(-cc,dd*(1-cc),1);Arma(b=bvectr,a=rev(bvectr))",
+                              `2nd-order Parametric BPF, center=0.2, bandwidth=0.022, Zolz2003`="omegac=0.2;omegab=0.022;omegabprime=tan(omegab*pi);cc=(omegabprime-1)/(omegabprime+1);dd=-cos(pi*omegac);Zpg(zero=c(1,-1),pole=c((-dd*(1-cc)+sqrt(dd^2*(1-cc)^2+4*cc+0i))/2,(-dd*(1-cc)-sqrt(dd^2*(1-cc)^2+4*cc+0i))/2),gain=(1+cc)/2)",
+                              `2nd-order Parametric BSF, center=0.2, bandwidth=0.022, Zolz2003`="omegac=0.2;omegab=0.022;omegabprime=tan(omegab*pi);cc=(omegabprime-1)/(omegabprime+1);dd=-cos(pi*omegac);Zpg(zero=c(-dd+sqrt(dd^2-1+0i),-dd-sqrt(dd^2-1+0i)),pole=c((-dd*(1-cc)+sqrt(dd^2*(1-cc)^2+4*cc+0i))/2,(-dd*(1-cc)-sqrt(dd^2*(1-cc)^2+4*cc+0i))/2),gain=(1-cc)/2)",
+                              `2nd-order Parametric LPF, omegac=0.3, Zolz97`="omegac=0.3;K=tan(pi*omegac/2);b0=K^2/(1+sqrt(2)*K+K^2);a1=2*(K^2-1)/(1+sqrt(2)*K+K^2);a2=(1-sqrt(2)*K+K^2)/(1+sqrt(2)*K+K^2);Arma(b=c(b0,2*b0,b0),a=c(1,a1,a2))",
+                              `2nd-order Parametric HPF, omegac=0.7, Zolz97`="omegac=0.7;K=tan(pi*omegac/2);b0=1/(1+sqrt(2)*K+K^2);a1=2*(K^2-1)/(1+sqrt(2)*K+K^2);a2=(1-sqrt(2)*K+K^2)/(1+sqrt(2)*K+K^2);Arma(b=c(b0,-2*b0,b0),a=c(1,a1,a2))",
+                              `2nd-order LF shelving-filter (equalizer), boost=15dB, cutoff=0.3, Zolz97`="omegac=0.3;G=15; K=tan(pi*omegac/2);boostV0=10^(G/20); b0=(1+sqrt(2*boostV0)*K+boostV0*K^2)/(1+sqrt(2)*K+K^2); b1=2*(boostV0*K^2-1)/(1+sqrt(2)*K+K^2); b2=(1-sqrt(2*boostV0)*K+boostV0*K^2)/(1+sqrt(2)*K+K^2); a1=2*(K^2-1)/(1+sqrt(2)*K+K^2); a2=(1-sqrt(2)*K+K^2)/(1+sqrt(2)*K+K^2); Arma(b=c(b0,b1,b2),a=c(1,a1,a2))",
+                              `2nd-order LF shelving-filter (equalizer), cut=-15dB, cutoff=0.3, Zolz97`="omegac=0.3;G=-15; K=tan(pi*omegac/2);cutV0=10^(-G/20); b0=(1+sqrt(2)*K+K^2)/(1+sqrt(2*cutV0)*K+cutV0*K^2); b1=2*(K^2-1)/(1+sqrt(2*cutV0)*K+cutV0*K^2); b2=(1-sqrt(2)*K+K^2)/(1+sqrt(2*cutV0)*K+cutV0*K^2); a1=2*(cutV0*K^2-1)/(1+sqrt(2*cutV0)*K+cutV0*K^2); a2=(1-sqrt(2*cutV0)*K+cutV0*K^2)/(1+sqrt(2*cutV0)*K+cutV0*K^2); Arma(b=c(b0,b1,b2),a=c(1,a1,a2))",
+                              `2nd-order HF shelving-filter (equalizer), boost=15dB, cutoff=0.7, Zolz97`="omegac=0.7;G=15; K=tan(pi*omegac/2);boostV0=10^(G/20); b0=(boostV0+sqrt(2*boostV0)*K+K^2)/(1+sqrt(2)*K+K^2); b1=2*(K^2-boostV0)/(1+sqrt(2)*K+K^2); b2=(boostV0-sqrt(2*boostV0)*K+K^2)/(1+sqrt(2)*K+K^2); a1=2*(K^2-1)/(1+sqrt(2)*K+K^2); a2=(1-sqrt(2)*K+K^2)/(1+sqrt(2)*K+K^2); Arma(b=c(b0,b1,b2),a=c(1,a1,a2))",
+                              `2nd-order HF shelving-filter (equalizer), cut=-15dB, cutoff=0.7, Zolz97`="omegac=0.7;G=-15; K=tan(pi*omegac/2);cutV0=10^(-G/20); b0=(1+sqrt(2)*K+K^2)/(cutV0+sqrt(2*cutV0)*K+cutV0*K^2); b1=2*(K^2-1)/(cutV0+sqrt(2*cutV0)*K+cutV0*K^2); b2=(1-sqrt(2)*K+K^2)/(cutV0+sqrt(2*cutV0)*K+cutV0*K^2); a1=2*(K^2/cutV0-1)/(1+sqrt(2/cutV0)*K+K^2/cutV0); a2=(1-sqrt(2/cutV0)*K+K^2/cutV0)/(1+sqrt(2/cutV0)*K+K^2/cutV0); Arma(b=c(b0,b1,b2),a=c(1,a1,a2))",
+                              `2nd-order peaking (/notch) filter (equalizer), boost=15dB, center=0.3, Q=1.25, Zolz97`="omegac=0.3;Q=1.25;G=15; K=tan(pi*omegac/2);boostV0=10^(G/20); b0=(1+(boostV0/Q)*K+K^2)/(1+(1/Q)*K+K^2); b1=2*(K^2-1)/(1+(1/Q)*K+K^2); b2=(1-(boostV0/Q)*K+K^2)/(1+(1/Q)*K+K^2); a1=b1; a2=(1-(1/Q)*K+K^2)/(1+(1/Q)*K+K^2); Arma(b=c(b0,b1,b2),a=c(1,a1,a2))",
+                              `2nd-order notch (/peaking) filter (equalizer), cut=-15dB, center=0.3, Q=1.25, Zolz97`="omegac=0.3;Q=1.25;G=-15; K=tan(pi*omegac/2);cutV0  =10^(-G/20); b0=(1+(1/Q)*K+K^2)/(1+(cutV0/Q)*K+K^2); b1=2*(K^2-1)/(1+(cutV0/Q)*K+K^2); b2=(1-(1/Q)*K+K^2)/(1+(cutV0/Q)*K+K^2); a1=b1; a2=(1-(cutV0/Q)*K+K^2)/(1+(cutV0/Q)*K+K^2); Arma(b=c(b0,b1,b2),a=c(1,a1,a2))",
                               `Remez (Parks-McClellan optimal/ equiripple/ minimax FIR), order 15, LPF, 0.3` = "remez(n=15, f= c(0, 0.3, 0.4, 1), a= c(1,1, 0,0), ftype= \"bandpass\")",
                               `Remez, ord. 30, symmetrical FIR (J. Dobes, 2003 Ex1)`="firstHalfCoef=c(0.034025544,0.006219216,-0.005305575,0.006128687,-0.005593423,0.00624262,-0.006848848,0.008979105,-0.008978654,0.017501073,-0.006953636,0.039774499,-0.064655981,0.085240952,-0.131292156);Ma(b=c(firstHalfCoef,0.195140968,rev(firstHalfCoef)))",
                               `Remez, ord. 48, symmetrical FIR (J. Dobes, 2003 Ex2)`="firstHalfCoef=c(0.00012511398639,0.00001335284427,0.00016015250121,0.00000634686622,0.00026201837991,0.00007281852105,0.00045629795460,0.00022819555936,0.00071588589103,0.00047316021190,0.00110189764986,0.00088563032407,0.00184819117706,0.00188050116629,0.00282392666400,0.00363976768981,0.00591155524557,0.00644303257612,0.01406190034797,0.00537162176461,0.03594691432517,0.06164502638211,0.08276620944465,0.13009560635626);Ma(b=c(firstHalfCoef,0.19452719610477,rev(firstHalfCoef)))",
@@ -1469,60 +1487,81 @@ $('#loadmessage').fadeOut(500).fadeIn(500, blink);
                               `( random-filter from this list )` = paste0(
                                 "sample(c('",
                                 paste(
-                                  "omegac=0.4;omegacprime=tan(omegac*pi/2);Zpg(zero=c(-1), pole=c(-(omegacprime-1)/(omegacprime+1)), gain=omegacprime/(omegacprime+1))",
-                                  "omegac=0.4;signal::bilinear(Sz=c(-fpmaxx/10),Sp=c(-tan(pi*omegac/2)),Sg=tan(pi*omegac/2)/(fpmaxx/10),T=2)",
-                                  "omegac1=0.3;omegac2=0.7;signal::sftrans(Sz=c(-1e16),Sp=c(-tan(pi*omegac1/2)),Sg=tan(pi*omegac1/2)/(1e16),W=c(omegac1,omegac2),stop=FALSE)",
-                                  "cheby1(n=5,Rp=3,W=0.3,type=\"low\")",
-                                  "cheby1(n=5,Rp=3,W=0.7,type=\"high\")",
-                                  "cheby1(n=5,Rp=3,W=c(0.3,0.7),type=\"pass\")",
-                                  "cheby1(n=5,Rp=3,W=c(0.3,0.7),type=\"stop\")",
-                                  "Arma(b=c(1), a=c(1,0,(1-eps)))",
-                                  "theta=2/3;Zpg(zero=c(0), pole=c((1-eps)*exp(theta*pi*1i),(1-eps)*exp(-theta*pi*1i)), gain=1)",
-                                  "fir1(n=40,w=0.3,type=\"low\",window=hamming(41),scale=TRUE)",
-                                  "fir1(n=10,w=c(0.3,0.7),type=\"pass\",window=hamming(11),scale=TRUE)",
-                                  "fir1(n=10,w=c(0.3,0.7),type=\"stop\",window=hamming(11),scale=TRUE)",
-                                  "fir2(n=100, f=c(0, 0.3, 0.3, 0.7, 0.7, 1), m=c(0, 0, 1, 0.5, 0, 0), grid_n=512, ramp_n=5, window=hamming(101))",
-                                  "FftFilter(rep(1/5,times=5),n=512)$b",
-                                  "N=5;Arma(b=c(1/N,rep(0,times=N-1),-1/N),a=c(1,-(1-eps)))",
-                                  "R=5;M=1;Arma(b=c(1,rep(0,times=R*M-1),-1), a=c(1,-(1-eps)))",
-                                  "N=8;Zpg(zero=c(1,-1,1i,-1i,1/sqrt(2)+1/sqrt(2)*1i,1/sqrt(2)-1/sqrt(2)*1i,-1/sqrt(2)+1/sqrt(2)*1i,-1/sqrt(2)-1/sqrt(2)*1i), pole=c(1-eps), gain=1/N)",
-                                  "Arma(b=c(1,0,0, 0.5^3), a=c(1,0,0,0,0, 0.9^5))",
-                                  "Arma(b=c(1,1), a=c(1,-(1-eps)))",
-                                  "N=12;D=7;fc=0.7;L=2*N;FF=matrix(data=0,nrow=N,ncol=1);for (k in seq(1,N,by=1)){f=2*k/(L+1);if (f <= fc) {FF[k]=exp(-1i*D*f*pi)}};Fb=Conj(FF);FF=c(1,FF,pracma::flipud(Fb));h=Re(pracma::ifft(FF));r1=t(h);r=c(r1[1],pracma::fliplr(as.matrix(t(r1[2:length(r1)]))));H=pracma::Toeplitz(h,r);H0=H[,1:(N+1)];H1=H0[1:(N+1),];h1=H0[seq((N+2),(L+1)),1];H2=H0[seq((N+2),(L+1)),seq(2,(N+1))];ah=-pracma::inv(H2) %*% h1;a=c(1,ah);b=H1 %*% a;list(a=a,b=b)",
-                                  "N=12;D=7;L=120;fc=0.7;L1=0.5*L;FF=matrix(data=0,nrow=L1,ncol=1);for (k in seq(1,L1)){f=2*k/(L+1);if (f <= fc) {FF[k]=exp(-1i*D*f*pi)}};Fb=Conj(FF);FF=c(1,FF,pracma::flipud(Fb));h=Re(pracma::ifft(FF));r1=t(h);r=c(r1[1],pracma::fliplr(as.matrix(t(r1[2:length(r1)]))));H=pracma::Toeplitz(h,r);H0=H[,1:(N+1)];H1=H0[1:(N+1),];h1=H0[seq((N+2),(L+1)),1];H2=H0[seq((N+2),(L+1)),seq(2,(N+1))];ah=-pracma::inv(t(H2) %*% H2) %*% t(H2) %*% h1;a=c(1,ah);b=H1 %*% a;list(a=a,b=b)",
+                                  "N=40;fir1(n=N,w=0.3,type=\"low\",window=hamming(N+1),scale=TRUE)",
+                                  "N=10;fir1(n=N,w=c(0.3,0.65),type=\"pass\",window=hamming(N+1),scale=TRUE)",
+                                  "N=10;fir1(n=N,w=c(0.3,0.65),type=\"stop\",window=hamming(N+1),scale=TRUE)",
+                                  "fir2(n=100, f=c(0, 0.3, 0.3, 0.65, 0.65, 1), m=c(0, 0, 1, 0.5, 0, 0), grid_n=512, ramp_n=5, window=hamming(101))",
                                   "Ma(b=c(1/3,2/3,1/3))",
                                   "Arma(b=c(1/3,2/3,1/3), a=c(1,1-eps))",
                                   "Zpg(zero=c(-1,-1), pole=c(-(1-eps)), gain=1/3)",
                                   "Ma(b=c(1,-fpmaxx))",
-                                  "R=8;M=1;Arma(b=c(1,rep(0,times=R*M-1),-1), a=c(1,-(1-eps)))",
+                                  "Zpg(zero=c(0), pole=c(-0.92345,0.92345), gain=1)",
+                                  "Zpg(zero=c(0), pole=c(-0.5+0.52345i,-0.5-0.52345i), gain=1)",
+                                  "Zpg(zero=c(0), pole=c(0.92345i,-0.92345i), gain=1)",
+                                  "Zpg(zero=c(0), pole=c(-0.92345,-0.92345), gain=1)",
+                                  "omegac=0.4;omegacprime=tan(omegac*pi/2);Zpg(zero=c(-1), pole=c(-(omegacprime-1)/(omegacprime+1)), gain=omegacprime/(omegacprime+1))",
+                                  "omegac=0.4;signal::bilinear(Sz=c(-fpmaxx/10),Sp=c(-tan(pi*omegac/2)),Sg=tan(pi*omegac/2)/(fpmaxx/10),T=2)",
+                                  "omegac1=0.3;omegac2=0.65;signal::sftrans(Sz=c(-1e16),Sp=c(-tan(pi*omegac1/2)),Sg=tan(pi*omegac1/2)/(1e16),W=c(omegac1,omegac2),stop=FALSE)",
+
+                                  "cheby1(n=5,Rp=3,W=0.65,type=\"high\")",
+                                  "cheby1(n=5,Rp=3,W=c(0.3,0.65),type=\"pass\")",
+                                  "cheby1(n=5,Rp=3,W=c(0.3,0.65),type=\"stop\")",
+                                  "Arma(b=c(1), a=c(1,0,(1-eps)))",
+                                  "theta=input$slider1;Zpg(zero=c(0), pole=0.99999999999999*c(exp(theta*pi*1i),exp(-theta*pi*1i)), gain=1)",
+                                  "FftFilter(rep(1/5,times=5),n=512)$b",
+                                  "N=5;Arma(b=c(1/N,rep(0,times=N-1),-1/N),a=c(1,-(1-eps)))",
+                                  "N=450;Arma(b=c(1/N,rep(0,times=N-1),-1/N),a=c(1))",
+                                  "R=5;M=1;Arma(b=c(1,rep(0,times=R*M-1),-1), a=c(1,-(1-eps)))",
+                                  "N=8;Zpg(zero=c(1,-1,1i,-1i,1/sqrt(2)+1/sqrt(2)*1i,1/sqrt(2)-1/sqrt(2)*1i,-1/sqrt(2)+1/sqrt(2)*1i,-1/sqrt(2)-1/sqrt(2)*1i), pole=c(1-eps), gain=1/N)",
+                                  "Arma(b=c(1,0,0, 0.5^3), a=c(1,0,0,0,0, 0.9^5))",
+                                  "Arma(b=c(1,1), a=c(1,-(1-eps)))",
+                                  "Zpg(zero=c(1), pole=c(-(1-eps)), gain=1)",
+                                  "omega0=0.22*pi;D=2*pi/omega0;rho=0.99;Arma(b=c(1,rep(0,times=floor(D-1)),-1), a=c(1,rep(0,times=floor(D-1)),-(rho)^D))",
+                                  "theta=input$slider1;rp=0.999;rz=0.997;Zpg(zero=c(rz*exp(theta*pi*1i),rz*exp(-theta*pi*1i)), pole=c(rp*exp(theta*pi*1i),rp*exp(-theta*pi*1i)), gain=1)",
+                                  "theta=input$slider1;rp=0.997;rz=0.999;Zpg(zero=c(rz*exp(theta*pi*1i),rz*exp(-theta*pi*1i)), pole=c(rp*exp(theta*pi*1i),rp*exp(-theta*pi*1i)), gain=1)",
+                                  "N=12;D=7;fc=0.65;L=2*N;FF=matrix(data=0,nrow=N,ncol=1);for (k in seq(1,N,by=1)){f=2*k/(L+1);if (f <= fc) {FF[k]=exp(-1i*D*f*pi)}};Fb=Conj(FF);FF=c(1,FF,pracma::flipud(Fb));h=Re(pracma::ifft(FF));r1=t(h);r=c(r1[1],pracma::fliplr(as.matrix(t(r1[2:length(r1)]))));H=pracma::Toeplitz(h,r);H0=H[,1:(N+1)];H1=H0[1:(N+1),];h1=H0[seq((N+2),(L+1)),1];H2=H0[seq((N+2),(L+1)),seq(2,(N+1))];ah=-pracma::inv(H2) %*% h1;a=c(1,ah);b=H1 %*% a;list(a=a,b=b)",
+                                  "N=12;D=7;L=120;fc=0.65;L1=0.5*L;FF=matrix(data=0,nrow=L1,ncol=1);for (k in seq(1,L1)){f=2*k/(L+1);if (f <= fc) {FF[k]=exp(-1i*D*f*pi)}};Fb=Conj(FF);FF=c(1,FF,pracma::flipud(Fb));h=Re(pracma::ifft(FF));r1=t(h);r=c(r1[1],pracma::fliplr(as.matrix(t(r1[2:length(r1)]))));H=pracma::Toeplitz(h,r);H0=H[,1:(N+1)];H1=H0[1:(N+1),];h1=H0[seq((N+2),(L+1)),1];H2=H0[seq((N+2),(L+1)),seq(2,(N+1))];ah=-pracma::inv(t(H2) %*% H2) %*% t(H2) %*% h1;a=c(1,ah);b=H1 %*% a;list(a=a,b=b)",
                                   "r1=1.3;th1=0.6;Zpg(zero=c(r1*exp(th1*pi*1i),r1*exp(-th1*pi*1i)), pole=c((1/r1)*exp(th1*pi*1i),(1/r1)*exp(-th1*pi*1i)), gain=1)",
                                   "Arma(b=c(1,-fpmaxx), a=c(1))",
                                   "myb=c(1,2,3,4,5,6);Arma(b=myb, a=rev(myb))",
                                   "Zpg(zero=c(0.9*exp(0.6*pi*1i),0.9*exp(-0.6*pi*1i),0.8*exp(0.8*pi*1i),0.8*exp(-0.8*pi*1i)), pole=c(0), gain=1)",
                                   "Zpg(zero=c(1/0.9*exp(0.6*pi*1i),1/0.9*exp(-0.6*pi*1i),1/0.8*exp(0.8*pi*1i),1/0.8*exp(-0.8*pi*1i)), pole=c(0), gain=1)",
+                                  "N=41;M=20;hz=matrix(data=0,nrow=1,ncol=M);zw=seq(1,(M-1),by=2);hz[seq(1,(M-1),by=2)]=2/ (pi*zw);hd=c(-pracma::fliplr(as.matrix(hz)),0,hz);w=signal::hamming(N);hd*w",
                                   "t=seq(0,2-1/512,by=1/512);fs=512;Ts=1/fs;N=23;M=(N-1)/2;n=1:M;h=cos(n*pi)/(Ts*n);h=c(-pracma::fliplr(as.matrix(t(h))),0,h);win=signal::hamming(N);win*h",
-                                  "N=41;M=20;hz=matrix(data=0,nrow=1,ncol=M);zw=seq(1,(M-1),by=2);hz[seq(1,(M-1),by=2)]=2 / (pi*zw);hd=c(-pracma::fliplr(as.matrix(hz)),0,hz);w=signal::hamming(N);hd*w",
-                                  "fs=512;Ts=1/fs;N1=23;M=(N1-1)/2;n=seq(0,M-1,by=1);k=M-n;k2=k^2;fc=0.3*pi;h1=sin(k*fc);h2=(fc*k)*cos(k*fc);hd=(h1-h2)/(Ts*pi*k2);hd=c(hd,0,-pracma::fliplr(as.matrix(t(hd))));win=signal::hamming(N1);h_bld=win*hd",
-                                  "theta=0.22;rp=0.999;rz=0.997;Zpg(zero=c(rz*exp(theta*pi*1i),rz*exp(-theta*pi*1i)), pole=c(rp*exp(theta*pi*1i),rp*exp(-theta*pi*1i)), gain=1)",
-                                  "theta=0.22;rp=0.997;rz=0.999;Zpg(zero=c(rz*exp(theta*pi*1i),rz*exp(-theta*pi*1i)), pole=c(rp*exp(theta*pi*1i),rp*exp(-theta*pi*1i)), gain=1)",
-                                  "omega0=0.22*pi;D=2*pi/omega0;rho=0.99;Arma(b=c(1,rep(0,times=floor(D-1)),-1), a=c(1,rep(0,times=floor(D-1)),-(rho)^D))",
-                                  "theta=0.22;rp=0.997;rz=0.999;Zpg(zero=c(rz*exp(theta*pi*1i),rz*exp(-theta*pi*1i)), pole=c(rp*exp(theta*pi*1i),rp*exp(-theta*pi*1i)), gain=1)",
-                                  "theta=0.22;rp=0.999;rz=0.997;Zpg(zero=c(rz*exp(theta*pi*1i),rz*exp(-theta*pi*1i)), pole=c(rp*exp(theta*pi*1i),rp*exp(-theta*pi*1i)), gain=1)",
+                                  "fs=512;Ts=1/fs;N1=23;M=(N1-1)/2;n=0:(M-1);k=M-n;k2=k^2;fc=0.3*pi;h1=sin(k*fc);h2=(fc*k)*cos(k*fc);hd=(h1-h2)/(Ts*pi*k2);hd=c(hd,0,-pracma::fliplr(as.matrix(t(hd))));win=signal::hamming(N1);win*hd",
                                   "butter(n=5,W=0.3,type=\"low\")",
-                                  "butter(n=5,W=0.7,type=\"high\")",
-                                  "butter(n=5,W=c(0.3,0.7),type=\"pass\")",
-                                  "butter(n=5,W=c(0.3,0.7),type=\"stop\")",
+                                  "butter(n=5,W=0.65,type=\"high\")",
+                                  "butter(n=5,W=c(0.3,0.65),type=\"pass\")",
+                                  "butter(n=5,W=c(0.3,0.65),type=\"stop\")",
                                   "cheby2(n=5,Rp=20,W=0.3,type=\"low\")",
-                                  "cheby2(n=5,Rp=20,W=0.7,type=\"high\")",
-                                  "cheby2(n=5,Rp=20,W=c(0.3,0.7),type=\"pass\")",
-                                  "cheby2(n=5,Rp=20,W=c(0.3,0.7),type=\"stop\")",
+                                  "cheby2(n=5,Rp=20,W=0.65,type=\"high\")",
+                                  
+                                  "cheby1(n=5,Rp=3,W=0.3,type=\"low\")", # this 48th-slot seems to be the first to always be "randomly" chosen with any new freshly-started RStudio process
+
+                                  "cheby2(n=5,Rp=20,W=c(0.3,0.65),type=\"pass\")",
+                                  "cheby2(n=5,Rp=20,W=c(0.3,0.65),type=\"stop\")",
                                   "ellip(n=5,Rp=3,Rs=40,W=0.3,type=\"low\")",
-                                  "ellip(n=5,Rp=3,Rs=40,W=0.7,type=\"high\")",
-                                  "ellip(n=5,Rp=3,Rs=40,W=c(0.3,0.7),type=\"pass\")",
-                                  "ellip(n=5,Rp=3,Rs=40,W=c(0.3,0.7),type=\"stop\")",
+                                  "ellip(n=5,Rp=3,Rs=40,W=0.65,type=\"high\")",
+                                  "ellip(n=5,Rp=3,Rs=40,W=c(0.3,0.65),type=\"pass\")",
+                                  "ellip(n=5,Rp=3,Rs=40,W=c(0.3,0.65),type=\"stop\")",
                                   "butter(n=buttord(Wp=0.285, Ws=0.345, Rp=0.5, Rs=29))",
                                   "cheby1(n=cheb1ord(Wp=0.3, Ws=0.34, Rp=0.5, Rs=29))",
                                   "ellip(n=ellipord(Wp=0.3, Ws=0.34, Rp=0.5, Rs=29))",
+                                  "omegac=0.3;zeta=0.7;C=1/(tan(pi*omegac/2));b0=1/(1+2*zeta*C+C^2);Arma(b=c(b0,2*b0,b0),a=c(1,2*b0*(1-C^2),b0*(1-2*zeta*C+C^2)))",
+                                  "omegac=0.2;omegacprime=tan(omegac*pi/2);cc=(omegacprime-1)/(omegacprime+1);Zpg(zero=c(-1/cc), pole=c(-cc), gain=cc)",
+                                  "omegac=0.2;omegacprime=tan(omegac*pi/2);cc=(omegacprime-1)/(omegacprime+1);Zpg(zero=c(-1), pole=c(-cc), gain=cc/2)",
+                                  "omegac=0.2;omegacprime=tan(omegac*pi/2);cc=(omegacprime-1)/(omegacprime+1);Zpg(zero=c(1), pole=c(-cc), gain=cc/2)",
+                                  "omegac=0.2;omegab=0.022;omegabprime=tan(omegab*pi);cc=(omegabprime-1)/(omegabprime+1);dd=-cos(pi*omegac);bvectr=c(-cc,dd*(1-cc),1);Arma(b=bvectr,a=rev(bvectr))",
+                                  "omegac=0.2;omegab=0.022;omegabprime=tan(omegab*pi);cc=(omegabprime-1)/(omegabprime+1);dd=-cos(pi*omegac);Zpg(zero=c(1,-1),pole=c((-dd*(1-cc)+sqrt(dd^2*(1-cc)^2+4*cc+0i))/2,(-dd*(1-cc)-sqrt(dd^2*(1-cc)^2+4*cc+0i))/2),gain=(1+cc)/2)",
+                                  "omegac=0.2;omegab=0.022;omegabprime=tan(omegab*pi);cc=(omegabprime-1)/(omegabprime+1);dd=-cos(pi*omegac);Zpg(zero=c(-dd+sqrt(dd^2-1+0i),-dd-sqrt(dd^2-1+0i)),pole=c((-dd*(1-cc)+sqrt(dd^2*(1-cc)^2+4*cc+0i))/2,(-dd*(1-cc)-sqrt(dd^2*(1-cc)^2+4*cc+0i))/2),gain=(1-cc)/2)",
+                                  "omegac=0.3;K=tan(pi*omegac/2);b0=K^2/(1+sqrt(2)*K+K^2);a1=2*(K^2-1)/(1+sqrt(2)*K+K^2);a2=(1-sqrt(2)*K+K^2)/(1+sqrt(2)*K+K^2);Arma(b=c(b0,2*b0,b0),a=c(1,a1,a2))",
+                                  "omegac=0.7;K=tan(pi*omegac/2);b0=1/(1+sqrt(2)*K+K^2);a1=2*(K^2-1)/(1+sqrt(2)*K+K^2);a2=(1-sqrt(2)*K+K^2)/(1+sqrt(2)*K+K^2);Arma(b=c(b0,-2*b0,b0),a=c(1,a1,a2))",
+                                  "omegac=0.3;G=15; K=tan(pi*omegac/2);boostV0=10^(G/20); b0=(1+sqrt(2*boostV0)*K+boostV0*K^2)/(1+sqrt(2)*K+K^2); b1=2*(boostV0*K^2-1)/(1+sqrt(2)*K+K^2); b2=(1-sqrt(2*boostV0)*K+boostV0*K^2)/(1+sqrt(2)*K+K^2); a1=2*(K^2-1)/(1+sqrt(2)*K+K^2); a2=(1-sqrt(2)*K+K^2)/(1+sqrt(2)*K+K^2); Arma(b=c(b0,b1,b2),a=c(1,a1,a2))",
+                                  "omegac=0.3;G=-15; K=tan(pi*omegac/2);cutV0  =10^(-G/20); b0=(1+sqrt(2)*K+K^2)/(1+sqrt(2*cutV0)*K+cutV0*K^2); b1=2*(K^2-1)/(1+sqrt(2*cutV0)*K+cutV0*K^2); b2=(1-sqrt(2)*K+K^2)/(1+sqrt(2*cutV0)*K+cutV0*K^2); a1=2*(cutV0*K^2-1)/(1+sqrt(2*cutV0)*K+cutV0*K^2); a2=(1-sqrt(2*cutV0)*K+cutV0*K^2)/(1+sqrt(2*cutV0)*K+cutV0*K^2); Arma(b=c(b0,b1,b2),a=c(1,a1,a2))",
+                                  "omegac=0.7;G=15; K=tan(pi*omegac/2);boostV0=10^(G/20); b0=(boostV0+sqrt(2*boostV0)*K+K^2)/(1+sqrt(2)*K+K^2); b1=2*(K^2-boostV0)/(1+sqrt(2)*K+K^2); b2=(boostV0-sqrt(2*boostV0)*K+K^2)/(1+sqrt(2)*K+K^2); a1=2*(K^2-1)/(1+sqrt(2)*K+K^2); a2=(1-sqrt(2)*K+K^2)/(1+sqrt(2)*K+K^2); Arma(b=c(b0,b1,b2),a=c(1,a1,a2))",
+                                  "omegac=0.7;G=-15; K=tan(pi*omegac/2);cutV0  =10^(-G/20); b0=(1+sqrt(2)*K+K^2) /(cutV0+sqrt(2*cutV0)*K+cutV0*K^2); b1=2*(K^2-1)/(cutV0+sqrt(2*cutV0)*K+cutV0*K^2); b2=(1-sqrt(2)*K+K^2)/(cutV0+sqrt(2*cutV0)*K+cutV0*K^2); a1=2*(K^2/cutV0-1)/(1+sqrt(2/cutV0)*K+K^2/cutV0); a2=(1-sqrt(2/cutV0)*K+K^2/cutV0)/(1+sqrt(2/cutV0)*K+K^2/cutV0); Arma(b=c(b0,b1,b2),a=c(1,a1,a2))",
+                                  "omegac=0.3;Q=1.25;G=15; K=tan(pi*omegac/2);boostV0=10^(G/20); b0=(1+(boostV0/Q)*K+K^2)/(1+(1/Q)*K+K^2); b1=2*(K^2-1)/(1+(1/Q)*K+K^2); b2=(1-(boostV0/Q)*K+K^2)/(1+(1/Q)*K+K^2); a1=b1; a2=(1-(1/Q)*K+K^2)/(1+(1/Q)*K+K^2); Arma(b=c(b0,b1,b2),a=c(1,a1,a2))",
+                                  "omegac=0.3;Q=1.25;G=-15; K=tan(pi*omegac/2);cutV0  =10^(-G/20); b0=(1+(1/Q)*K+K^2)/(1+(cutV0/Q)*K+K^2); b1=2*(K^2-1)/(1+(cutV0/Q)*K+K^2); b2=(1-(1/Q)*K+K^2)/(1+(cutV0/Q)*K+K^2); a1=b1; a2=(1-(cutV0/Q)*K+K^2)/(1+(cutV0/Q)*K+K^2); Arma(b=c(b0,b1,b2),a=c(1,a1,a2))",
                                   "remez(n=15, f= c(0, 0.3, 0.4, 1), a= c(1,1, 0,0), ftype= \"bandpass\")",
                                   "firstHalfCoef=c(0.034025544,0.006219216,-0.005305575,0.006128687,-0.005593423,0.00624262,-0.006848848,0.008979105,-0.008978654,0.017501073,-0.006953636,0.039774499,-0.064655981,0.085240952,-0.131292156);Ma(b=c(firstHalfCoef,0.195140968,rev(firstHalfCoef)))",
                                   "firstHalfCoef=c(0.00012511398639,0.00001335284427,0.00016015250121,0.00000634686622,0.00026201837991,0.00007281852105,0.00045629795460,0.00022819555936,0.00071588589103,0.00047316021190,0.00110189764986,0.00088563032407,0.00184819117706,0.00188050116629,0.00282392666400,0.00363976768981,0.00591155524557,0.00644303257612,0.01406190034797,0.00537162176461,0.03594691432517,0.06164502638211,0.08276620944465,0.13009560635626);Ma(b=c(firstHalfCoef,0.19452719610477,rev(firstHalfCoef)))",
@@ -1553,79 +1592,104 @@ $('#loadmessage').fadeOut(500).fadeIn(500, blink);
                             ),
                             selected = sample(
                               c(
-                                "omegac=0.4;omegacprime=tan(omegac*pi/2);Zpg(zero=c(-1), pole=c(-(omegacprime-1)/(omegacprime+1)), gain=omegacprime/(omegacprime+1))",
-                                "omegac=0.4;signal::bilinear(Sz=c(-fpmaxx/10),Sp=c(-tan(pi*omegac/2)),Sg=tan(pi*omegac/2)/(fpmaxx/10),T=2)",
-                                "omegac1=0.3;omegac2=0.7;signal::sftrans(Sz=c(-1e16),Sp=c(-tan(pi*omegac1/2)),Sg=tan(pi*omegac1/2)/(1e16),W=c(omegac1,omegac2),stop=FALSE)",
-                                "butter(n=5,W=0.3,type=\"low\")",
-                                "butter(n=5,W=0.7,type=\"high\")",
-                                "butter(n=5,W=c(0.3,0.7),type=\"pass\")",
-                                "butter(n=5,W=c(0.3,0.7),type=\"stop\")",
-                                "Arma(b=c(1), a=c(1,0,(1-eps)))",
-                                "theta=2/3;Zpg(zero=c(0), pole=c((1-eps)*exp(theta*pi*1i),(1-eps)*exp(-theta*pi*1i)), gain=1)",
-                                "fir1(n=40,w=0.3,type=\"low\",window=hamming(41),scale=TRUE)",
-                                "fir1(n=10,w=c(0.3,0.7),type=\"pass\",window=hamming(11),scale=TRUE)",
-                                "fir1(n=10,w=c(0.3,0.7),type=\"stop\",window=hamming(11),scale=TRUE)",
-                                "fir2(n=100, f=c(0, 0.3, 0.3, 0.7, 0.7, 1), m=c(0, 0, 1, 0.5, 0, 0), grid_n=512, ramp_n=5, window=hamming(101))",
-                                "FftFilter(rep(1/5,times=5),n=512)$b",
-                                "N=5;Arma(b=c(1/N,rep(0,times=N-1),-1/N),a=c(1,-(1-eps)))",
-                                "R=5;M=1;Arma(b=c(1,rep(0,times=R*M-1),-1), a=c(1,-(1-eps)))",
-                                "N=8;Zpg(zero=c(1,-1,1i,-1i,1/sqrt(2)+1/sqrt(2)*1i,1/sqrt(2)-1/sqrt(2)*1i,-1/sqrt(2)+1/sqrt(2)*1i,-1/sqrt(2)-1/sqrt(2)*1i), pole=c(1-eps), gain=1/N)",
-                                "N=12;D=7;fc=0.7;L=2*N;FF=matrix(data=0,nrow=N,ncol=1);for (k in seq(1,N,by=1)){f=2*k/(L+1);if (f <= fc) {FF[k]=exp(-1i*D*f*pi)}};Fb=Conj(FF);FF=c(1,FF,pracma::flipud(Fb));h=Re(pracma::ifft(FF));r1=t(h);r=c(r1[1],pracma::fliplr(as.matrix(t(r1[2:length(r1)]))));H=pracma::Toeplitz(h,r);H0=H[,1:(N+1)];H1=H0[1:(N+1),];h1=H0[seq((N+2),(L+1)),1];H2=H0[seq((N+2),(L+1)),seq(2,(N+1))];ah=-pracma::inv(H2) %*% h1;a=c(1,ah);b=H1 %*% a;list(a=a,b=b)",
-                                "Arma(b=c(1,1), a=c(1,-(1-eps)))",
-                                "N=12;D=7;L=120;fc=0.7;L1=0.5*L;FF=matrix(data=0,nrow=L1,ncol=1);for (k in seq(1,L1)){f=2*k/(L+1);if (f <= fc) {FF[k]=exp(-1i*D*f*pi)}};Fb=Conj(FF);FF=c(1,FF,pracma::flipud(Fb));h=Re(pracma::ifft(FF));r1=t(h);r=c(r1[1],pracma::fliplr(as.matrix(t(r1[2:length(r1)]))));H=pracma::Toeplitz(h,r);H0=H[,1:(N+1)];H1=H0[1:(N+1),];h1=H0[seq((N+2),(L+1)),1];H2=H0[seq((N+2),(L+1)),seq(2,(N+1))];ah=-pracma::inv(t(H2) %*% H2) %*% t(H2) %*% h1;a=c(1,ah);b=H1 %*% a;list(a=a,b=b)",
-                                "Ma(b=c(1/3,2/3,1/3))",
-                                "Arma(b=c(1/3,2/3,1/3), a=c(1,1-eps))",
-                                "Zpg(zero=c(-1,-1), pole=c(-(1-eps)), gain=1/3)",
-                                "Ma(b=c(1,-fpmaxx))",
-                                "Arma(b=c(1,0,0, 0.5^3), a=c(1,0,0,0,0, 0.9^5))",
-                                "R=8;M=1;Arma(b=c(1,rep(0,times=R*M-1),-1), a=c(1,-(1-eps)))",
-                                "r1=1.3;th1=0.6;Zpg(zero=c(r1*exp(th1*pi*1i),r1*exp(-th1*pi*1i)), pole=c((1/r1)*exp(th1*pi*1i),(1/r1)*exp(-th1*pi*1i)), gain=1)",
-                                "Arma(b=c(1,-fpmaxx), a=c(1))",
-                                "myb=c(1,2,3,4,5,6);Arma(b=myb, a=rev(myb))",
-                                "Zpg(zero=c(0.9*exp(0.6*pi*1i),0.9*exp(-0.6*pi*1i),0.8*exp(0.8*pi*1i),0.8*exp(-0.8*pi*1i)), pole=c(0), gain=1)",
-                                "Zpg(zero=c(1/0.9*exp(0.6*pi*1i),1/0.9*exp(-0.6*pi*1i),1/0.8*exp(0.8*pi*1i),1/0.8*exp(-0.8*pi*1i)), pole=c(0), gain=1)",
-                                "t=seq(0,2-1/512,by=1/512);fs=512;Ts=1/fs;N=23;M=(N-1)/2;n=1:M;h=cos(n*pi)/(Ts*n);h=c(-pracma::fliplr(as.matrix(t(h))),0,h);win=signal::hamming(N);win*h",
-                                "N=41;M=20;hz=matrix(data=0,nrow=1,ncol=M);zw=seq(1,(M-1),by=2);hz[seq(1,(M-1),by=2)]=2 / (pi*zw);hd=c(-pracma::fliplr(as.matrix(hz)),0,hz);w=signal::hamming(N);hd*w",
-                                "fs=512;Ts=1/fs;N1=23;M=(N1-1)/2;n=seq(0,M-1,by=1);k=M-n;k2=k^2;fc=0.3*pi;h1=sin(k*fc);h2=(fc*k)*cos(k*fc);hd=(h1-h2)/(Ts*pi*k2);hd=c(hd,0,-pracma::fliplr(as.matrix(t(hd))));win=signal::hamming(N1);h_bld=win*hd",
-                                "omega0=0.22*pi;D=2*pi/omega0;rho=0.99;Arma(b=c(1,rep(0,times=floor(D-1)),-1), a=c(1,rep(0,times=floor(D-1)),-(rho)^D))",
-                                "cheby1(n=5,Rp=3,W=0.7,type=\"high\")",
-                                "cheby1(n=5,Rp=3,W=0.3,type=\"low\")",
-                                "cheby1(n=5,Rp=3,W=c(0.3,0.7),type=\"pass\")",
-                                "cheby1(n=5,Rp=3,W=c(0.3,0.7),type=\"stop\")",
-                                "cheby2(n=5,Rp=20,W=0.3,type=\"low\")",
-                                "cheby2(n=5,Rp=20,W=0.7,type=\"high\")",
-                                "cheby2(n=5,Rp=20,W=c(0.3,0.7),type=\"pass\")",
-                                "cheby2(n=5,Rp=20,W=c(0.3,0.7),type=\"stop\")",
-                                "ellip(n=5,Rp=3,Rs=40,W=0.3,type=\"low\")",
-                                "ellip(n=5,Rp=3,Rs=40,W=0.7,type=\"high\")",
-                                "ellip(n=5,Rp=3,Rs=40,W=c(0.3,0.7),type=\"pass\")",
-                                "ellip(n=5,Rp=3,Rs=40,W=c(0.3,0.7),type=\"stop\")",
-                                "butter(n=buttord(Wp=0.285, Ws=0.345, Rp=0.5, Rs=29))",
-                                "cheby1(n=cheb1ord(Wp=0.3, Ws=0.34, Rp=0.5, Rs=29))",
-                                "ellip(n=ellipord(Wp=0.285, Ws=0.345, Rp=0.5, Rs=29))",
-                                "remez(n=15, f= c(0, 0.3, 0.4, 1), a= c(1,1, 0,0), ftype= \"bandpass\")",
-                                "firstHalfCoef=c(0.034025544,0.006219216,-0.005305575,0.006128687,-0.005593423,0.00624262,-0.006848848,0.008979105,-0.008978654,0.017501073,-0.006953636,0.039774499,-0.064655981,0.085240952,-0.131292156);Ma(b=c(firstHalfCoef,0.195140968,rev(firstHalfCoef)))",
-                                "firstHalfCoef=c(0.00012511398639,0.00001335284427,0.00016015250121,0.00000634686622,0.00026201837991,0.00007281852105,0.00045629795460,0.00022819555936,0.00071588589103,0.00047316021190,0.00110189764986,0.00088563032407,0.00184819117706,0.00188050116629,0.00282392666400,0.00363976768981,0.00591155524557,0.00644303257612,0.01406190034797,0.00537162176461,0.03594691432517,0.06164502638211,0.08276620944465,0.13009560635626);Ma(b=c(firstHalfCoef,0.19452719610477,rev(firstHalfCoef)))",
-                                "firstHalfZeros=c(-1.27851808211318+0.62684824819101i,-1.36614299238589+0.27717114439577i,-1.07284006705681+0.91235620647926i,-0.77267104757162+1.12541933041583i,-0.44961436355736+1.22363585379352i,-0.20330452525073+1.29600355151311i,0.14750702212683+1.34841369533889i,0.50634734941036+1.25979827310114i,0.83329614995319+1.04982507756824i,1.04560310563666+0.67293837999034i,1.20771535897979+0.24059979456907i,0.95139216401989+0.56315210274529i,0.77837030003487+0.46073626392613i,0.79640192035334+0.15865836018951i,0.67627030631208+0.43523995090672i,0.46384030886663+0.58436750039291i,0.27466939387352+0.68338074343342i,0.08016782642482+0.73284236586261i,-0.11813451163119+0.75307102211071i,-0.26456653442537+0.72002392155667i,-0.41461446573694+0.60389882069075i,-0.70304843505842+0.14263861132902i,-0.63057376627246+0.30916579614562i,-0.54091513103870+0.46000078868751i);Zpg(zero=c(firstHalfZeros,Conj(firstHalfZeros)),pole=c(0),gain=0.00012511398639)",
-                                "Zpg(zero=c(0.9049098+0.1414979i,0.9049098-0.1414979i,1.192327), pole=c(0.9588639+0.7240575i,0.9588639-0.7240575i,1.511628), gain=1)",
-                                "p=3;n=2;sgolay(p,(2*n+1)) %*% c(1,rep(0,times=(2*n+1)-1))",
-                                "chebwin(n=50, at=100)",
-                                "kaiser(n=101, beta=0)",
-                                "kaiser(n=101, beta=50)",
-                                "with(kaiserord(f=c(0.275,0.325), m=c(1,0), dev=c(0.1,0.1)),fir1(n=n,w=Wc,type=type,window=kaiser(n+1,beta),scale=FALSE))",
-                                "Ma(b=rep(1,times=101))",
-                                "bartlett(41)",
-                                "blackman(41)",
-                                "boxcar(41)",
-                                "flattopwin(41,sym=\"symmetric\")",
-                                "flattopwin(41,sym=\"periodic\")",
-                                "sd=0.2;gausswin(41,w=1/sd)",
-                                "hanning(41)",
-                                "hamming(41)",
-                                "triang(41)",
-                                "N=18;leftside=sin(pi*(0.3*(-(N/2):(-1))))/(pi*(0.3*(-(N/2):(-1))));c(leftside,1,rev(leftside))*blackman(N+1)", # "N=18;sinc(0.3*(-(N/2):(N/2)))*0.3*blackman(N+1)",
-                                "spencerFilter()",
-                                "Ma(b=c(-3, -6, -5, 3, 21, 46, 67, 74, 67, 46, 21, 3, -5, -6, -3) / 320)"
+                                "N=40;fir1(n=N,w=0.3,type=\"low\",window=hamming(N+1),scale=TRUE)",
+                                  "N=10;fir1(n=N,w=c(0.3,0.65),type=\"pass\",window=hamming(N+1),scale=TRUE)",
+                                  "N=10;fir1(n=N,w=c(0.3,0.65),type=\"stop\",window=hamming(N+1),scale=TRUE)",
+                                  "fir2(n=100, f=c(0, 0.3, 0.3, 0.65, 0.65, 1), m=c(0, 0, 1, 0.5, 0, 0), grid_n=512, ramp_n=5, window=hamming(101))",
+                                  "Ma(b=c(1/3,2/3,1/3))",
+                                  "Arma(b=c(1/3,2/3,1/3), a=c(1,1-eps))",
+                                  "Zpg(zero=c(-1,-1), pole=c(-(1-eps)), gain=1/3)",
+                                  "Ma(b=c(1,-fpmaxx))",
+                                  "Zpg(zero=c(0), pole=c(-0.92345,0.92345), gain=1)",
+                                  "Zpg(zero=c(0), pole=c(-0.5+0.52345i,-0.5-0.52345i), gain=1)",
+                                  "Zpg(zero=c(0), pole=c(0.92345i,-0.92345i), gain=1)",
+                                  "Zpg(zero=c(0), pole=c(-0.92345,-0.92345), gain=1)",
+                                  "omegac=0.4;omegacprime=tan(omegac*pi/2);Zpg(zero=c(-1), pole=c(-(omegacprime-1)/(omegacprime+1)), gain=omegacprime/(omegacprime+1))",
+                                  "omegac=0.4;signal::bilinear(Sz=c(-fpmaxx/10),Sp=c(-tan(pi*omegac/2)),Sg=tan(pi*omegac/2)/(fpmaxx/10),T=2)",
+                                  "omegac1=0.3;omegac2=0.65;signal::sftrans(Sz=c(-1e16),Sp=c(-tan(pi*omegac1/2)),Sg=tan(pi*omegac1/2)/(1e16),W=c(omegac1,omegac2),stop=FALSE)",
+                                  
+                                  "cheby1(n=5,Rp=3,W=0.65,type=\"high\")",
+                                  "cheby1(n=5,Rp=3,W=c(0.3,0.65),type=\"pass\")",
+                                  "cheby1(n=5,Rp=3,W=c(0.3,0.65),type=\"stop\")",
+                                  "Arma(b=c(1), a=c(1,0,(1-eps)))",
+                                  "theta=input$slider1;Zpg(zero=c(0), pole=0.99999999999999*c(exp(theta*pi*1i),exp(-theta*pi*1i)), gain=1)",
+                                  "FftFilter(rep(1/5,times=5),n=512)$b",
+                                  "N=5;Arma(b=c(1/N,rep(0,times=N-1),-1/N),a=c(1,-(1-eps)))",
+                                  "N=450;Arma(b=c(1/N,rep(0,times=N-1),-1/N),a=c(1))",
+                                  "R=5;M=1;Arma(b=c(1,rep(0,times=R*M-1),-1), a=c(1,-(1-eps)))",
+                                  "N=8;Zpg(zero=c(1,-1,1i,-1i,1/sqrt(2)+1/sqrt(2)*1i,1/sqrt(2)-1/sqrt(2)*1i,-1/sqrt(2)+1/sqrt(2)*1i,-1/sqrt(2)-1/sqrt(2)*1i), pole=c(1-eps), gain=1/N)",
+                                  "Arma(b=c(1,0,0, 0.5^3), a=c(1,0,0,0,0, 0.9^5))",
+                                  "Arma(b=c(1,1), a=c(1,-(1-eps)))",
+                                  "Zpg(zero=c(1), pole=c(-(1-eps)), gain=1)",
+                                  "omega0=0.22*pi;D=2*pi/omega0;rho=0.99;Arma(b=c(1,rep(0,times=floor(D-1)),-1), a=c(1,rep(0,times=floor(D-1)),-(rho)^D))",
+                                  "theta=input$slider1;rp=0.999;rz=0.997;Zpg(zero=c(rz*exp(theta*pi*1i),rz*exp(-theta*pi*1i)), pole=c(rp*exp(theta*pi*1i),rp*exp(-theta*pi*1i)), gain=1)",
+                                  "theta=input$slider1;rp=0.997;rz=0.999;Zpg(zero=c(rz*exp(theta*pi*1i),rz*exp(-theta*pi*1i)), pole=c(rp*exp(theta*pi*1i),rp*exp(-theta*pi*1i)), gain=1)",
+                                  "N=12;D=7;fc=0.65;L=2*N;FF=matrix(data=0,nrow=N,ncol=1);for (k in seq(1,N,by=1)){f=2*k/(L+1);if (f <= fc) {FF[k]=exp(-1i*D*f*pi)}};Fb=Conj(FF);FF=c(1,FF,pracma::flipud(Fb));h=Re(pracma::ifft(FF));r1=t(h);r=c(r1[1],pracma::fliplr(as.matrix(t(r1[2:length(r1)]))));H=pracma::Toeplitz(h,r);H0=H[,1:(N+1)];H1=H0[1:(N+1),];h1=H0[seq((N+2),(L+1)),1];H2=H0[seq((N+2),(L+1)),seq(2,(N+1))];ah=-pracma::inv(H2) %*% h1;a=c(1,ah);b=H1 %*% a;list(a=a,b=b)",
+                                  "N=12;D=7;L=120;fc=0.65;L1=0.5*L;FF=matrix(data=0,nrow=L1,ncol=1);for (k in seq(1,L1)){f=2*k/(L+1);if (f <= fc) {FF[k]=exp(-1i*D*f*pi)}};Fb=Conj(FF);FF=c(1,FF,pracma::flipud(Fb));h=Re(pracma::ifft(FF));r1=t(h);r=c(r1[1],pracma::fliplr(as.matrix(t(r1[2:length(r1)]))));H=pracma::Toeplitz(h,r);H0=H[,1:(N+1)];H1=H0[1:(N+1),];h1=H0[seq((N+2),(L+1)),1];H2=H0[seq((N+2),(L+1)),seq(2,(N+1))];ah=-pracma::inv(t(H2) %*% H2) %*% t(H2) %*% h1;a=c(1,ah);b=H1 %*% a;list(a=a,b=b)",
+                                  "r1=1.3;th1=0.6;Zpg(zero=c(r1*exp(th1*pi*1i),r1*exp(-th1*pi*1i)), pole=c((1/r1)*exp(th1*pi*1i),(1/r1)*exp(-th1*pi*1i)), gain=1)",
+                                  "Arma(b=c(1,-fpmaxx), a=c(1))",
+                                  "myb=c(1,2,3,4,5,6);Arma(b=myb, a=rev(myb))",
+                                  "Zpg(zero=c(0.9*exp(0.6*pi*1i),0.9*exp(-0.6*pi*1i),0.8*exp(0.8*pi*1i),0.8*exp(-0.8*pi*1i)), pole=c(0), gain=1)",
+                                  "Zpg(zero=c(1/0.9*exp(0.6*pi*1i),1/0.9*exp(-0.6*pi*1i),1/0.8*exp(0.8*pi*1i),1/0.8*exp(-0.8*pi*1i)), pole=c(0), gain=1)",
+                                  "N=41;M=20;hz=matrix(data=0,nrow=1,ncol=M);zw=seq(1,(M-1),by=2);hz[seq(1,(M-1),by=2)]=2/ (pi*zw);hd=c(-pracma::fliplr(as.matrix(hz)),0,hz);w=signal::hamming(N);hd*w",
+                                  "t=seq(0,2-1/512,by=1/512);fs=512;Ts=1/fs;N=23;M=(N-1)/2;n=1:M;h=cos(n*pi)/(Ts*n);h=c(-pracma::fliplr(as.matrix(t(h))),0,h);win=signal::hamming(N);win*h",
+                                  "fs=512;Ts=1/fs;N1=23;M=(N1-1)/2;n=0:(M-1);k=M-n;k2=k^2;fc=0.3*pi;h1=sin(k*fc);h2=(fc*k)*cos(k*fc);hd=(h1-h2)/(Ts*pi*k2);hd=c(hd,0,-pracma::fliplr(as.matrix(t(hd))));win=signal::hamming(N1);win*hd",
+                                  "butter(n=5,W=0.3,type=\"low\")",
+                                  "butter(n=5,W=0.65,type=\"high\")",
+                                  "butter(n=5,W=c(0.3,0.65),type=\"pass\")",
+                                  "butter(n=5,W=c(0.3,0.65),type=\"stop\")",
+                                  "cheby2(n=5,Rp=20,W=0.3,type=\"low\")",
+                                  "cheby2(n=5,Rp=20,W=0.65,type=\"high\")",
+                                
+                                  "cheby1(n=5,Rp=3,W=0.3,type=\"low\")", # this 48th-slot seems to be the first to always be "randomly" chosen with any new freshly-started RStudio process
+                                
+                                  "cheby2(n=5,Rp=20,W=c(0.3,0.65),type=\"pass\")",
+                                  "cheby2(n=5,Rp=20,W=c(0.3,0.65),type=\"stop\")",
+                                  "ellip(n=5,Rp=3,Rs=40,W=0.3,type=\"low\")",
+                                  "ellip(n=5,Rp=3,Rs=40,W=0.65,type=\"high\")",
+                                  "ellip(n=5,Rp=3,Rs=40,W=c(0.3,0.65),type=\"pass\")",
+                                  "ellip(n=5,Rp=3,Rs=40,W=c(0.3,0.65),type=\"stop\")",
+                                  "butter(n=buttord(Wp=0.285, Ws=0.345, Rp=0.5, Rs=29))",
+                                  "cheby1(n=cheb1ord(Wp=0.3, Ws=0.34, Rp=0.5, Rs=29))",
+                                  "ellip(n=ellipord(Wp=0.3, Ws=0.34, Rp=0.5, Rs=29))",
+                                  "omegac=0.3;zeta=0.7;C=1/(tan(pi*omegac/2));b0=1/(1+2*zeta*C+C^2);Arma(b=c(b0,2*b0,b0),a=c(1,2*b0*(1-C^2),b0*(1-2*zeta*C+C^2)))",
+                                  "omegac=0.2;omegacprime=tan(omegac*pi/2);cc=(omegacprime-1)/(omegacprime+1);Zpg(zero=c(-1/cc), pole=c(-cc), gain=cc)",
+                                  "omegac=0.2;omegacprime=tan(omegac*pi/2);cc=(omegacprime-1)/(omegacprime+1);Zpg(zero=c(-1), pole=c(-cc), gain=cc/2)",
+                                  "omegac=0.2;omegacprime=tan(omegac*pi/2);cc=(omegacprime-1)/(omegacprime+1);Zpg(zero=c(1), pole=c(-cc), gain=cc/2)",
+                                  "omegac=0.2;omegab=0.022;omegabprime=tan(omegab*pi);cc=(omegabprime-1)/(omegabprime+1);dd=-cos(pi*omegac);bvectr=c(-cc,dd*(1-cc),1);Arma(b=bvectr,a=rev(bvectr))",
+                                  "omegac=0.2;omegab=0.022;omegabprime=tan(omegab*pi);cc=(omegabprime-1)/(omegabprime+1);dd=-cos(pi*omegac);Zpg(zero=c(1,-1),pole=c((-dd*(1-cc)+sqrt(dd^2*(1-cc)^2+4*cc+0i))/2,(-dd*(1-cc)-sqrt(dd^2*(1-cc)^2+4*cc+0i))/2),gain=(1+cc)/2)",
+                                  "omegac=0.2;omegab=0.022;omegabprime=tan(omegab*pi);cc=(omegabprime-1)/(omegabprime+1);dd=-cos(pi*omegac);Zpg(zero=c(-dd+sqrt(dd^2-1+0i),-dd-sqrt(dd^2-1+0i)),pole=c((-dd*(1-cc)+sqrt(dd^2*(1-cc)^2+4*cc+0i))/2,(-dd*(1-cc)-sqrt(dd^2*(1-cc)^2+4*cc+0i))/2),gain=(1-cc)/2)",
+                                  "omegac=0.3;K=tan(pi*omegac/2);b0=K^2/(1+sqrt(2)*K+K^2);a1=2*(K^2-1)/(1+sqrt(2)*K+K^2);a2=(1-sqrt(2)*K+K^2)/(1+sqrt(2)*K+K^2);Arma(b=c(b0,2*b0,b0),a=c(1,a1,a2))",
+                                  "omegac=0.7;K=tan(pi*omegac/2);b0=1/(1+sqrt(2)*K+K^2);a1=2*(K^2-1)/(1+sqrt(2)*K+K^2);a2=(1-sqrt(2)*K+K^2)/(1+sqrt(2)*K+K^2);Arma(b=c(b0,-2*b0,b0),a=c(1,a1,a2))",
+                                  "omegac=0.3;G=15; K=tan(pi*omegac/2);boostV0=10^(G/20); b0=(1+sqrt(2*boostV0)*K+boostV0*K^2)/(1+sqrt(2)*K+K^2); b1=2*(boostV0*K^2-1)/(1+sqrt(2)*K+K^2); b2=(1-sqrt(2*boostV0)*K+boostV0*K^2)/(1+sqrt(2)*K+K^2); a1=2*(K^2-1)/(1+sqrt(2)*K+K^2); a2=(1-sqrt(2)*K+K^2)/(1+sqrt(2)*K+K^2); Arma(b=c(b0,b1,b2),a=c(1,a1,a2))",
+                                  "omegac=0.3;G=-15; K=tan(pi*omegac/2);cutV0  =10^(-G/20); b0=(1+sqrt(2)*K+K^2)/(1+sqrt(2*cutV0)*K+cutV0*K^2); b1=2*(K^2-1)/(1+sqrt(2*cutV0)*K+cutV0*K^2); b2=(1-sqrt(2)*K+K^2)/(1+sqrt(2*cutV0)*K+cutV0*K^2); a1=2*(cutV0*K^2-1)/(1+sqrt(2*cutV0)*K+cutV0*K^2); a2=(1-sqrt(2*cutV0)*K+cutV0*K^2)/(1+sqrt(2*cutV0)*K+cutV0*K^2); Arma(b=c(b0,b1,b2),a=c(1,a1,a2))",
+                                  "omegac=0.7;G=15; K=tan(pi*omegac/2);boostV0=10^(G/20); b0=(boostV0+sqrt(2*boostV0)*K+K^2)/(1+sqrt(2)*K+K^2); b1=2*(K^2-boostV0)/(1+sqrt(2)*K+K^2); b2=(boostV0-sqrt(2*boostV0)*K+K^2)/(1+sqrt(2)*K+K^2); a1=2*(K^2-1)/(1+sqrt(2)*K+K^2); a2=(1-sqrt(2)*K+K^2)/(1+sqrt(2)*K+K^2); Arma(b=c(b0,b1,b2),a=c(1,a1,a2))",
+                                  "omegac=0.7;G=-15; K=tan(pi*omegac/2);cutV0  =10^(-G/20); b0=(1+sqrt(2)*K+K^2) /(cutV0+sqrt(2*cutV0)*K+cutV0*K^2); b1=2*(K^2-1)/(cutV0+sqrt(2*cutV0)*K+cutV0*K^2); b2=(1-sqrt(2)*K+K^2)/(cutV0+sqrt(2*cutV0)*K+cutV0*K^2); a1=2*(K^2/cutV0-1)/(1+sqrt(2/cutV0)*K+K^2/cutV0); a2=(1-sqrt(2/cutV0)*K+K^2/cutV0)/(1+sqrt(2/cutV0)*K+K^2/cutV0); Arma(b=c(b0,b1,b2),a=c(1,a1,a2))",
+                                  "omegac=0.3;Q=1.25;G=15; K=tan(pi*omegac/2);boostV0=10^(G/20); b0=(1+(boostV0/Q)*K+K^2)/(1+(1/Q)*K+K^2); b1=2*(K^2-1)/(1+(1/Q)*K+K^2); b2=(1-(boostV0/Q)*K+K^2)/(1+(1/Q)*K+K^2); a1=b1; a2=(1-(1/Q)*K+K^2)/(1+(1/Q)*K+K^2); Arma(b=c(b0,b1,b2),a=c(1,a1,a2))",
+                                  "omegac=0.3;Q=1.25;G=-15; K=tan(pi*omegac/2);cutV0  =10^(-G/20); b0=(1+(1/Q)*K+K^2)/(1+(cutV0/Q)*K+K^2); b1=2*(K^2-1)/(1+(cutV0/Q)*K+K^2); b2=(1-(1/Q)*K+K^2)/(1+(cutV0/Q)*K+K^2); a1=b1; a2=(1-(cutV0/Q)*K+K^2)/(1+(cutV0/Q)*K+K^2); Arma(b=c(b0,b1,b2),a=c(1,a1,a2))",
+                                  "remez(n=15, f= c(0, 0.3, 0.4, 1), a= c(1,1, 0,0), ftype= \"bandpass\")",
+                                  "firstHalfCoef=c(0.034025544,0.006219216,-0.005305575,0.006128687,-0.005593423,0.00624262,-0.006848848,0.008979105,-0.008978654,0.017501073,-0.006953636,0.039774499,-0.064655981,0.085240952,-0.131292156);Ma(b=c(firstHalfCoef,0.195140968,rev(firstHalfCoef)))",
+                                  "firstHalfCoef=c(0.00012511398639,0.00001335284427,0.00016015250121,0.00000634686622,0.00026201837991,0.00007281852105,0.00045629795460,0.00022819555936,0.00071588589103,0.00047316021190,0.00110189764986,0.00088563032407,0.00184819117706,0.00188050116629,0.00282392666400,0.00363976768981,0.00591155524557,0.00644303257612,0.01406190034797,0.00537162176461,0.03594691432517,0.06164502638211,0.08276620944465,0.13009560635626);Ma(b=c(firstHalfCoef,0.19452719610477,rev(firstHalfCoef)))",
+                                  "firstHalfZeros=c(-1.27851808211318+0.62684824819101i,-1.36614299238589+0.27717114439577i,-1.07284006705681+0.91235620647926i,-0.77267104757162+1.12541933041583i,-0.44961436355736+1.22363585379352i,-0.20330452525073+1.29600355151311i,0.14750702212683+1.34841369533889i,0.50634734941036+1.25979827310114i,0.83329614995319+1.04982507756824i,1.04560310563666+0.67293837999034i,1.20771535897979+0.24059979456907i,0.95139216401989+0.56315210274529i,0.77837030003487+0.46073626392613i,0.79640192035334+0.15865836018951i,0.67627030631208+0.43523995090672i,0.46384030886663+0.58436750039291i,0.27466939387352+0.68338074343342i,0.08016782642482+0.73284236586261i,-0.11813451163119+0.75307102211071i,-0.26456653442537+0.72002392155667i,-0.41461446573694+0.60389882069075i,-0.70304843505842+0.14263861132902i,-0.63057376627246+0.30916579614562i,-0.54091513103870+0.46000078868751i);Zpg(zero=c(firstHalfZeros,Conj(firstHalfZeros)),pole=c(0),gain=0.00012511398639)",
+                                  "Zpg(zero=c(0.9049098+0.1414979i,0.9049098-0.1414979i,1.192327), pole=c(0.9588639+0.7240575i,0.9588639-0.7240575i,1.511628), gain=1)",
+                                  "p=3;n=2;sgolay(p,(2*n+1)) %*% c(1,rep(0,times=(2*n+1)-1))",
+                                  "chebwin(n=50, at=100)",
+                                  "kaiser(n=101, beta=0)",
+                                  "kaiser(n=101, beta=50)",
+                                  "with(kaiserord(f=c(0.275,0.325), m=c(1,0), dev=c(0.1,0.1)),fir1(n=n,w=Wc,type=type,window=kaiser(n+1,beta),scale=FALSE))",
+                                  "Ma(b=rep(1,times=101))",
+                                  "bartlett(41)",
+                                  "blackman(41)",
+                                  "boxcar(41)",
+                                  "flattopwin(41,sym=\"symmetric\")",
+                                  "flattopwin(41,sym=\"periodic\")",
+                                  "sd=0.2;gausswin(41,w=1/sd)",
+                                  "hanning(41)",
+                                  "hamming(41)",
+                                  "triang(41)",
+                                  "N=18;leftside=sin(pi*(0.3*(-(N/2):(-1))))/(pi*(0.3*(-(N/2):(-1))));c(leftside,1,rev(leftside))*blackman(N+1)", # "N=18;sinc(0.3*(-(N/2):(N/2)))*0.3*blackman(N+1)",
+                                  "spencerFilter()",
+                                  "Ma(b=c(-3, -6, -5, 3, 21, 46, 67, 74, 67, 46, 21, 3, -5, -6, -3) / 320)"
                               ),
                               1
                             ),
@@ -1761,14 +1825,14 @@ $('#loadmessage').fadeOut(500).fadeIn(500, blink);
                       ),
                       shinyjs::hidden(fluidRow(
                         column(
-                          width = 6,
+                          width = 6L,
                           uiOutput(outputId = "slider2AWidget"),
                           uiOutput(outputId = "stretchyslider2ArangeWidget"),
                           uiOutput(outputId = "stretchyslider2AstepWidget"),
                           uiOutput(outputId = "slider2AanimintervalWidget")
                         ),
                         column(
-                          width = 6,
+                          width = 6L,
                           uiOutput(outputId = "slider2BWidget"),
                           uiOutput(outputId = "stretchyslider2BrangeWidget"),
                           uiOutput(outputId = "stretchyslider2BstepWidget"),
@@ -1777,7 +1841,7 @@ $('#loadmessage').fadeOut(500).fadeIn(500, blink);
                       )),
                       fluidRow(
                         column(
-                          width = 6,
+                          width = 6L,
                           align = "center",
                           fluidRow(
                             tags$span(
@@ -1832,13 +1896,13 @@ $('#loadmessage').fadeOut(500).fadeIn(500, blink);
                                 label = HTML("&cir; Zero Locations O"),
                                 choices = c("0"),
                                 selectize = FALSE,
-                                size = 10
+                                size = 10L
                               )
                             )
                           )
                         ),
                         column(
-                          width = 6,
+                          width = 6L,
                           align = "center",
                           fluidRow(
                             tags$span(
@@ -1894,7 +1958,7 @@ $('#loadmessage').fadeOut(500).fadeIn(500, blink);
                                 label = HTML("&times; Pole Locations X"),
                                 choices = c("0"),
                                 selectize = FALSE,
-                                size = 10
+                                size = 10L
                               )
                             )
                           )
@@ -1910,7 +1974,7 @@ $('#loadmessage').fadeOut(500).fadeIn(500, blink);
                 id = "mainPanel",
                 style = paste0("background-color: ", MainSidePanelBackgroundColor,
                                ";"),
-                width = 12 - mySidebarWidth,
+                width = 12L - mySidebarWidth,
                 shinyBS::bsCollapse(
                   id = "mainPanelCollapse",
                   multiple = TRUE,
@@ -1994,13 +2058,13 @@ $('#loadmessage').fadeOut(500).fadeIn(500, blink);
                           tags$div(
                             title = "tooltip: The chosen-range, [min, max], can be dragged together, as one piece",
                             column(
-                              width = 6,
+                              width = 6L,
                               align = "center",
                               uiOutput(outputId = "zoomlimXpassbandWidget"),
                               uiOutput(outputId = "zoomlimYpassbandWidget")
                             ),
                             column(
-                              width = 6,
+                              width = 6L,
                               align = "center",
                               uiOutput(outputId = "zoomlimXstopbandWidget"),
                               uiOutput(outputId = "zoomlimYstopbandWidget")
@@ -2115,10 +2179,10 @@ $('#loadmessage').fadeOut(500).fadeIn(500, blink);
                             numericInput(
                               inputId = "maxLengthImpulseResponse",
                               label = "max-length of Imp-Response",
-                              value = 25,
-                              min = 2,
-                              max = 1001,
-                              step = 1
+                              value = 25L,
+                              min = 2L,
+                              max = 1001L,
+                              step = 1L
                             )
                           ),
                           hr(),
@@ -2180,8 +2244,8 @@ $('#loadmessage').fadeOut(500).fadeIn(500, blink);
                           title = "All",
                           icon = shiny::icon("list", lib = "glyphicon"),
                           tags$span(
-                            title = "tooltip: Summary All-in-1 Tab of Plots Page",
-                            helpText("Welcome to the Summary All-in-1 Tab..."),
+                            title = "tooltip: Summary All-in-1L Tab of Plots Page",
+                            helpText("Welcome to the Summary All-in-1L Tab..."),
                             br(),
                             tags$span(
                               title = "tooltip: display GUI-plots as separate window: Pole-Zero, Impulse-response, Magnitude, Phase",
@@ -2236,16 +2300,16 @@ $('#loadmessage').fadeOut(500).fadeIn(500, blink);
                               value = "",
                               width = "100%",
                               height = "100%",
-                              cols = 80,
-                              rows = 8,
+                              cols = 80L,
+                              rows = 8L,
                               placeholder = "Enter any text that you want to appear at the start of the report\n(Note: RMarkdown/ LaTeX formatting markup is acceptable)\nCan drag the corner to expand entry-area's size",
                               resize = NULL
                             ),
                             sliderInput(inputId = "slider", 
                                         label="Example Control-Input (e.g. a Slider)",
-                                        min=1, 
-                                        max=100, 
-                                        value=50
+                                        min=1L, 
+                                        max=100L, 
+                                        value=50L
                                         ),
                             downloadButton(outputId = "report",
                                            "Generate report")
@@ -2268,7 +2332,7 @@ $('#loadmessage').fadeOut(500).fadeIn(500, blink);
               style = "info",
               fluidRow(
                 tags$span(
-                  title = "tooltip: z-transform is most useful when the infinite-sum can be expressed as a simple mathematical formula. One important form of representation is to represent it as a rational-function (as shown) where the numerator and denominator are polynomials in z. The values of z for which H(z)=0 are called the zeros of H(z), and the values of z for which H(z) is infinity are referred to as the poles of H(z). The zeros are the roots of the numerator-polynomial, and the poles of H(z) (for finite-values of z) are the roots of the denominator-polynomial.  A plot of Poles and Zeros of a system on the z-plane is called a Pole-Zero plot.\n(use MathJax's right-mouse-click/ context-menu for download into your (La)TeX/ MathML (e.g. MS Word) documents and/or for zooming-options)",
+                  title = "tooltip: z-transform is most useful when the infinite-sum can be expressed as a simple mathematical formula. One important form of representation is to represent it as a rational-function (as shown) where the numerator and denominator are polynomials in z. The values of z for which H(z)=0L are called the zeros of H(z), and the values of z for which H(z) is infinity are referred to as the poles of H(z). The zeros are the roots of the numerator-polynomial, and the poles of H(z) (for finite-values of z) are the roots of the denominator-polynomial.  A plot of Poles and Zeros of a system on the z-plane is called a Pole-Zero plot.\n(use MathJax's right-mouse-click/ context-menu for download into your (La)TeX/ MathML (e.g. MS Word) documents and/or for zooming-options)",
                   uiOutput(
                     outputId = "transferfn",
                     inline = FALSE,
@@ -2305,9 +2369,9 @@ $('#loadmessage').fadeOut(500).fadeIn(500, blink);
                         numericInput(
                           inputId = "edit_gain",
                           label = "Gain",
-                          value = 1,
-                          min = 0,
-                          max = 10,
+                          value = 1L,
+                          min = 0L,
+                          max = 10L,
                           step = 0.1
                         ),
                         shinyBS::bsButton(
@@ -2340,7 +2404,7 @@ $('#loadmessage').fadeOut(500).fadeIn(500, blink);
               tags$span(title = "tooltip: b/a filter-coefficient editing",
                         fluidRow(
                           column(
-                            width = 6,
+                            width = 6L,
                             align = "center",
                             shinyjs::hidden(fluidRow(
                               tags$span(
@@ -2394,13 +2458,13 @@ $('#loadmessage').fadeOut(500).fadeIn(500, blink);
                                   label = "b Coefficients (moving-average MA)",
                                   choices = c("0"),
                                   selectize = FALSE,
-                                  size = 10
+                                  size = 10L
                                 )
                               )
                             )
                           ),
                           column(
-                            width = 6,
+                            width = 6L,
                             align = "center",
                             shinyjs::hidden(fluidRow(
                               tags$span(
@@ -2454,15 +2518,107 @@ $('#loadmessage').fadeOut(500).fadeIn(500, blink);
                                   label = "a Coefficients (autoregressive AR)",
                                   choices = c("0"),
                                   selectize = FALSE,
-                                  size = 10
+                                  size = 10L
                                 )
                               )
                             )
                           )
                         ))
-            )
-          )
-        ),
+            ) # end shinyBS::bsCollapsePanel
+          ) # end shinyBS::bsCollapse
+          ,shinyBS::bsCollapse(
+            id = "AudioCollapse",
+            multiple = TRUE,
+            shinyBS::bsCollapsePanel(
+              value = "Audio1Collapse",
+              title = "Audio-Filtering (click to expand/ collapse):",
+              style = "info",
+              fluidRow(
+                tags$span(
+                  title = "tooltip: Audio",
+                  # shinyBS::bsButton(
+                  #                 inputId = "pb_music",
+                  #                 label = "Play Handel's Messiah",
+                  #                 # width = "31.5%",
+                  #                 style = "default", # default, primary, success, info, warning, or danger
+                  #                 size = "default", # extra-small, small, default, or large
+                  #                 type = "action", # action, toggle
+                  #                 block = FALSE,
+                  #                 disabled = FALSE,
+                  #                 icon = shiny::icon("file-audio-o", lib = "font-awesome") # "play" # "music" #
+                  #               ),
+                  # shinyBS::bsButton(
+                  #                 inputId = "pb_musicfiltered",
+                  #                 label = "Play Filtered Handel's Messiah",
+                  #                 # width = "31.5%",
+                  #                 style = "primary", # default, primary, success, info, warning, or danger
+                  #                 size = "default", # extra-small, small, default, or large
+                  #                 type = "action", # action, toggle
+                  #                 block = FALSE,
+                  #                 disabled = FALSE,
+                  #                 icon = shiny::icon("file-audio-o", lib = "font-awesome") # "play" # "music" #
+                  #               ),
+                  column(width=3,
+                  fileInput(inputId = "filenameAudio",
+                            label = "Filename to play/ filter",
+                            # value = "4ClassStream",
+                            # placeholder = "Enter filename here",
+                            multiple = FALSE,
+                            accept = c(".wav",".mat",".mp3")
+                  ),
+                  verbatimTextOutput(outputId = "filenameAudioInfo"),
+                  uiOutput(outputId = "HTML5audioWidget"),
+                  shinyBS::bsButton(
+                                  inputId = "pb_playfile",
+                                  label = "Play (un-filtered) file",
+                                  # width = "31.5%",
+                                  style = "default", # default, primary, success, info, warning, or danger
+                                  size = "default", # extra-small, small, default, or large
+                                  type = "action", # action, toggle
+                                  block = FALSE,
+                                  disabled = FALSE,
+                                  icon = shiny::icon("play", lib = "font-awesome") # "file-audio-o"  # "play" # "music" #
+                                ),
+                  shinyBS::bsButton(
+                                  inputId = "pb_playFiltered",
+                                  label = "Play Filtered-file",
+                                  # width = "31.5%",
+                                  style = "default", # default, primary, success, info, warning, or danger
+                                  size = "default", # extra-small, small, default, or large
+                                  type = "action", # action, toggle
+                                  block = FALSE,
+                                  disabled = FALSE,
+                                  icon = shiny::icon("filter", lib = "font-awesome") # "file-audio-o"  # "play" # "music" #
+                                ),
+                  checkboxInput(
+                    inputId = "includeContoursInSpectrograms",
+                    label = "Include Contours in Spectrograms",
+                    value = FALSE
+                    ),
+                  uiOutput(outputId = "stretchyslider3rangeWidget")
+                  ), # end column
+                  column(width=9,
+                       if (scalePlotsToVerticalHeight) {
+                            tags$head(tags$style(
+                              paste0(
+                                "#specgrams{height:",
+                                verticalHeightOfPlots,
+                                " !important;}"
+                              )
+                            ))
+                          },
+                         plotOutput(
+                           outputId = "specgrams",
+                           width = "100%",
+                           height = "600px",
+                           inline = FALSE
+                         )
+                ) # end column
+              ) # end tags$span
+            ) # end fluidRow
+          ) # shinyBS::bsCollapsePanel
+          ) # ?~?~!?!?!
+        ), # shinyBS::bsCollapse
         # 'More' navbarMenu ----
         navbarMenu(
           title = "More",
@@ -2489,7 +2645,7 @@ $('#loadmessage').fadeOut(500).fadeIn(500, blink);
                 inputId = "grcolor",
                 label = "Grid-Colour for plots (or just choose 'transparent' for none)",
                 palette = "limited",
-                allowedCols = grey.colors(40, start = 0, end = 1),
+                allowedCols = grey.colors(40L, start = 0L, end = 1L),
                 value = "#BCBCBC",
                 allowTransparent = TRUE,
                 returnName = TRUE
@@ -2548,9 +2704,9 @@ $('#loadmessage').fadeOut(500).fadeIn(500, blink);
               numericInput(
                 inputId = "LineWidth",
                 label = "Line-Width within plots",
-                value = 3,
+                value = 3L,
                 min = 0.5,
-                max = 6,
+                max = 6L,
                 step = 0.5
               ),
               br(),
@@ -2625,12 +2781,12 @@ $('#loadmessage').fadeOut(500).fadeIn(500, blink);
               ),
               checkboxInput(
                 inputId = "normalizedMagPlotAmplitude",
-                label = "normalize the Magnitude-Response's plotted-amplitude to unity, 1 (or to 0 dB)",
+                label = "normalize the Magnitude-Response's plotted-amplitude to unity, 1L (or to 0L dB)",
                 value = TRUE
               ),
               checkboxInput(
                 inputId = "logarithmicMagPlotAmplitude",
-                label = "Logarithmic-scale for plotting Magnitude-Response's relative-amplitude (i.e. wrt 0 dB at max)",
+                label = "Logarithmic-scale for plotting Magnitude-Response's relative-amplitude (i.e. wrt 0L dB at max)",
                 value = TRUE
               ),
               br(),
@@ -2638,12 +2794,12 @@ $('#loadmessage').fadeOut(500).fadeIn(500, blink);
                 inputId = "freqaxisunits",
                 label = "Frequency-Axis Units",
                 choices = c(
-                  `0 --> 1` = "zero2one",
-                  `0 --> 3.1415... (\\(=\\pi\\))` = "zero2pi",
-                  `0 --> 6.2832... (\\(=2\\pi\\)), one-sided` = "zero22pi",
-                  `0 --> 0.5` = "zero2half",
-                  `0 --> fs/2 (specify)` = "zero2fsby2",
-                  `0 --> \\(f_{max}\\), one-sided (specify)` = "zero2fmax"
+                  `0L --> 1` = "zero2one",
+                  `0L --> 3.1415... (\\(=\\pi\\))` = "zero2pi",
+                  `0L --> 6.2832... (\\(=2\\pi\\)), one-sided` = "zero22pi",
+                  `0L --> 0.5` = "zero2half",
+                  `0L --> fs/2 (specify)` = "zero2fsby2",
+                  `0L --> \\(f_{max}\\), one-sided (specify)` = "zero2fmax"
                 ),
                 selected = "zero2one",
                 inline = TRUE
@@ -2665,10 +2821,10 @@ $('#loadmessage').fadeOut(500).fadeIn(500, blink);
                   inputId = "maxfreqsampled",
                   label = "Max-Frequency being sampled \\(f_{max}\\)",
                   value = 44100 /
-                    2,
+                    2L,
                   min = 1000,
                   max = 3e+12,
-                  step = 100
+                  step = 100L
                 )
               ),
               br(),
@@ -2703,7 +2859,7 @@ $('#loadmessage').fadeOut(500).fadeIn(500, blink);
               )
             )
           )
-        ),
+        ), # end navbarMenu
         # 'About' tabPanel ----
         tabPanel(
           style = paste("background-color:", NavBarPageBackgroundColor, ";"),
@@ -2722,8 +2878,8 @@ $('#loadmessage').fadeOut(500).fadeIn(500, blink);
             ),
             a(img(
               src = "bigorb.png",
-              height = 72,
-              width = 72
+              height = 72L,
+              width = 72L
             ), href = "http://www.rstudio.com/shiny"),
             br(),
             p(
@@ -2825,18 +2981,18 @@ server <- shinyServer(function(input, output, session) {
   shinyjs::hide(selector = "#pzPlotsPanel li a[data-value=3js]")
   handles <-
     reactiveValues(
-      poleloc = c(0),
-      zeroloc = c(0),
+      poleloc = c(0L),
+      zeroloc = c(0L),
       selectedpole = NULL,
       selectedzero = NULL,
-      maxZoomlimXpassband = 1 * isolate(input$samplingfreq) / 2,
-      maxZoomlimYpassband = 1,
-      maxZoomlimXstopband = 1 * isolate(input$samplingfreq) / 2,
-      maxZoomlimYstopband = 1,
-      minZoomlimXpassband = 0 * isolate(input$samplingfreq) / 2,
-      minZoomlimYpassband = -1,
-      minZoomlimXstopband = 0 * isolate(input$samplingfreq) / 2,
-      minZoomlimYstopband = -1,
+      maxZoomlimXpassband = 1L * isolate(input$samplingfreq) / 2,
+      maxZoomlimYpassband = 1L,
+      maxZoomlimXstopband = 1L * isolate(input$samplingfreq) / 2,
+      maxZoomlimYstopband = 1L,
+      minZoomlimXpassband = 0L * isolate(input$samplingfreq) / 2,
+      minZoomlimYpassband = -1L,
+      minZoomlimXstopband = 0L * isolate(input$samplingfreq) / 2,
+      minZoomlimYstopband = -1L,
       stepZoomlimXpassband = 0.05,
       stepZoomlimYpassband = 0.25,
       stepZoomlimXstopband = 0.05,
@@ -2847,26 +3003,33 @@ server <- shinyServer(function(input, output, session) {
       inDragMode = FALSE,
       changed = FALSE,
       subscriptOfClickedPoleOrZero = NULL,
-      minslider1range = 0 *
-        isolate(input$samplingfreq) / 2,
-      maxslider1range = 5 * isolate(input$samplingfreq) / 2,
+      minslider1range = 0L * isolate(input$samplingfreq) / 2,
+      maxslider1range = 5L * isolate(input$samplingfreq) / 2,
       minslider1step = 0.001,
       maxslider1step = 0.5,
-      minslider1animinterval = 0,
-      maxslider1animinterval = 2000,
-      minslider2Arange = 0,
-      maxslider2Arange = 5,
+      minslider1animinterval = 0L,
+      maxslider1animinterval = 2000L,
+      minslider3range = 0L,
+      maxslider3range = 1L,
+      inputstretchyslider3step = 0.01,
+      minslider3step = 0.01,
+      maxslider3step = 1.0,
+      minslider3animinterval = 0L,
+      maxslider3animinterval = 2000L,
+      slider3value = 0.5,
+      minslider2Arange = 0L,
+      maxslider2Arange = 5L,
       minslider2Astep = 0.001,
-      maxslider2Astep = 1,
-      minslider2Aaniminterval = 0,
-      maxslider2Aaniminterval = 2000,
+      maxslider2Astep = 1.0,
+      minslider2Aaniminterval = 0L,
+      maxslider2Aaniminterval = 2000L,
       slider2Avalue = 0.5,
-      minslider2Brange = 0,
-      maxslider2Brange = 5,
+      minslider2Brange = 0L,
+      maxslider2Brange = 5L,
       minslider2Bstep = 0.001,
-      maxslider2Bstep = 1,
-      minslider2Baniminterval = 0,
-      maxslider2Baniminterval = 2000,
+      maxslider2Bstep = 1.0,
+      minslider2Baniminterval = 0L,
+      maxslider2Baniminterval = 2000L,
       slider2Bvalue = 0.5
     )
   
@@ -2876,30 +3039,667 @@ server <- shinyServer(function(input, output, session) {
     shinyjs::info("Done.  All input-elements\n are now reset.")
   })
   
+  # # observeEvent pb_music ----
+  # observeEvent(eventExpr = input$pb_music, handlerExpr = {
+  #   handel <- R.matlab::readMat("handel.mat") # y= audio-signal, and Fs=8192 samples-per-second
+  #   y <- handel$y
+  #   Fs <- handel$Fs
+  #   updateNumericInput(session, inputId = "samplingfreq", value = Fs)
+  #   y <- y/max(y) # tuneR::normalize(y) #  
+  #   require(audio); try(audio::wait(audio::play(y, rate=Fs)),silent=TRUE)
+  # })
+  # 
+  # # observeEvent pb_musicfiltered ----
+  # observeEvent(eventExpr = input$pb_musicfiltered, handlerExpr = {
+  #   handel <- R.matlab::readMat("handel.mat") # y= audio-signal, and Fs=8192 samples-per-second
+  #   y <- handel$y
+  #   Fs <- handel$Fs
+  #   updateNumericInput(session, inputId = "samplingfreq", value = Fs)
+  #   yfiltered <- signal::filter(filt=input$edit_gain*handlesb(), a=handlesa(), y)
+  #   # yfiltered <- yfiltered / max(yfiltered) # normalization
+  #   # plot(yfiltered)
+  #   # print(head(yfiltered))
+  #   yfiltered <- yfiltered/max(yfiltered) # tuneR::normalize(yfiltered) #  
+  #   require(audio); try(audio::wait(audio::play(yfiltered, rate=Fs)),silent=TRUE)
+  # })
+  
+  # observeEvent pb_playfile ----
+  observeEvent(eventExpr = input$pb_playfile, handlerExpr = {
+    # require(tuneR)
+    #tuneR::setWavPlayer('"C:/Program Files/Windows Media Player/wmplayer.exe"')
+    #[x,Fs,nBits]= wavread("test");
+    # print(input$filenameAudio$name)
+    if (is.null(input$filenameAudio$name) || (!nzchar(input$filenameAudio$name, keepNA = FALSE))) {return()}
+    if (tools::file_ext(input$filenameAudio$name) == "wav") {
+      objWav <- try(tuneR::readWave(input$filenameAudio$name),silent=TRUE)
+      if (isS4(objWav)) {
+      # a <- c(rv$samples, rv$channels)
+      # numOfSamples= a[1]
+      # nChannels= a[2]
+      y <- objWav@left # assumed monophonic, data stored within left-channel only
+      #if (objWav@stereo) {xright <- objWav@right} # if stereo-recording
+      Fs <- objWav@samp.rate
+      # updateNumericInput(session, inputId = "samplingfreq", value = Fs)
+      # isPCM <- objWav@pcm
+      # nBits <- objWav@bit
+      # SIZEwav <- length(y)
+      #if (interactive()) tuneR::play(objWav)
+      # Sys.sleep(1)
+      }
+    } else if (tools::file_ext(input$filenameAudio$name) == "mp3") {
+      objMP3 <- try(tuneR::readMP3(input$filenameAudio$name),silent=TRUE)
+      if (isS4(objMP3)) {
+      # a <- c(rv$samples, rv$channels)
+      # numOfSamples= a[1]
+      # nChannels= a[2]
+      y <- objMP3@left # assumed monophonic, data stored within left-channel only
+      #if (objMP3@stereo) {xright <- objMP3@right} # if stereo-recording
+      Fs <- objMP3@samp.rate
+      # updateNumericInput(session, inputId = "samplingfreq", value = Fs)
+      # isPCM <- objMP3@pcm
+      # nBits <- objMP3@bit
+      # SIZEwav <- length(y)
+      }
+    } else if (tools::file_ext(input$filenameAudio$name) == "mat") {
+      matmusic <- R.matlab::readMat(input$filenameAudio$name) # y= audio-signal, and Fs=8192 samples-per-second
+      y <- matmusic$y
+      Fs <- matmusic$Fs
+      # updateNumericInput(session, inputId = "samplingfreq", value = Fs)
+    } else {return()}
+    
+    # yfiltered <- signal::filter(filt=input$edit_gain*handlesb(), a=handlesa(), y)
+    # yfiltered <- yfiltered / max(yfiltered) # normalization
+    # plot(yfiltered)
+    # print(head(yfiltered))
+    y <- y/max(y) # tuneR::normalize(y) #  
+    require(audio); try(audio::wait(audio::play(y, rate=Fs)),silent=TRUE)
+  })
+  
+    # output$filenameAudioInfo Print ----
+  output$filenameAudioInfo <- renderText({
+    if (is.null(input$filenameAudio$name) || (!nzchar(input$filenameAudio$name, keepNA = FALSE))) {return()}
+    if (tools::file_ext(input$filenameAudio$name) == "wav") {
+      objWav <- try(tuneR::readWave(input$filenameAudio$name, 
+                                    header = TRUE),silent=TRUE)
+      # print(objWav)
+      # a <- c(, )
+      if (is.list(objWav)) {
+      paste(input$filenameAudio$name, "\n",
+            "number of Samples:", objWav$samples, "\n",
+            "Duration (secs):",round(objWav$samples/objWav$sample.rate,1),"\n",
+            "nBits resolution:", objWav$bits, "\n",
+            "nChannels:", objWav$channels, "\n",
+            "Fs, sample-rate:", objWav$sample.rate, "\n",
+            "Ts, sample-period (msecs):", round(1000/objWav$sample.rate,3), "\n",
+            "(~50msecs delay, for echo-effects):", round(0.050*objWav$sample.rate,1), "\n"
+            )
+      }
+    } else if (tools::file_ext(input$filenameAudio$name) == "mp3") {
+      objMP3 <- try(tuneR::readMP3(input$filenameAudio$name),silent=TRUE)
+      if (isS4(objMP3)) {
+      # print(objMP3)
+      # a <- c(, )
+      paste(input$filenameAudio$name, "\n",
+            "number of Samples (left-channel):", length(objMP3@left), "\n",
+            "Duration (secs):",round(length(objMP3@left)/objMP3@samp.rate,1),"\n",
+            "nBits resolution:", objMP3@bit, "\n",
+            "nChannels:", 2, "\n",
+            "Fs, sample-rate:", objMP3@samp.rate, "\n",
+            "Ts, sample-period (msecs):", round(1000/objMP3@samp.rate,3), "\n",
+            "(~50msecs delay, for echo-effects):", round(0.050*objMP3@samp.rate,1), "\n"
+            )
+      }
+    } else if (tools::file_ext(input$filenameAudio$name) == "mat") {
+      matmusic <- try(R.matlab::readMat(input$filenameAudio$name, verbose=TRUE),silent=TRUE) # y= audio-signal, and Fs=8192 samples-per-second
+      if (is.list(matmusic)) {
+        # y <- matmusic$y
+        paste(input$filenameAudio$name, "\n",
+              "length:", length(matmusic$y), "\n",
+              "Duration (secs):",round(length(matmusic$y)/matmusic$Fs,1),"\n",
+              "Fs, sample-rate:", matmusic$Fs, "\n",
+              "Ts, sample-period (msecs):", round(1000/matmusic$Fs,3), "\n",
+              "(~50msecs delay, for echo-effects):", round(0.050*matmusic$Fs,1), "\n"
+              )
+      }
+    } else {return()}
+  })
+  
+  output$HTML5audioWidget <- renderUI({
+    if (is.null(input$filenameAudio$name) || (!nzchar(input$filenameAudio$name, keepNA = FALSE))) {return()}
+    if ((tools::file_ext(input$filenameAudio$name) == "wav") # || (tools::file_ext(input$filenameAudio$name) == "mp3")
+        ) {
+      HTML(paste0('<div><audio controls> <source src=',
+                  input$filenameAudio$name,
+                  ' type="audio/wav"> Please Note: Your browser does not support HTML5 digital-audio playback!  Please upgrade to the latest version of your browser or operating system. </audio></div>'
+      )
+    )
+    }
+  })
+  
+  # observeEvent pb_playFiltered ----
+  observeEvent(eventExpr = input$pb_playFiltered, handlerExpr = {
+    # require(tuneR)
+    #tuneR::setWavPlayer('"C:/Program Files/Windows Media Player/wmplayer.exe"')
+    #[x,Fs,nBits]= wavread("test");
+    # print(input$filenameAudio$name)
+    if (is.null(input$filenameAudio$name) || (!nzchar(input$filenameAudio$name, keepNA = FALSE))) {return()}
+    if (tools::file_ext(input$filenameAudio$name) == "wav") {
+      objWav <- try(tuneR::readWave(input$filenameAudio$name),silent=TRUE)
+      if (isS4(objWav)) {
+      y <- objWav@left # assumed monophonic, data stored within left-channel only
+      #if (objWav@stereo) {xright <- objWav@right} # if stereo-recording
+      Fs <- objWav@samp.rate
+      # updateNumericInput(session, inputId = "samplingfreq", value = Fs)
+      # nBits <- objWav@bit
+      # SIZEwav <- length(y)
+      #if (interactive()) tuneR::play(objWav)
+      # Sys.sleep(1)
+      }
+    } else if (tools::file_ext(input$filenameAudio$name) == "mp3") {
+      objMP3 <- try(tuneR::readMP3(input$filenameAudio$name),silent=TRUE)
+      if (isS4(objMP3)) {
+      y <- objMP3@left # assumed monophonic, data stored within left-channel only
+      #if (objMP3@stereo) {xright <- objMP3@right} # if stereo-recording
+      Fs <- objMP3@samp.rate
+      # updateNumericInput(session, inputId = "samplingfreq", value = Fs)
+      # nBits <- objMP3@bit
+      # SIZEwav <- length(y)
+      #if (interactive()) tuneR::play(objMP3)
+      # Sys.sleep(1)
+      }
+    } else if (tools::file_ext(input$filenameAudio$name) == "mat") {
+      matmusic <- R.matlab::readMat(input$filenameAudio$name) # y= audio-signal, and Fs=8192 samples-per-second
+      y <- matmusic$y
+      Fs <- matmusic$Fs
+      # updateNumericInput(session, inputId = "samplingfreq", value = Fs)
+    } else {return()}
+    
+    yfiltered <- signal::filter(filt=input$edit_gain*handlesb(), a=handlesa(), y)
+    # yfiltered <- yfiltered / max(yfiltered) # normalization
+    # plot(yfiltered)
+    # print(head(yfiltered))
+    yfiltered <- yfiltered/max(yfiltered) # tuneR::normalize(yfiltered) #  
+    require(audio); try(audio::wait(audio::play(yfiltered, rate=Fs)),silent=TRUE)
+  })
+  
+  # output$specgrams ----
+  output$specgrams <- renderPlot(width = "auto", height = "auto", {
+    req(input$stretchyslider3range)
+    par(mfrow = c(2, 2))
+    # par(mgp = c(2.5, 1, 0)) # line for axis-title, axis-labels and axis-line
+    # par(mar=c(1, 1, 1, 1)) # c(bottom, left, top, right)
+    # require(tuneR)
+    #tuneR::setWavPlayer('"C:/Program Files/Windows Media Player/wmplayer.exe"')
+    #[x,Fs,nBits]= wavread("test");
+    # print(input$filenameAudio$name)
+    if (is.null(input$filenameAudio$name) || (!nzchar(input$filenameAudio$name, keepNA = FALSE))) {return()}
+    if (tools::file_ext(input$filenameAudio$name) == "wav") {
+      objWav <- try(tuneR::readWave(input$filenameAudio$name),silent=TRUE)
+      if (isS4(objWav)) {
+      y <- objWav@left # assumed monophonic, data stored within left-channel only
+      #if (objWav@stereo) {xright <- objWav@right} # if stereo-recording
+      Fs <- objWav@samp.rate
+      # updateNumericInput(session, inputId = "samplingfreq", value = Fs)
+      
+      # nBits <- objWav@bit
+      # SIZEwav <- length(y)
+      #if (interactive()) tuneR::play(objWav)
+      # Sys.sleep(1)
+      }
+    } else if (tools::file_ext(input$filenameAudio$name) == "mp3") {
+      objMP3 <- try(tuneR::readMP3(input$filenameAudio$name),silent=TRUE)
+      if (isS4(objMP3)) {
+      y <- objMP3@left # assumed monophonic, data stored within left-channel only
+      #if (objMP3@stereo) {xright <- objMP3@right} # if stereo-recording
+      Fs <- objMP3@samp.rate
+      # updateNumericInput(session, inputId = "samplingfreq", value = Fs)
+      # nBits <- objMP3@bit
+      # SIZEwav <- length(y)
+      #if (interactive()) tuneR::play(objMP3)
+      # Sys.sleep(1)
+      }
+    } else if (tools::file_ext(input$filenameAudio$name) == "mat") {
+      matmusic <- try(R.matlab::readMat(input$filenameAudio$name),silent=TRUE) # y= audio-signal, and Fs=8192 samples-per-second
+      y <- matmusic$y
+      Fs <- matmusic$Fs
+      # updateNumericInput(session, inputId = "samplingfreq", value = Fs)
+    } else {return()}
+    
+    # print(y)
+    yfiltered <- signal::filter(filt=input$edit_gain*handlesb(), a=handlesa(), y)
+    # yfiltered <- yfiltered / max(yfiltered) # normalization
+    # plot(yfiltered)
+    # print(head(yfiltered))
+    # yfiltered <- tuneR::normalize(tuneR::Wave(left=as.vector(yfiltered,mode="numeric"))) # yfiltered/max(yfiltered) # 
+
+    # y <- y/max(y) # tuneR::normalize(y) # 
+    
+minSpgFreq <- trunc(input$stretchyslider3range[1] * (Fs/2)) # /(input$samplingfreq/2) # max(c(0.25* 44100/2, 0.01* Fs/2 ) )  # Hz - min-frequency to display
+maxSpgFreq <- trunc(input$stretchyslider3range[2] * (Fs/2)) # /(input$samplingfreq/2) # min(c(Fs/2, 0.75* 44100/2 ) ) # Hz - max-frequency to display
+
+# print(minSpgFreq)
+# print(maxSpgFreq)
+
+step <- trunc(0.005*Fs)
+#windowW <- trunc(40*Fs/1000)          # 40 ms data window
+windowW <- trunc(0.040*Fs)
+fftn <- 2^ceiling(log2(abs(windowW))) # next highest power of 2
+#fftn <- trunc(0.020*Fs)
+#spg= specgram(wav$sound, fftn, Fs, windowW, windowW-step)
+#spg <- signal::specgram(x, n=fftn, Fs=Fs, window=windowW, overlap=0.010*Fs)
+spg <- signal::specgram(y, n=fftn, Fs=Fs, window=windowW, overlap=windowW-step)
+#spg <- signal::specgram(x)
+#S <- abs(spg$S[2:(fftn*4000/Fs),])   # magnitude in range 0<f<=4000 Hz.
+S <- Mod(spg$S[(max(c(2,fftn*minSpgFreq/Fs))):(fftn*maxSpgFreq/Fs),])
+maxS1 <- max(S) # store this, for later usage on the second-plot below
+#S <- S/max(S)         # normalize magnitude so that max is 0 dB.
+S <- S/maxS1 # normalize
+#S[S < 10^(-40/10)] <- 10^(-40/10)    # clip below -40 dB.
+#S[S > 10^(-3/10)] <- 10^(-3/10)      # clip above -3 dB.
+#image(x=list(x=0:1,y=0:4000,z=t(20*log10(S))), col=heat.colors(12))  #, col= gray(0:255 / 255))
+#image(t(20*log10(S)), col=heat.colors(12),axes=FALSE)
+dBdata <- t(20*log10(S))
+image(dBdata, col=matlab::jet.colors(12),axes=FALSE)
+if (input$includeContoursInSpectrograms) {
+  contour(dBdata, 
+        # levels = seq(90, 200, by = 5), 
+        add = TRUE
+        ,col = "peru"
+        ,labcex = 0.6, drawlabels = FALSE
+        )
+}
+axis(1,
+     at=seq(0, length(y), by=windowW)/Fs,
+     labels=round(length(y)/Fs*seq(0, length(y), by=windowW)/Fs,2)
+     )
+axis(2,
+     at=seq(0, 1, by=1/5) * input$samplingfreq/2,
+     labels=round(seq(minSpgFreq,maxSpgFreq, by=(maxSpgFreq-minSpgFreq)/5) / (Fs/2), 2) # * input$samplingfreq,2)
+     )
+#grid(); abline(h=0); abline(v=0)
+abline(h=(input$slider1-minSpgFreq/ (Fs/2)) / ((maxSpgFreq-minSpgFreq)/ (Fs/2)), # / (Fs/2) * input$samplingfreq, #/(maxSpgFreq/if (input$normalizedMagPlotAmplitude) {Fs/2}else{1}),
+       col = "black", lty="dashed")
+#axis xy
+#view(90,90)
+title('Spectrogram -- Original Signal',
+  xlab='Time (s)',
+  ylab=paste0('Freq',if (input$freqaxisunits == "zero2one") {" (normalized)"} else {" (Hz)"})
+#  ylab=expression(paste('Norm. Freq. ', omega, '; i.e. from ', 0, ' to ', pi, ' rads/sec', phantom(.)==(F[s]/2))),
+  )
+
+dBFFT <- try(20*log10(Mod(fft(y))),silent=TRUE)
+if (is.null(dBFFT)) return()
+# print(head(dBFFT))
+# print(length(dBFFT))
+# print(min(dBFFT))
+# print(max(dBFFT))
+
+dBFFT[dBFFT>320] <- 320
+dBFFT[dBFFT<0] <- 0
+# print(head(dBFFT))
+
+# print(minSpgFreq)
+# print(maxSpgFreq)
+# print(Fs/2)
+# print(minSpgFreq:maxSpgFreq)
+# print((minSpgFreq:maxSpgFreq) * (length(dBFFT)/2 * (Fs/2)))
+# print(head(dBFFT[(minSpgFreq:maxSpgFreq) * (length(dBFFT)/2 * (Fs/2))]))
+maxdBFFT <- max(dBFFT[(max(c(1,minSpgFreq)):maxSpgFreq) * (length(dBFFT)/2 / (Fs/2))]) # (minSpgFreq:maxSpgFreq)]) #  * (length(dBFFT)/2 * (Fs/2))]) # [1:(length(dBFFT)/2* maxSpgFreq / (Fs/2))])
+# print(maxdBFFT)
+
+# print(dBFFT[(max(c(1,minSpgFreq)):maxSpgFreq) * (length(dBFFT)/2 / (Fs/2))])
+
+plot(
+  -maxdBFFT+dBFFT[(max(c(1,minSpgFreq)):maxSpgFreq) * (length(dBFFT)/2 / (Fs/2))],
+  ((max(c(1,minSpgFreq)):maxSpgFreq) * (length(dBFFT)/2 / (Fs/2))) / (length(dBFFT)/2 ),# / (Fs/2),
+  # x=dBFFT[1:maxSpgFreq], 
+  # y=(1:maxSpgFreq) / (Fs/2), #  * input$samplingfreq, # /if (input$freqaxisunits == "zero2one") {Fs/2}else{1}, 
+     type="o", 
+     col="blue", 
+     xaxs="i",yaxs="i", 
+     # yaxt="n",
+     xlim=c(-25,0), # -maxdBFFT+c(5*floor(maxdBFFT/5)-20,5*ceiling(maxdBFFT/5)),
+  xlab='Levels (dB)',
+  ylab=paste0('Freq',if (input$freqaxisunits == "zero2one") {" (normalized)"} else {" (Hz)"})
+, main='Spectrum -- original-signal'
+     )
+# pracma::errorbar(
+#   -maxdBFFT+0.5*dBFFT[(max(c(1,minSpgFreq)):maxSpgFreq) * (length(dBFFT)/2 / (Fs/2))],
+#   ((max(c(1,minSpgFreq)):maxSpgFreq) * (length(dBFFT)/2 / (Fs/2))) / (length(dBFFT)/2 ),
+#   xerr=-maxdBFFT+dBFFT[(max(c(1,minSpgFreq)):maxSpgFreq) * (length(dBFFT)/2 / (Fs/2))],
+#   bar.col="cyan",
+#   with=FALSE,
+#   add=TRUE
+# )
+#plot(abs(fft(x))[1:(maxSpgFreq)], 1:(maxSpgFreq), type="l", col="blue", xaxs="i",yaxs="i", yaxt="n")
+#points(20*log10(abs(fft(x)))[f],f)
+# axis(2, at=seq(0,1, by=1/5) * maxSpgFreq / (Fs/2) ) # * input$samplingfreq) # /if (input$normalizedMagPlotAmplitude) {Fs/2}else{1})
+grid(); abline(h=0); abline(v=0)
+# abline(h=(Fstop+Fpass)/2, col="red", lty="dashed")
+abline(h=input$slider1, #  / (Fs/2) * input$samplingfreq, # /(maxSpgFreq/if (input$normalizedMagPlotAmplitude) {Fs/2}else{1}),
+       col = "magenta", lty="dashed")
+
+
+step <- trunc(0.005*Fs)
+#windowW <- trunc(40*Fs/1000)          # 40 ms data window
+windowW <- trunc(0.040*Fs)
+fftn <- 2^ceiling(log2(abs(windowW))) # next highest power of 2
+#fftn <- trunc(0.020*Fs)
+#spg= specgram(wav$sound, fftn, Fs, windowW, windowW-step)
+#spg <- signal::specgram(x, n=fftn, Fs=Fs, window=windowW, overlap=0.010*Fs)
+spg <- signal::specgram(yfiltered, n=fftn, Fs=Fs, window=windowW, overlap=windowW-step)
+#spg <- signal::specgram(x)
+#S <- abs(spg$S[2:(fftn*4000/Fs),])   # magnitude in range 0<f<=4000 Hz.
+S <- Mod(spg$S[(max(c(2,fftn*minSpgFreq/Fs))):(fftn*maxSpgFreq/Fs),])
+#S <- S/max(S)         # normalize magnitude so that max is 0 dB.
+S <- S/maxS1 #* 1.1 # / (10^(80/10)) # normalize by same amount as first plot, minus some corrective-amount (e.g. -80dB?), in order to approximately match colours
+#S[S < 10^(-40/10)] <- 10^(-40/10)    # clip below -40 dB.
+#S[S > 10^(-3/10)] <- 10^(-3/10)      # clip above -3 dB.
+#image(x=list(x=0:1,y=0:4000,z=t(20*log10(S))), col=heat.colors(12))  #, col= gray(0:255 / 255))
+#image(t(20*log10(S)), col=heat.colors(12),axes=FALSE)
+dBdata <- t(20*log10(S))
+image(dBdata, col=matlab::jet.colors(12),axes=FALSE)
+if (input$includeContoursInSpectrograms) {
+  contour(dBdata, 
+        # levels = seq(90, 200, by = 5), 
+        add = TRUE
+        ,col = "peru"
+        ,labcex = 0.6, drawlabels = FALSE
+        )
+}
+axis(1,
+     at=seq(0, length(y), by=windowW)/Fs,
+     labels=round(length(y)/Fs*seq(0, length(y), by=windowW)/Fs,2)
+     )
+axis(2,
+     at=seq(0, 1, by=1/5),
+     labels=round(seq(minSpgFreq,maxSpgFreq, by=(maxSpgFreq-minSpgFreq)/5) / (Fs/2), 2) # / (input$samplingfreq),2) # /if (input$normalizedMagPlotAmplitude) {Fs/2}else{1},2)
+     )
+#grid(); abline(h=0); abline(v=0)
+abline(h=(input$slider1-minSpgFreq/ (Fs/2)) / ((maxSpgFreq-minSpgFreq)/ (Fs/2)), # * input$samplingfreq, # /(maxSpgFreq/if (input$normalizedMagPlotAmplitude) {Fs/2}else{1}),
+       col = "black", lty="dashed")
+#axis xy
+#view(90,90)
+title('Spectrogram -- Filtered Signal',
+  xlab='Time (s)',
+  ylab=paste0('Freq',if (input$freqaxisunits == "zero2one") {" (normalized)"} else {" (Hz)"})
+#  ylab=expression(paste('Norm. Freq. ', omega, '; i.e. from ', 0, ' to ', pi, ' rads/sec', phantom(.)==(F[s]/2))),
+  )
+
+# mtext(
+#   paste0(
+#     fileName,
+#     ", Fst, Fp, Ap, As, Fstop, Fpass= ",
+#     list(c(Fst, Fp, Ap, As, Fstop, Fpass))
+#   ),
+#   side=1, line=-1, outer=TRUE, cex=0.6
+# )
+
+    # print(signal::specgram(y,1024,Fs)) # ,882,772))
+    # print(signal::specgram(yfiltered,1024,Fs)) # ,882,772))
+    
+# require(seewave)
+# seewave::spectro( y, f=Fs, osc=TRUE, listen=FALSE )
+# seewave::spectro( yfiltered, f=Fs, osc=TRUE, listen=FALSE )
+# mtext(
+#   'seewave::spectro( y, f=Fs, osc=TRUE, listen=FALSE )',
+#   side=1, line=-1, outer=TRUE, cex=0.6
+# )
+
+#subplot
+dBFFTfiltered <- try(20*log10(Mod(fft(yfiltered))),silent=TRUE)
+if (is.null(dBFFTfiltered)) return()
+
+dBFFTfiltered[dBFFTfiltered>320] <- 320
+dBFFTfiltered[dBFFTfiltered<0] <- 0
+
+maxdBFFTfiltered <- max(dBFFTfiltered[(length(dBFFTfiltered)/2* minSpgFreq / (Fs/2)):(length(dBFFTfiltered)/2* maxSpgFreq / (Fs/2))]) # [1:(length(dBFFTfiltered)/2* maxSpgFreq / (Fs/2))])
+
+plot(
+  -maxdBFFT+dBFFTfiltered[(max(c(1,minSpgFreq)):maxSpgFreq) * (length(dBFFTfiltered)/2 / (Fs/2))],
+  ((max(c(1,minSpgFreq)):maxSpgFreq) * (length(dBFFTfiltered)/2 / (Fs/2))) / (length(dBFFTfiltered)/2 ),# / (Fs/2),
+  # -maxdBFFT+dBFFTfiltered[((max(c(1,minSpgFreq)):maxSpgFreq) * (length(dBFFTfiltered)/2 / (Fs/2)))],
+  # (((max(c(1,minSpgFreq)):maxSpgFreq) * (length(dBFFTfiltered)/2 / (Fs/2)))) / (length(dBFFTfiltered)/2), # / (Fs/2),
+  # x=dBFFTfiltered[1:maxSpgFreq],
+  #    y=(1:maxSpgFreq) / (Fs/2), # * input$samplingfreq, # /if (input$normalizedMagPlotAmplitude) {Fs/2}else{1},
+     type="o",
+     col="blue",
+     xaxs="i",yaxs="i",
+     # yaxt="n",
+     xlim=c(min(c(-25,
+                  -maxdBFFT+5*floor(maxdBFFTfiltered/5)-25
+                  ), na.rm = TRUE
+                ),
+            max(c(0, # -maxdBFFT+5*ceiling(maxdBFFT/5),
+                  -maxdBFFT+maxdBFFTfiltered # 5*ceiling(maxdBFFTfiltered/5)
+                  ), na.rm = TRUE
+                )
+            ), # c(-maxdBFFT+5*floor(maxdBFFT/5)-20, max(c(-maxdBFFT+5*ceiling(maxdBFFT/5),-maxdBFFTfiltered+5*ceiling(maxdBFFTfiltered/5)))),
+  xlab='Levels (dB)',
+  ylab=paste0('Freq',if (input$freqaxisunits == "zero2one") {" (normalized)"} else {" (Hz)"})
+, main='Spectrum -- filtered-signal'
+     )
+# barplot(
+#   # rbind(
+#     -maxdBFFT+dBFFTfiltered[((max(c(1,minSpgFreq)):maxSpgFreq) * (length(dBFFTfiltered)/2 / (Fs/2)))],
+#               # -25),
+#         beside=FALSE,
+#         horiz=TRUE,
+#         col="blue", # c("white","blue"),
+#         border=NA,
+#         xlab='Levels (dB)',
+#         ylab=paste0('Freq',if (input$freqaxisunits == "zero2one") {" (normalized)"} else {" (Hz)"}),
+#         main='Spectrum -- filtered-signal',
+#         # xlim=-maxdBFFT+c(10*floor(maxdBFFTfiltered/10)-25, 5*ceiling(maxdBFFT/5)),
+#         bty="o",
+#         xpd=FALSE
+#         )
+#plot(abs(fft(x))[1:(maxSpgFreq)], 1:(maxSpgFreq), type="l", col="blue", xaxs="i",yaxs="i", yaxt="n")
+# axis(2, 
+#      at=seq(minSpgFreq,maxSpgFreq, by=(maxSpgFreq-minSpgFreq)/5) / (Fs/2) # seq(0,1, by=1/5) * (maxSpgFreq-minSpgFreq) / (Fs/2),
+#      # ,labels=round(seq(minSpgFreq,maxSpgFreq, by=(maxSpgFreq-minSpgFreq)/5) / (Fs/2), 2) # * input$samplingfreq) #  /if (input$normalizedMagPlotAmplitude) {Fs/2}else{1}
+#      )
+grid(); abline(h=0); abline(v=0)
+# abline(h=(Fstop+Fpass)/2, col="red", lty="dashed")
+abline(h=input$slider1, # (maxSpgFreq-minSpgFreq)*(input$slider1-minSpgFreq/ (Fs/2)) / ((maxSpgFreq-minSpgFreq)/ (Fs/2)), #, # / (Fs/2) * input$samplingfreq, # /(maxSpgFreq  /if (input$normalizedMagPlotAmplitude) {Fs/2}else{1}), 
+                        col = "magenta", lty="dashed")
+# abline(h=0.5*(Fs/2))
+# http://r.789695.n4.nabble.com/Horizontal-grid-in-background-of-barplot-td4642081.html
+# Sep/2012, 'Cable, Sam B Civ USAF AFMC AFRL/RVBXI'
+# print(par("usr")) # c(x1, x2, y1, y2)
+# print(input$slider1-minSpgFreq/ (Fs/2))
+# print((input$slider1-minSpgFreq/ (Fs/2)) / ((maxSpgFreq-minSpgFreq)/ (Fs/2)))
+# print((maxSpgFreq-minSpgFreq)*(input$slider1-minSpgFreq/ (Fs/2)) / ((maxSpgFreq-minSpgFreq)/ (Fs/2)))
+# print(par("usr")[2])
+# print(par("usr")[3])
+# print(par("usr")[4])
+
+    par(mfrow = c(1, 1))
+    par(mgp = c(3, 1, 0))
+    par(mar=c(5, 4, 4, 2))
+
+  })
+
+  #   output$slider3Widget <- renderUI({
+  #   sliderInput(
+  #     inputId = "slider3",
+  #     label = "Frequency-Range",
+  #     min = 0.0,
+  #     max = 1.0 * input$samplingfreq / 2,
+  #     value = c(0.01,0.75) * input$samplingfreq / 2,
+  #     step = 0.01 * input$samplingfreq / 2,
+  #     ticks = TRUE,
+  #     animate = animationOptions(interval = 300, loop = FALSE),
+  #     sep = " "
+  #   )
+  # })
+    
+      output$stretchyslider3rangeWidget <- renderUI({
+    sliderInput(
+      inputId = "stretchyslider3range",
+      label = "Frequency-Range",
+      min = handles$minslider3range,
+      max = handles$maxslider3range,
+      value = c(0.01, 0.75) * input$samplingfreq / 2,
+      step = handles$inputstretchyslider3step, # 0.01,
+      ticks = TRUE,
+      animate = animationOptions(interval = 300, loop = FALSE),
+      sep = " ",
+      dragRange = TRUE,
+      post="pi"
+    )
+  })
+
+        observeEvent(eventExpr = input$stretchyslider3range,
+               handlerExpr = {
+                 if ((abs(input$stretchyslider3range[2] - handles$maxslider3range) <
+                     0.04 * abs(handles$maxslider3range - handles$minslider3range)) && 
+                     (handles$maxslider3range<1)
+                     ) {
+                   handles$maxslider3range <- min(c(
+                     round((
+                       handles$maxslider3range +
+                         (handles$maxslider3range - 1e-06) * handles$growSliders
+                     ) / handles$inputstretchyslider3step
+                     ) *
+                       handles$inputstretchyslider3step,
+                     round((
+                       handles$maxslider3range +
+                         (handles$maxslider3range - handles$minslider3range) *
+                         handles$growSliders
+                     ) / handles$inputstretchyslider3step
+                     ) * handles$inputstretchyslider3step
+                   ))
+                   if (handles$maxslider3range>1) {handles$maxslider3range <- 1}
+                   updateSliderInput(
+                     session,
+                     inputId = "stretchyslider3range",
+                     value = input$stretchyslider3range,
+                     max = handles$maxslider3range
+                   )
+                   # updateSliderInput(
+                   #   session,
+                   #   inputId = "slider3",
+                   #   value = handles$slider3value,
+                   #   max = input$stretchyslider3range[2]
+                   # )
+                 }
+                 if ((abs(input$stretchyslider3range[1] - handles$minslider3range) <
+                     0.04 * abs(handles$maxslider3range - handles$minslider3range)) && 
+                     (handles$minslider3range>0)
+                     ) {
+                   handles$minslider3range <- round((
+                     handles$minslider3range -
+                       (handles$maxslider3range - handles$minslider3range) *
+                       handles$growSliders
+                   ) / handles$inputstretchyslider3step
+                   ) * handles$inputstretchyslider3step
+                   if (handles$minslider3range<0) {handles$minslider3range <- 0}
+                   updateSliderInput(
+                     session,
+                     inputId = "stretchyslider3range",
+                     value = input$stretchyslider3range,
+                     min = handles$minslider3range
+                   )
+                   # updateSliderInput(
+                   #   session,
+                   #   inputId = "slider3",
+                   #   value = handles$slider3value,
+                   #   min = input$stretchyslider3range[1]
+                   # )
+                 }
+                 if (abs(input$stretchyslider3range[2] - input$stretchyslider3range[1]) <
+                     0.1 * abs(handles$maxslider3range - handles$minslider3range)) {
+                   if (mean(c(input$stretchyslider3range)) < mean(c(handles$maxslider3range,
+                                                                     handles$minslider3range))# && (handles$maxslider3range<1)
+                       ) {
+                     handles$maxslider3range <- max(
+                       c(
+                         input$stretchyslider3range[2] +
+                           3L * handles$inputstretchyslider3step,
+                         round((
+                           handles$maxslider3range -
+                             (handles$maxslider3range - handles$minslider3range) *
+                             handles$growSliders
+                         ) / handles$inputstretchyslider3step
+                         ) *
+                           handles$inputstretchyslider3step
+                       )
+                     )
+                     if (handles$maxslider3range>1) {handles$maxslider3range <- 1}
+                     updateSliderInput(
+                       session,
+                       inputId = "stretchyslider3range",
+                       value = input$stretchyslider3range,
+                       max = handles$maxslider3range
+                     )
+                     # updateSliderInput(
+                     #   session,
+                     #   inputId = "slider3",
+                     #   value = handles$slider3value,
+                     #   max = input$stretchyslider3range[2]
+                     # )
+                   }
+                   else # if (handles$minslider3range>0) 
+                     {
+                     handles$minslider3range <- min(
+                       c(
+                         input$stretchyslider3range[1] -
+                           3L * handles$inputstretchyslider3step,
+                         round((
+                           handles$minslider3range +
+                             (handles$maxslider3range - handles$minslider3range) *
+                             handles$growSliders
+                         ) / handles$inputstretchyslider3step
+                         ) *
+                           handles$inputstretchyslider3step
+                       )
+                     )
+                     if (handles$minslider3range<0) {handles$minslider3range <- 0}
+                     updateSliderInput(
+                       session,
+                       inputId = "stretchyslider3range",
+                       value = input$stretchyslider3range,
+                       min = handles$minslider3range
+                     )
+                     # updateSliderInput(
+                     #   session,
+                     #   inputId = "slider3",
+                     #   value = handles$slider3value,
+                     #   min = input$stretchyslider3range[1]
+                     # )
+                   }
+                 }
+                 handles$slider3value <- input$slider3
+               })
+
+  
   # observeEvent (button) pb_mp ----
   observeEvent(eventExpr = input$pb_mp, handlerExpr = {
-    updateSelectInput(session, inputId = "listbox_pole", choices = c(0))
+    updateSelectInput(session, inputId = "listbox_pole", choices = c(0L))
     handles$selectedpole <- NULL
     handles$selectedzero <- NULL
-    handles$poleloc <- c(0)
+    handles$poleloc <- c(0L)
     if (!pracma::isempty(handles$connecttype)) {
       polestring <- which(handles$connecttype == "x")
-      handles$connection[polestring,] <- 0
-      handles$connection[, polestring] <- 0
+      handles$connection[polestring,] <- 0L
+      handles$connection[, polestring] <- 0L
       handles$connecttype[polestring] <- NA
     }
     updateTabsetPanel(session, inputId = "tabPoleZeroEditing", selected = "RealImag")
   })
   
+
+  
   # observeEvent (button) pb_mz ----
   observeEvent(eventExpr = input$pb_mz, handlerExpr = {
-    updateSelectInput(session, inputId = "listbox_zero", choices = c(0))
+    updateSelectInput(session, inputId = "listbox_zero", choices = c(0L))
     handles$selectedzero <- list(XData = NULL, YData = NULL)
-    handles$zeroloc <- c(0)
+    handles$zeroloc <- c(0L)
     if (!pracma::isempty(handles$connecttype)) {
       zerostring <- which(handles$connecttype == "o")
-      handles$connection[zerostring,] <- 0
-      handles$connection[, zerostring] <- 0
+      handles$connection[zerostring,] <- 0L
+      handles$connection[, zerostring] <- 0L
       handles$connecttype[zerostring] <- NA
     }
     updateTabsetPanel(session, inputId = "tabPoleZeroEditing", selected = "RealImag")
@@ -2907,13 +3707,13 @@ server <- shinyServer(function(input, output, session) {
   
   # observeEvent (button) pb_ma ----
   observeEvent(eventExpr = input$pb_ma, handlerExpr = {
-    updateSelectInput(session, inputId = "listbox_pole", choices = c(0))
-    updateSelectInput(session, inputId = "listbox_zero", choices = c(0))
-    updateNumericInput(session, inputId = "edit_gain", value = 1)
+    updateSelectInput(session, inputId = "listbox_pole", choices = c(0L))
+    updateSelectInput(session, inputId = "listbox_zero", choices = c(0L))
+    updateNumericInput(session, inputId = "edit_gain", value = 1L)
     handles$selectedpole <- list(XData = NULL, YData = NULL)
     handles$selectedzero <- list(XData = NULL, YData = NULL)
-    handles$poleloc <- c(0)
-    handles$zeroloc <- c(0)
+    handles$poleloc <- c(0L)
+    handles$zeroloc <- c(0L)
     handles$connection <- NULL
     handles$connecttype <- NULL
     updateTabsetPanel(session, inputId = "tabPoleZeroEditing", selected = "RealImag")
@@ -2938,21 +3738,21 @@ server <- shinyServer(function(input, output, session) {
                    filtb[Re(filtb) < -1e+12] <- -1e+12
                    filta[Re(filta) > 1e+12] <- 1e+12
                    filta[Re(filta) < -1e+12] <- -1e+12
-                   filtb[Im(filtb) > 1e+12] <- Re(filtb) + j * 1e+12
-                   filtb[Im(filtb) < -1e+12] <- Re(filtb) - j * 1e+12
-                   filta[Im(filta) > 1e+12] <- Re(filtb) + j * 1e+12
-                   filta[Im(filta) < -1e+12] <- Re(filtb) - j * 1e+12
+                   filtb[Im(filtb) > 1e+12] <- Re(filtb) + 1i * 1e+12
+                   filtb[Im(filtb) < -1e+12] <- Re(filtb) - 1i * 1e+12
+                   filta[Im(filta) > 1e+12] <- Re(filtb) + 1i * 1e+12
+                   filta[Im(filta) < -1e+12] <- Re(filtb) - 1i * 1e+12
                    rv <- signal::freqz(
                      filtb,
                      filta,
                      region = "whole",
-                     n = 2 ^ 20,
+                     n = 2L ^ 20L,
                      Fs = 2 * pi * input$samplingfreq / 2
                    )
-                   updateNumericInput(session, inputId = "edit_gain", value = 1 / max(Re(rv$h)))
+                   updateNumericInput(session, inputId = "edit_gain", value = 1/ max(Re(rv$h)))
                  }
                  else {
-                   updateNumericInput(session, inputId = "edit_gain", value = 1)
+                   updateNumericInput(session, inputId = "edit_gain", value = 1L)
                  }
                })
   
@@ -2979,74 +3779,73 @@ server <- shinyServer(function(input, output, session) {
                    handles$poleloc <- zpg$pole
                    updateNumericInput(session, inputId = "edit_gain", value = zpg$gain)
                    b <- zpg$gain
-                   length(b) <- 1
+                   length(b) <- 1L
                    }
                  }
                  else if (grepl(
                    "fir1|fir2|remez|spencerFilter|sgolay|Ma|chebwin|kaiser|bartlett|blackman|boxcar|flattopwin|gausswin|hanning|hamming|triang|sinc",
                    chosenFilter
                  )) {
-                   handles$poleloc <- c(0)
+                   handles$poleloc <- c(0L)
                    b <- try(eval(parse(text = chosenFilter)),silent=TRUE)
-                   if (length(b) < 2) {
-                     handles$zeroloc <- c(0)
+                   if (length(b) < 2L) {
+                     handles$zeroloc <- c(0L)
                    }
                    else {
-                     handles$zeroloc <- polyroot(rev(b)) # numerical stability may be an issue for all but low-degree polynomials
+                     handles$zeroloc <- try(polyroot(rev(b)),silent=TRUE) # numerical stability may be an issue for all but low-degree polynomials
                    }
                  }
                  else if (grepl("FftFilter", chosenFilter)) {
-                   handles$poleloc <- c(0)
+                   handles$poleloc <- c(0L)
                    b <- try(eval(parse(text = chosenFilter)),silent=TRUE)
-                   if (length(b) < 2) {
-                     handles$zeroloc <- c(0)
+                   if (length(b) < 2L) {
+                     handles$zeroloc <- c(0L)
                    }
                    else {
-                     handles$zeroloc <- polyroot(rev(b)) # numerical stability may be an issue for all but low-degree polynomials
+                     handles$zeroloc <- try(polyroot(rev(b)),silent=TRUE) # numerical stability may be an issue for all but low-degree polynomials
                    }
                  }
                  else {
                    a <- try(eval(parse(text = paste0(chosenFilter, "$a"))),silent=TRUE)
-                   if (length(a) < 2) {
-                     handles$poleloc <- c(0)
+                   if (length(a) < 2L) {
+                     handles$poleloc <- c(0L)
                    }
                    else {
-                     handles$poleloc <- polyroot(rev(a)) # numerical stability may be an issue for all but low-degree polynomials
+                     handles$poleloc <- try(polyroot(rev(a)),silent=TRUE) # numerical stability may be an issue for all but low-degree polynomials
                    }
                    b <- try(eval(parse(text = paste0(chosenFilter, "$b"))),silent=TRUE)
-                   if (length(b) < 2) {
-                     handles$zeroloc <- c(0)
+                   if (length(b) < 2L) {
+                     handles$zeroloc <- c(0L)
                    }
                    else {
-                     handles$zeroloc <- polyroot(rev(b)) # numerical stability may be an issue for all but low-degree polynomials
+                     handles$zeroloc <- try(polyroot(rev(b)),silent=TRUE) # numerical stability may be an issue for all but low-degree polynomials
                    }
                  }
-                 updateNumericInput(session, inputId = "edit_gain", value = if (abs(b[1]) >=
-                                                                                eps) {
-                   abs(b[1])
-                 }
-                 else {
+                 updateNumericInput(session, inputId = "edit_gain",
+                                    value = if (abs(b[1]) >= eps) { abs(b[1]) } else {
                    filtb <- handlesb()
                    filta <- handlesa()
                    filtb[Re(filtb) > 1e+12] <- 1e+12
                    filtb[Re(filtb) < -1e+12] <- -1e+12
                    filta[Re(filta) > 1e+12] <- 1e+12
                    filta[Re(filta) < -1e+12] <- -1e+12
-                   filtb[Im(filtb) > 1e+12] <- Re(filtb) + j * 1e+12
-                   filtb[Im(filtb) < -1e+12] <- Re(filtb) - j * 1e+12
-                   filta[Im(filta) > 1e+12] <- Re(filtb) + j * 1e+12
-                   filta[Im(filta) < -1e+12] <- Re(filtb) - j * 1e+12
+                   filtb[Im(filtb) > 1e+12] <- Re(filtb) + 1i * 1e+12
+                   filtb[Im(filtb) < -1e+12] <- Re(filtb) - 1i * 1e+12
+                   filta[Im(filta) > 1e+12] <- Re(filtb) + 1i * 1e+12
+                   filta[Im(filta) < -1e+12] <- Re(filtb) - 1i * 1e+12
                    rv <- signal::freqz(
                      filtb,
                      filta,
                      region = "whole",
-                     n = 2 ^ 20,
+                     n = 2L ^ 20L,
                      Fs = 2 * pi * input$samplingfreq / 2
                    )
-                   1 / max(Re(rv$h))
-                 })
-                 updateCheckboxInput(session, inputId = "normalizedMagPlotAmplitude",
-                                     value = TRUE)
+                   1/ max(Re(rv$h))
+                 }
+                 ) # end updateNumericInput
+                 
+                 # updateCheckboxInput(session, inputId = "normalizedMagPlotAmplitude", value = TRUE) # why!?!?!?
+                 
                  updateTextInput(
                    session,
                    inputId = "filenameExport",
@@ -3067,60 +3866,60 @@ server <- shinyServer(function(input, output, session) {
                  Mypoles <- handles$poleloc
                  pL <- length(Mypoles)
                  zL <- length(Myzeros)
-                 if ((pL + zL) > 0)
+                 if ((pL + zL) > 0L)
                    handles$connection <- diag(pL + zL)
                  handles$connecttype <- NULL
-                 if (pL > 0)
-                   for (k in (1:pL)) {
+                 if (pL > 0L)
+                   for (k in (1L:pL)) {
                      handles$connecttype <- c(handles$connecttype, "x")
                    }
-                 if (zL > 0)
-                   for (k in ((pL + 1):(pL + zL))) {
+                 if (zL > 0L)
+                   for (k in ((pL + 1L):(pL + zL))) {
                      handles$connecttype <- c(handles$connecttype, "o")
                    }
                  if (!pracma::isempty(Mypoles)) {
-                   for (ii in (1:pL)) {
+                   for (ii in (1L:pL)) {
                      conjp <- which((round(handlestol * Mypoles) / handlestol) ==
                                       (Conj((
                                         round(handlestol * Mypoles[ii]) / handlestol
                                       ))))
                      if (!pracma::isempty(conjp)) {
-                       handles$connection[ii, conjp] <- 1
+                       handles$connection[ii, conjp] <- 1L
                        polezero1 <-
                          which(
                            round(handlestol * Myzeros) / handlestol ==
                              round(handlestol * Re((
-                               1 / c(Mypoles[ii])
+                               1/ c(Mypoles[ii])
                              ))) / handlestol +
                              round(handlestol * Im((
-                               1 / c(Mypoles[ii])
+                               1/ c(Mypoles[ii])
                              )) * (0 + 1i)) / handlestol
                          )
                        polezero2 <-
                          which(
                            round(handlestol * Myzeros) / handlestol ==
                              round(handlestol * Re((
-                               1 / c(Mypoles[ii])
+                               1/ c(Mypoles[ii])
                              ))) / handlestol -
                              round(handlestol * Im((
-                               1 / c(Mypoles[ii])
+                               1/ c(Mypoles[ii])
                              )) * (0 + 1i)) / handlestol
                          )
                        if (!pracma::isempty(polezero1)) {
-                         handles$connection[ii, pL + polezero1] <- 1
-                         handles$connection[ii, pL + polezero2] <- 1
+                         handles$connection[ii, pL + polezero1] <- 1L
+                         handles$connection[ii, pL + polezero2] <- 1L
                        }
                      }
                    }
                  }
                  if (!pracma::isempty(Myzeros)) {
-                   for (ii in (pL + 1):(pL + zL)) {
+                   for (ii in (pL + 1L):(pL + zL)) {
                      conjz <- which(round(handlestol * Myzeros) / handlestol ==
                                       Conj((
                                         round(handlestol * Myzeros[ii - pL]) / handlestol
                                       )))
                      if (!pracma::isempty(conjz)) {
-                       handles$connection[ii, conjz + pL] <- 1
+                       handles$connection[ii, conjz + pL] <- 1L
                      }
                    }
                  }
@@ -3187,7 +3986,7 @@ server <- shinyServer(function(input, output, session) {
       label = HTML("Ray min,max Limits  (-)&RightTee;&LeftTee;(+)"),
       min = handles$minslider1range,
       max = handles$maxslider1range,
-      value = c(0, 0.5) * input$samplingfreq / 2,
+      value = c(0L, 0.5) * input$samplingfreq / 2,
       step = inputstretchyslider1step,
       ticks = TRUE,
       animate = FALSE,
@@ -3214,8 +4013,7 @@ server <- shinyServer(function(input, output, session) {
       value = handles$slider1value,
       step = inputstretchyslider1step,
       ticks = TRUE,
-      animate = animationOptions(interval = inputslider1animinterval,
-                                 loop = FALSE),
+      animate = animationOptions(interval = inputslider1animinterval, loop = FALSE),
       sep = " "
     )
   })
@@ -3238,7 +4036,7 @@ server <- shinyServer(function(input, output, session) {
       label = HTML("min,max Limits2A  (-)&RightTee;&LeftTee;(+)"),
       min = handles$minslider2Arange,
       max = handles$maxslider2Arange,
-      value = c(0, 0.5),
+      value = c(0L, 0.5),
       step = input$stretchyslider2Astep,
       ticks = TRUE,
       animate = FALSE,
@@ -3253,7 +4051,7 @@ server <- shinyServer(function(input, output, session) {
       min = handles$minslider2Aaniminterval,
       max = handles$maxslider2Aaniminterval,
       value = 350,
-      step = 50,
+      step = 50L,
       ticks = TRUE,
       animate = FALSE,
       sep = " "
@@ -3299,7 +4097,7 @@ server <- shinyServer(function(input, output, session) {
       label = HTML("min,max Limits2B  (-)&RightTee;&LeftTee;(+)"),
       min = handles$minslider2Brange,
       max = handles$maxslider2Brange,
-      value = c(0, 0.5),
+      value = c(0L, 0.5),
       step = input$stretchyslider2Bstep,
       ticks = TRUE,
       animate = FALSE,
@@ -3314,7 +4112,7 @@ server <- shinyServer(function(input, output, session) {
       min = handles$minslider2Baniminterval,
       max = handles$maxslider2Baniminterval,
       value = 350,
-      step = 50,
+      step = 50L,
       ticks = TRUE,
       animate = FALSE,
       sep = " "
@@ -3399,7 +4197,7 @@ server <- shinyServer(function(input, output, session) {
                      handles$maxslider1range <- max(
                        c(
                          input$stretchyslider1range[2] +
-                           3 * inputstretchyslider1step,
+                           3L * inputstretchyslider1step,
                          round((
                            handles$maxslider1range -
                              (handles$maxslider1range - handles$minslider1range) *
@@ -3425,7 +4223,7 @@ server <- shinyServer(function(input, output, session) {
                      handles$minslider1range <- min(
                        c(
                          input$stretchyslider1range[1] -
-                           3 * inputstretchyslider1step,
+                           3L * inputstretchyslider1step,
                          round((
                            handles$minslider1range +
                              (handles$maxslider1range - handles$minslider1range) *
@@ -3459,13 +4257,13 @@ server <- shinyServer(function(input, output, session) {
                    else {
                      tgt <- input$listbox_zero
                    }
-                   matchpoint <- match(tgt, handles$zeroloc, nomatch = -1)
-                   if ((matchpoint > 0) &&
+                   matchpoint <- match(tgt, handles$zeroloc, nomatch = -1L)
+                   if ((matchpoint > 0L) &&
                        (matchpoint <= length(handles$zeroloc))) {
                      if (input$tabPoleZeroEditing == "rtheta") {
                        if ((is.null(input$edit_currentSelectionText)) ||
                            (is.na(input$edit_currentSelectionText))) {
-                         valueToReplace <- input$slider2A * exp(j * input$slider2B)
+                         valueToReplace <- input$slider2A * exp(1i * input$slider2B)
                        }
                        else {
                          valueToReplace <-
@@ -3479,14 +4277,14 @@ server <- shinyServer(function(input, output, session) {
                          n2 <- input$slider2B
                          if (is.infinite(Im(n2))) {
                            valueToReplace <- complex(1, n1, switch(sign(n2) +
-                                                                     2,-Inf, 0, Inf))
+                                                                     2L,-Inf, 0, Inf))
                          }
                          else if (is.infinite(Re(n2))) {
                            valueToReplace <- complex(1, n1, switch(sign(n2) +
-                                                                     2,-Inf, 0, Inf))
+                                                                     2L,-Inf, 0, Inf))
                          }
                          else {
-                           valueToReplace <- n1 + j * n2
+                           valueToReplace <- n1 + 1i * n2
                          }
                        }
                        else {
@@ -3496,7 +4294,7 @@ server <- shinyServer(function(input, output, session) {
                      }
                    }
                    if ((Mod(valueToReplace) > 1e-06)) {
-                     if (abs(Im(valueToReplace)) == 0) {
+                     if (abs(Im(valueToReplace)) == 0L) { # isTRUE(all.equal( #
                        valueToReplace <- Re(valueToReplace)
                      }
                      handles$zeroloc[matchpoint] <- valueToReplace
@@ -3510,7 +4308,7 @@ server <- shinyServer(function(input, output, session) {
                    else {
                      showNotification(
                        ui = "Value is too small...",
-                       duration = 3,
+                       duration = 3L,
                        closeButton = TRUE,
                        type = "message"
                      )
@@ -3576,7 +4374,7 @@ server <- shinyServer(function(input, output, session) {
                      handles$maxslider2Arange <- max(
                        c(
                          input$stretchyslider2Arange[2] +
-                           3 * input$stretchyslider2Astep,
+                           3L * input$stretchyslider2Astep,
                          round((
                            handles$maxslider2Arange -
                              (handles$maxslider2Arange - handles$minslider2Arange) *
@@ -3603,7 +4401,7 @@ server <- shinyServer(function(input, output, session) {
                      handles$minslider2Arange <- min(
                        c(
                          input$stretchyslider2Arange[1] -
-                           3 * input$stretchyslider2Astep,
+                           3L * input$stretchyslider2Astep,
                          round((
                            handles$minslider2Arange +
                              (handles$maxslider2Arange - handles$minslider2Arange) *
@@ -3644,9 +4442,9 @@ server <- shinyServer(function(input, output, session) {
                      value = input$stretchyslider2Astep,
                      max = handles$maxslider2Astep
                    )
-                   if (10 * handles$minslider2Astep < handles$maxslider2Astep / (1 +
+                   if (10L * handles$minslider2Astep < handles$maxslider2Astep / (1L +
                                                                                  handles$growSliders)) {
-                     handles$minslider2Astep <- 10 * handles$minslider2Astep
+                     handles$minslider2Astep <- 10L * handles$minslider2Astep
                    }
                    updateSliderInput(
                      session,
@@ -3666,7 +4464,7 @@ server <- shinyServer(function(input, output, session) {
                    )
                    handles$maxslider2Astep <- max(c(
                      input$stretchyslider2Astep +
-                       3 * 1e-06,
+                       3L * 1e-06,
                      round((
                        handles$maxslider2Astep - (handles$maxslider2Astep -
                                                     handles$minslider2Astep) * handles$growSliders
@@ -3741,7 +4539,7 @@ server <- shinyServer(function(input, output, session) {
                      handles$maxslider2Brange <- max(
                        c(
                          input$stretchyslider2Brange[2] +
-                           3 * input$stretchyslider2Bstep,
+                           3L * input$stretchyslider2Bstep,
                          round((
                            handles$maxslider2Brange -
                              (handles$maxslider2Brange - handles$minslider2Brange) *
@@ -3768,7 +4566,7 @@ server <- shinyServer(function(input, output, session) {
                      handles$minslider2Brange <- min(
                        c(
                          input$stretchyslider2Brange[1] -
-                           3 * input$stretchyslider2Bstep,
+                           3L * input$stretchyslider2Bstep,
                          round((
                            handles$minslider2Brange +
                              (handles$maxslider2Brange - handles$minslider2Brange) *
@@ -3809,9 +4607,9 @@ server <- shinyServer(function(input, output, session) {
                      value = input$stretchyslider2Bstep,
                      max = handles$maxslider2Bstep
                    )
-                   if (10 * handles$minslider2Bstep < handles$maxslider2Bstep / (1 +
+                   if (10L * handles$minslider2Bstep < handles$maxslider2Bstep / (1L +
                                                                                  handles$growSliders)) {
-                     handles$minslider2Bstep <- 10 * handles$minslider2Bstep
+                     handles$minslider2Bstep <- 10L * handles$minslider2Bstep
                    }
                    updateSliderInput(
                      session,
@@ -3831,7 +4629,7 @@ server <- shinyServer(function(input, output, session) {
                    )
                    handles$maxslider2Bstep <- max(c(
                      input$stretchyslider2Bstep +
-                       3 * 1e-06,
+                       3L * 1e-06,
                      round((
                        handles$maxslider2Bstep - (handles$maxslider2Bstep -
                                                     handles$minslider2Bstep) * handles$growSliders
@@ -3853,9 +4651,9 @@ server <- shinyServer(function(input, output, session) {
       label = HTML("max X,Y-Limits, passband   (-)&RightTee;&LeftTee;(+)"),
       min = handles$minZoomlimXpassband,
       max = handles$maxZoomlimXpassband,
-      value = c(0, 0.5) * input$samplingfreq / 2,
+      value = c(0L, 0.5) * input$samplingfreq / 2,
       step = handles$stepZoomlimXpassband,
-      round = -2,
+      round = -2L,
       ticks = TRUE,
       animate = animationOptions(interval = 300,
                                  loop = FALSE),
@@ -3869,9 +4667,9 @@ server <- shinyServer(function(input, output, session) {
       label = NULL,
       min = handles$minZoomlimYpassband,
       max = handles$maxZoomlimYpassband,
-      value = c(-3, 0),
+      value = c(-3L, 0L),
       step = handles$stepZoomlimYpassband,
-      round = -2,
+      round = -2L,
       ticks = TRUE,
       animate = animationOptions(interval = 300,
                                  loop = FALSE),
@@ -3885,7 +4683,7 @@ server <- shinyServer(function(input, output, session) {
       label = HTML("max X,Y-Limits, stopband   (-)&RightTee;&LeftTee;(+)"),
       min = handles$minZoomlimXstopband,
       max = handles$maxZoomlimXstopband,
-      value = c(0.5, 1) * input$samplingfreq / 2,
+      value = c(0.5, 1L) * input$samplingfreq / 2,
       step = handles$stepZoomlimXstopband,
       ticks = TRUE,
       animate = animationOptions(interval = 300, loop = FALSE),
@@ -3899,9 +4697,9 @@ server <- shinyServer(function(input, output, session) {
       label = NULL,
       min = handles$minZoomlimYstopband,
       max = handles$maxZoomlimYstopband,
-      value = c(-130,-60),
+      value = c(-130L,-60L),
       step = handles$stepZoomlimYstopband,
-      round = 1,
+      round = 1L,
       ticks = TRUE,
       animate = animationOptions(interval = 300,
                                  loop = FALSE),
@@ -4260,20 +5058,20 @@ server <- shinyServer(function(input, output, session) {
   observeEvent(eventExpr = input$freqaxisunits,
                handlerExpr = {
                  if (input$freqaxisunits == "zero2one") {
-                   updateNumericInput(session, inputId = "samplingfreq", value = 2)
-                   handles$minZoomlimXpassband <- 0
-                   handles$maxZoomlimXpassband <- 1
-                   handles$minZoomlimXstopband <- 0
-                   handles$maxZoomlimXstopband <- 1
-                   handles$minslider1range <- 0
-                   handles$maxslider1range <- 1
+                   updateNumericInput(session, inputId = "samplingfreq", value = 2.0)
+                   handles$minZoomlimXpassband <- 0.0
+                   handles$maxZoomlimXpassband <- 1.0
+                   handles$minZoomlimXstopband <- 0.0
+                   handles$maxZoomlimXstopband <- 1.0
+                   handles$minslider1range <- 0.0
+                   handles$maxslider1range <- 1.0
                    slider1value <- 0.5
                    updateSliderInput(
                      session,
                      inputId = "zoomlimXpassband",
-                     value = c(0,
+                     value = c(0.0,
                                0.5),
-                     min = 0,
+                     min = 0.0,
                      max = handles$maxZoomlimXpassband,
                      step = 0.05
                    )
@@ -4281,70 +5079,67 @@ server <- shinyServer(function(input, output, session) {
                      session,
                      inputId = "zoomlimXstopband",
                      value = c(0.5,
-                               1),
-                     min = 0,
-                     max = 1,
+                               1.0),
+                     min = 0.0,
+                     max = 1.0,
                      step = 0.05
                    )
                  }
                  else if (input$freqaxisunits == "zero2pi") {
-                   updateNumericInput(session, inputId = "samplingfreq", value = 2 *
-                                        pi)
+                   updateNumericInput(session, inputId = "samplingfreq", 
+                                      value = 2 * pi)
                    handles$maxZoomlimXpassband <- pi
                    updateSliderInput(
                      session,
                      inputId = "zoomlimXpassband",
-                     value = c(0,
-                               pi /
-                                 2),
-                     min = 0,
+                     value = c(0.0,
+                               pi / 2),
+                     min = 0L,
                      max = handles$maxZoomlimXpassband,
                      step = pi / 12
                    )
                    updateSliderInput(
                      session,
                      inputId = "zoomlimXstopband",
-                     value = c(0,
-                               pi /
-                                 2),
-                     min = 0,
+                     value = c(0.0,
+                               pi / 2),
+                     min = 0L,
                      max = pi,
                      step = pi / 12
                    )
                  }
                  else if (input$freqaxisunits == "zero22pi") {
-                   updateNumericInput(session, inputId = "samplingfreq", value = 4 *
-                                        pi)
+                   updateNumericInput(session, inputId = "samplingfreq", 
+                                      value = 4L * pi)
                    updateCheckboxInput(session, inputId = "twosidedFFT", value = FALSE)
                    updateCheckboxInput(session, inputId = "FFTshifted", value = FALSE)
                  }
                  else if (input$freqaxisunits == "zero2half") {
                    updateNumericInput(session,
                                       inputId = "samplingfreq",
-                                      value = 1 *
-                                        input$samplingfreq / 2)
+                                      value = 1L * input$samplingfreq / 2)
                  }
                  else if (input$freqaxisunits == "zero2piby2") {
                    updateNumericInput(session, inputId = "samplingfreq", value = pi)
                  }
                  else if ((input$freqaxisunits == "zero2fs") ||
-                          (input$freqaxisunits ==
-                           "zero2fsby2")) {
+                          (input$freqaxisunits == "zero2fsby2")
+                          ) {
                    updateNumericInput(session, inputId = "samplingfreq", value = 44100)
-                   handles$minZoomlimXpassband <- 0
+                   handles$minZoomlimXpassband <- 0L
                    handles$maxZoomlimXpassband <- 44100 / 2
-                   handles$minZoomlimXstopband <- 0
+                   handles$minZoomlimXstopband <- 0L
                    handles$maxZoomlimXstopband <- 44100 / 2
-                   handles$minslider1range <- 0
+                   handles$minslider1range <- 0L
                    handles$maxslider1range <- 44100
                    slider1value <- (44100 / 2) / 2
                    updateSliderInput(
                      session,
                      inputId = "zoomlimXpassband",
-                     value = c(0,
+                     value = c(0L,
                                0.5) * input$samplingfreq /
-                       2,
-                     min = 0,
+                       2L,
+                     min = 0L,
                      max = handles$maxZoomlimXpassband,
                      step = 0.05
                    )
@@ -4352,9 +5147,9 @@ server <- shinyServer(function(input, output, session) {
                      session,
                      inputId = "zoomlimXstopband",
                      value = c(0.5,
-                               1) * input$samplingfreq /
-                       2,
-                     min = 0,
+                               1L) * input$samplingfreq /
+                       2L,
+                     min = 0L,
                      max = input$samplingfreq / 2,
                      step = 0.05
                    )
@@ -4377,11 +5172,11 @@ server <- shinyServer(function(input, output, session) {
     if (is.null(inpFile))
       return(NULL)
     if (input$textbinaryformatImport == "csv") {
-      rawList <- readLines(con = inpFile$datapath)
+      rawList <- readLines(con = inpFile$name) # inpFile$datapath) # input$filecoordsImport$datapath)
       Npoles <- match("#zerolocs", rawList) - match("#polelocs",
-                                                    rawList) - 1
+                                                    rawList) - 1L
       importedPoles <- scan(
-        file = inpFile$datapath,
+        file = inpFile$name, # inpFile$datapath, # input$filecoordsImport$datapath,
         n = Npoles,
         quiet = TRUE,
         what = if (input$coordsevaluateImport) {
@@ -4395,7 +5190,7 @@ server <- shinyServer(function(input, output, session) {
       )
       importedZeros <-
         scan(
-          file = inpFile$datapath,
+          file = inpFile$name, # inpFile$datapath, # input$filecoordsImport$datapath,
           skip = match("#zerolocs",
                        rawList),
           quiet = TRUE,
@@ -4415,22 +5210,41 @@ server <- shinyServer(function(input, output, session) {
       length(importedZeros) <- maxlengthimported
       print(cbind(Zeros = importedZeros, Poles = importedPoles),
             na.print = "")
+      # close(inpFile$datapath)
     }
     else if (input$textbinaryformatImport == "bin") {
-      zz <- file(inpFile$datapath, open = "rb")
+      # as a quick-check:
+      # cat(file=stderr(),"input$filecoordsImport$datapath:", input$filecoordsImport$datapath,".\n")
+      zz <- file(description = inpFile$name, open = "rb") # input$filecoordsImport$datapath, open = "rb")
+      print(readBin(
+            con = zz,
+            what = complex(),
+            n = 20L # (maximal) number of records to be read
+          ))
       close(zz)
     }
     else if (input$textbinaryformatImport == "RData") {
-      load(file = inpFile$datapath, verbose = TRUE)
+      # as a quick-check:
+      # cat(file=stderr(),input$filecoordsImport$datapath,".\n")
+      load(file = inpFile$name) # input$filecoordsImport$datapath #, verbose = TRUE) # inpFile$datapath, verbose = TRUE)
+      print(cbind(Zeros = myzeroscopy, Poles = mypolescopy),
+                  na.print = "")
     }
     else if (input$textbinaryformatImport == "mat") {
-      data <- R.matlab::readMat(inpFile$datapath)
+      # as a quick-check:
+      # cat(file=stderr(),input$filecoordsImport$datapath,".\n")
+      data <- R.matlab::readMat(con = inpFile$name) # input$filecoordsImport$datapath) # inpFile$datapath) # Returns a named-list structure containing all variables in the MAT file structure
+      print(data)
     }
     else if (input$textbinaryformatImport == "yml") {
-      data <- yaml::yaml.load_file(inpFile$datapath)
-      unlink(inpFile$datapath)
+      # cat(file=stderr(),input$filecoordsImport$datapath,".\n")
+      data <- yaml::yaml.load_file(input = inpFile$name) # input$filecoordsImport$datapath) # inpFile$datapath)
+      print(cbind(Zeros=data$myzeroscopy, Poles=data$mypolescopy),
+            na.print = "")
     }
-  })
+    unlink(input$filecoordsImport$datapath) # inpFile$datapath)
+  }) # end output$coordsfilecontentsPrint2Import
+  
   observeEvent(eventExpr = c(input$pzplot_dblclick),
                handlerExpr = {
                  Myhover <- input$pzplot_hover
@@ -4441,9 +5255,9 @@ server <- shinyServer(function(input, output, session) {
                    yImag = c(
                      Im(handles$poleloc), Im(handles$zeroloc)
                    )), row.names = c(paste0("p",
-                                            1:length(
+                                            1L:length(
                                               handles$poleloc
-                                            )), paste0("z", 1:length(
+                                            )), paste0("z", 1L:length(
                                               handles$zeroloc
                                             ))))
                  point <-
@@ -4452,11 +5266,11 @@ server <- shinyServer(function(input, output, session) {
                      coordinfo = input$pzplot_dblclick,
                      xvar = "xReal",
                      yvar = "yImag",
-                     threshold = 7,
-                     maxpoints = 1,
+                     threshold = 7L,
+                     maxpoints = 1L,
                      addDist = TRUE
                    )
-                 if (!(handles$inDragMode) && (NROW(point) == 0))
+                 if (!(handles$inDragMode) && (NROW(point) == 0L))
                    return(NULL)
                  if (handles$inDragMode) {
                    handles$inDragMode <- FALSE
@@ -4488,9 +5302,9 @@ server <- shinyServer(function(input, output, session) {
                  }
                  else {
                    showNotification(
-                     ui = paste0("Point [", point[1, 1], ", ",
-                                 point[1, 2], "j] is now selected..."),
-                     duration = 3,
+                     ui = paste0("Point [", point[1L, 1], ", ",
+                                 point[1L, 2], "j] is now selected..."),
+                     duration = 3L,
                      closeButton = TRUE,
                      type = "warning"
                    )
@@ -4499,27 +5313,27 @@ server <- shinyServer(function(input, output, session) {
                    x <- currentpt[1]
                    y <- currentpt[2]
                    if ("real_motionT" %in% input$DragLockGrp) {
-                     y <- 0
+                     y <- 0L
                    }
                    if ("circular_motionT" %in% input$LockCoordsPolarGrp) {
                      handles$circular_radius <- sqrt(x * x + y * y)
                      currenttheta <- atan2(y, x)
                      x <- handles$circular_radius * cos(currenttheta)
                      y <- handles$circular_radius * sin(currenttheta)
-                     handleslinerc$xdata <- handles$circular_radius * sin(seq(0,
+                     handleslinerc$xdata <- handles$circular_radius * sin(seq(0L,
                                                                               2 * pi, by = 2 * pi /
-                                                                                20))
-                     handleslinerc$ydata <- handles$circular_radius * cos(seq(0,
+                                                                                20L))
+                     handleslinerc$ydata <- handles$circular_radius * cos(seq(0L,
                                                                               2 * pi, by = 2 * pi /
-                                                                                20))
+                                                                                20L))
                    }
                    if ("radial_motionT" %in% input$LockCoordsPolarGrp) {
                      handles$radial_theta <- atan2(y, x)
                      r <- sqrt(x * x + y * y)
                      z <- c(cos(handles$radial_theta),
                             sin(handles$radial_theta))
-                     handleslinerr$xdata <- c(0, 2 * z[1])
-                     handleslinerr$ydata <- c(0, 2 * z[2])
+                     handleslinerr$xdata <- c(0L, 2L * z[1])
+                     handleslinerr$ydata <- c(0L, 2L * z[2])
                      x <- r * z[1]
                      y <- r * z[2]
                    }
@@ -4529,10 +5343,10 @@ server <- shinyServer(function(input, output, session) {
                    ), yImag = c(
                      Im(handles$poleloc), Im(handles$zeroloc)
                    )),
-                   row.names = c(paste0("p", 1:length(
+                   row.names = c(paste0("p", 1L:length(
                      handles$poleloc
                    )), paste0("z",
-                              1:length(
+                              1L:length(
                                 handles$zeroloc
                               ))))
                    closestRowsToClickpoint <-
@@ -4541,17 +5355,17 @@ server <- shinyServer(function(input, output, session) {
                        coordinfo = input$pzplot_hover,
                        xvar = "xReal",
                        yvar = "yImag",
-                       threshold = 7
+                       threshold = 7L
                      )
                    if (!pracma::isempty(closestRowsToClickpoint)) {
-                     if ((NROW(closestRowsToClickpoint) > 0) &&
+                     if ((NROW(closestRowsToClickpoint) > 0L) &&
                          (startsWith(row.names(closestRowsToClickpoint)[1],
                                      "z"))) {
                        indexOfClickedPoleOrZeroWithinEntireSet <-
                          pracma::str2num(substring(
-                           row.names(closestRowsToClickpoint[1,]),
-                           first = 2,
-                           last = nchar(closestRowsToClickpoint[1,])
+                           row.names(closestRowsToClickpoint[1L,]),
+                           first = 2L,
+                           last = nchar(closestRowsToClickpoint[1L,])
                          )) + length(handles$poleloc)
                        handles$subscriptOfClickedPoleOrZero <-
                          indexOfClickedPoleOrZeroWithinEntireSet -
@@ -4559,7 +5373,7 @@ server <- shinyServer(function(input, output, session) {
                        polestring <- which(handles$connecttype == "x")
                        zerostring <- which(handles$connecttype == "o")
                        theseAreConnected <-
-                         which(handles$connection[zerostring[handles$subscriptOfClickedPoleOrZero],] != 0)
+                         which(handles$connection[zerostring[handles$subscriptOfClickedPoleOrZero],] != 0L)
                        theseAreConnected2 <-
                          setdiff(intersect(zerostring, theseAreConnected),
                                  zerostring[indexOfClickedPoleOrZeroWithinEntireSet])
@@ -4576,7 +5390,7 @@ server <- shinyServer(function(input, output, session) {
                          sort(intersect(polestring, theseAreConnected))
                        poleconnect <- NULL
                        if (!pracma::isempty(temppoleNumber)) {
-                         for (i in (1:(length(temppoleNumber)))) {
+                         for (i in (1L:(length(temppoleNumber)))) {
                            poleconnect <- c(poleconnect,
                                             which(polestring ==
                                                     temppoleNumber(i)))
@@ -4596,27 +5410,27 @@ server <- shinyServer(function(input, output, session) {
                    x <- currentpt[1]
                    y <- currentpt[2]
                    if ("real_motionT" %in% input$DragLockGrp) {
-                     y <- 0
+                     y <- 0L
                    }
                    if ("circular_motionT" %in% input$LockCoordsPolarGrp) {
                      handles$circular_radius <- sqrt(x * x + y * y)
                      currenttheta <- atan2(y, x)
                      x <- handles$circular_radius * cos(currenttheta)
                      y <- handles$circular_radius * sin(currenttheta)
-                     handleslinerc$xdata <- handles$circular_radius * sin(seq(0,
+                     handleslinerc$xdata <- handles$circular_radius * sin(seq(0L,
                                                                               2 * pi, by = 2 * pi /
-                                                                                20))
-                     handleslinerc$ydata <- handles$circular_radius * cos(seq(0,
+                                                                                20L))
+                     handleslinerc$ydata <- handles$circular_radius * cos(seq(0L,
                                                                               2 * pi, by = 2 * pi /
-                                                                                20))
+                                                                                20L))
                    }
                    if ("radial_motionT" %in% input$LockCoordsPolarGrp) {
                      handles$radial_theta <- atan2(y, x)
                      r <- sqrt(x * x + y * y)
                      z <- c(cos(handles$radial_theta),
                             sin(handles$radial_theta))
-                     handleslinerr$xdata <- c(0, 2 * z[1])
-                     handleslinerr$ydata <- c(0, 2 * z[2])
+                     handleslinerr$xdata <- c(0L, 2L * z[1])
+                     handleslinerr$ydata <- c(0L, 2L * z[2])
                      x <- r * z[1]
                      y <- r * z[2]
                    }
@@ -4626,10 +5440,10 @@ server <- shinyServer(function(input, output, session) {
                    ), yImag = c(
                      Im(handles$poleloc), Im(handles$zeroloc)
                    )),
-                   row.names = c(paste0("p", 1:length(
+                   row.names = c(paste0("p", 1L:length(
                      handles$poleloc
                    )), paste0("z",
-                              1:length(
+                              1L:length(
                                 handles$zeroloc
                               ))))
                    closestRowsToClickpoint <-
@@ -4638,20 +5452,20 @@ server <- shinyServer(function(input, output, session) {
                        coordinfo = input$pzplot_hover,
                        xvar = "xReal",
                        yvar = "yImag",
-                       threshold = 7
+                       threshold = 7L
                      )
                    str(closestRowsToClickpoint)
                    if (!(pracma::isempty(closestRowsToClickpoint)) &&
                        (!anyNA(closestRowsToClickpoint)) &&
                        (!("NA" %in% row.names(closestRowsToClickpoint)[1]))) {
-                     if ((NROW(closestRowsToClickpoint) > 0) &&
+                     if ((NROW(closestRowsToClickpoint) > 0L) &&
                          (startsWith(row.names(closestRowsToClickpoint)[1],
                                      "z"))) {
                        indexOfClickedPoleOrZeroWithinEntireSet <-
                          pracma::str2num(substring(
-                           row.names(closestRowsToClickpoint[1,]),
-                           first = 2,
-                           last = nchar(closestRowsToClickpoint[1,])
+                           row.names(closestRowsToClickpoint[1L,]),
+                           first = 2L,
+                           last = nchar(closestRowsToClickpoint[1L,])
                          )) + length(handles$poleloc)
                        handles$subscriptOfClickedPoleOrZero <-
                          indexOfClickedPoleOrZeroWithinEntireSet -
@@ -4659,7 +5473,7 @@ server <- shinyServer(function(input, output, session) {
                        polestring <- which(handles$connecttype == "x")
                        zerostring <- which(handles$connecttype == "o")
                        theseAreConnected <-
-                         which(handles$connection[zerostring[handles$subscriptOfClickedPoleOrZero],] != 0)
+                         which(handles$connection[zerostring[handles$subscriptOfClickedPoleOrZero],] != 0L)
                        theseAreConnected2 <-
                          setdiff(intersect(zerostring, theseAreConnected),
                                  zerostring[indexOfClickedPoleOrZeroWithinEntireSet])
@@ -4676,7 +5490,7 @@ server <- shinyServer(function(input, output, session) {
                          sort(intersect(polestring, theseAreConnected))
                        poleconnect <- NULL
                        if (!pracma::isempty(temppoleNumber)) {
-                         for (i in (1:(length(temppoleNumber)))) {
+                         for (i in (1L:(length(temppoleNumber)))) {
                            poleconnect <- c(poleconnect,
                                             which(polestring ==
                                                     temppoleNumber(i)))
@@ -4692,10 +5506,10 @@ server <- shinyServer(function(input, output, session) {
                            y * (0 + 1i)
                          tempstring <- handles$zeroloc
                          tempstring <-
-                           c(tempstring[1:(subscriptOfClickedPoleOrZero -
-                                             1)], x + y * (0 + 1i), tempstring[seq(
+                           c(tempstring[1L:(subscriptOfClickedPoleOrZero -
+                                             1L)], x + y * (0 + 1i), tempstring[seq(
                                                from = (subscriptOfClickedPoleOrZero +
-                                                         1),
+                                                         1L),
                                                to = length(tempstring)
                                              )])
                          handles$selectedzero <- list(XData = x, YData = y)
@@ -4704,8 +5518,8 @@ server <- shinyServer(function(input, output, session) {
                            z1 <- outputParametersFromStartdragToMovepez_zeroconnect[1]
                            handles$zeroloc[z1] <- x - y * (0 + 1i)
                            tempstring <-
-                             c(tempstring[1:(z1 - 1)], x - y * (0 + 1i),
-                               tempstring[seq(from = (z1 + 1),
+                             c(tempstring[1L:(z1 - 1L)], x - y * (0 + 1i),
+                               tempstring[seq(from = (z1 + 1L),
                                               to = length(tempstring))])
                            handles$selectedzero <-
                              list(XData = c(x, x), YData = c(y,-y))
@@ -4725,31 +5539,31 @@ server <- shinyServer(function(input, output, session) {
                          handlestol <- 0.01
                          outputParametersFromStartdragToMovepez_poleconnect <-
                            poleconnect
-                         if (Mod(Im((1 / c(
+                         if (Mod(Im((1/ c(
                            handles$zeroloc[handles$subscriptOfClickedPoleOrZero]
                          ))) -
                          Im(handles$poleloc[outputParametersFromStartdragToMovepez_poleconnect[1]])) <
                          handlestol) {
-                           outputParametersFromStartdragToMovepez_type <- 1
+                           outputParametersFromStartdragToMovepez_type <- 1L
                          }
                          else {
-                           outputParametersFromStartdragToMovepez_type <- 0
+                           outputParametersFromStartdragToMovepez_type <- 0L
                          }
-                         if ((x ^ 2 + y ^ 2) != 1) {
+                         if ((x ^ 2L + y ^ 2L) != 1L) {
                            x <- x + 1e-06
                          }
-                         tempx <- Re(1 / c(x + y * (0 + 1i)))
-                         tempy <- Im(1 / c(x + y * (0 + 1i)))
+                         tempx <- Re(1/ c(x + y * (0 + 1i)))
+                         tempy <- Im(1/ c(x + y * (0 + 1i)))
                          subscriptOfClickedPoleOrZero <-
                            handles$subscriptOfClickedPoleOrZero
                          handles$zeroloc[subscriptOfClickedPoleOrZero] <- x +
                            y * (0 + 1i)
                          tempstring <- handles$zeroloc
                          tempstring <-
-                           c(tempstring[1:(subscriptOfClickedPoleOrZero -
-                                             1)], x + y * (0 + 1i), tempstring[seq(
+                           c(tempstring[1L:(subscriptOfClickedPoleOrZero -
+                                             1L)], x + y * (0 + 1i), tempstring[seq(
                                                from = (subscriptOfClickedPoleOrZero +
-                                                         1),
+                                                         1L),
                                                to = length(tempstring)
                                              )])
                          handles$selectedzero <- list(XData = x, YData = y)
@@ -4757,8 +5571,8 @@ server <- shinyServer(function(input, output, session) {
                            z1 <- outputParametersFromStartdragToMovepez_zeroconnect[1]
                            handles$zeroloc[z1] <- x - y * (0 + 1i)
                            tempstring <-
-                             c(tempstring[1:(z1 - 1)], x + y * (0 + 1i),
-                               tempstring[seq(from = (z1 + 1),
+                             c(tempstring[1L:(z1 - 1L)], x + y * (0 + 1i),
+                               tempstring[seq(from = (z1 + 1L),
                                               to = length(tempstring))])
                            handles$selectedzero <-
                              list(XData = c(x, x), YData = c(y,-y))
@@ -4767,21 +5581,21 @@ server <- shinyServer(function(input, output, session) {
                                            choices = tempstring)
                          tempstring <- handles$poleloc
                          if (outputParametersFromStartdragToMovepez_type ==
-                             1) {
+                             1L) {
                            p1 <- outputParametersFromStartdragToMovepez_poleconnect[1]
                            handles$poleloc[p1] <- tempx + tempy * (0 + 1i)
                            tempstring <-
-                             c(tempstring[1:(p1 - 1)], tempx + tempy *
-                                 (0 + 1i), tempstring[seq(from = (p1 + 1),
+                             c(tempstring[1L:(p1 - 1L)], tempx + tempy *
+                                 (0 + 1i), tempstring[seq(from = (p1 + 1L),
                                                           to = length(tempstring))])
                            handles$selectedpole <-
                              list(XData = tempx, YData = tempy)
                            if (length(outputParametersFromStartdragToMovepez_poleconnect) >
-                               1) {
+                               1L) {
                              p2 <- outputParametersFromStartdragToMovepez_poleconnect[2]
                              handles$poleloc[p2] <- tempx - tempy * (0 + 1i)
-                             tempstring <- c(tempstring[1:(p2 - 1)], tempx -
-                                               tempy * (0 + 1i), tempstring[seq(from = (p2 + 1),
+                             tempstring <- c(tempstring[1L:(p2 - 1L)], tempx -
+                                               tempy * (0 + 1i), tempstring[seq(from = (p2 + 1L),
                                                                                 to = length(tempstring))])
                              handles$selectedpole <-
                                list(XData = c(tempx, tempx),
@@ -4792,17 +5606,17 @@ server <- shinyServer(function(input, output, session) {
                            p1 <- outputParametersFromStartdragToMovepez_poleconnect[1]
                            handles$poleloc[p1] <- tempx - tempy * (0 + 1i)
                            tempstring <-
-                             c(tempstring[1:(p1 - 1)], tempx - tempy *
-                                 (0 + 1i), tempstring[seq(from = (p1 + 1),
+                             c(tempstring[1L:(p1 - 1L)], tempx - tempy *
+                                 (0 + 1i), tempstring[seq(from = (p1 + 1L),
                                                           to = length(tempstring))])
                            handles$selectedpole <-
                              list(XData = tempx, YData = -tempy)
                            if (length(outputParametersFromStartdragToMovepez_poleconnect) >
-                               1) {
+                               1L) {
                              p2 <- outputParametersFromStartdragToMovepez_poleconnect[2]
                              handles$poleloc[p2] <- tempx + tempy * (0 + 1i)
-                             tempstring <- c(tempstring[1:(p2 - 1)], tempx +
-                                               tempy * (0 + 1i), tempstring[seq(from = (p2 + 1),
+                             tempstring <- c(tempstring[1L:(p2 - 1L)], tempx +
+                                               tempy * (0 + 1i), tempstring[seq(from = (p2 + 1L),
                                                                                 to = length(tempstring))])
                              handles$selectedpole <-
                                list(XData = c(tempx, tempx),
@@ -4813,21 +5627,21 @@ server <- shinyServer(function(input, output, session) {
                                            choices = tempstring)
                        }
                      }
-                     else if ((NROW(closestRowsToClickpoint) > 0) &&
+                     else if ((NROW(closestRowsToClickpoint) > 0L) &&
                               (startsWith(row.names(closestRowsToClickpoint)[1],
                                           "p"))) {
                        indexOfClickedPoleOrZeroWithinEntireSet <-
                          pracma::str2num(substring(
-                           row.names(closestRowsToClickpoint[1,]),
-                           first = 2,
-                           last = nchar(closestRowsToClickpoint[1,])
+                           row.names(closestRowsToClickpoint[1L,]),
+                           first = 2L,
+                           last = nchar(closestRowsToClickpoint[1L,])
                          ))
                        handles$subscriptOfClickedPoleOrZero <-
                          indexOfClickedPoleOrZeroWithinEntireSet
                        zerostring <- which(handles$connecttype == "o")
                        polestring <- which(handles$connecttype == "x")
                        theseAreConnected <-
-                         which(handles$connection[polestring[indexOfClickedPoleOrZeroWithinEntireSet],] != 0)
+                         which(handles$connection[polestring[indexOfClickedPoleOrZeroWithinEntireSet],] != 0L)
                        temppoleNumber <-
                          setdiff(intersect(polestring, theseAreConnected),
                                  polestring[indexOfClickedPoleOrZeroWithinEntireSet])
@@ -4844,7 +5658,7 @@ server <- shinyServer(function(input, output, session) {
                          sort(intersect(zerostring, theseAreConnected))
                        zeroconnect <- NULL
                        if (!pracma::isempty(theseAreConnected2)) {
-                         for (i in (1:(length(theseAreConnected2)))) {
+                         for (i in (1L:(length(theseAreConnected2)))) {
                            zeroconnect <- c(zeroconnect,
                                             which(zerostring ==
                                                     theseAreConnected2(i)))
@@ -4854,7 +5668,7 @@ server <- shinyServer(function(input, output, session) {
                          zeroconnect <- NULL
                        }
                        if (pracma::isempty(zeroconnect)) {
-                         if ((x ^ 2 + y ^ 2) != 1) {
+                         if ((x ^ 2L + y ^ 2L) != 1L) {
                            x <- x + 1e-06
                          }
                          subscriptOfClickedPoleOrZero <-
@@ -4863,10 +5677,10 @@ server <- shinyServer(function(input, output, session) {
                            y * (0 + 1i)
                          tempstring <- handles$poleloc
                          tempstring <-
-                           c(tempstring[1:(subscriptOfClickedPoleOrZero -
-                                             1)], x + y * (0 + 1i), tempstring[seq(
+                           c(tempstring[1L:(subscriptOfClickedPoleOrZero -
+                                             1L)], x + y * (0 + 1i), tempstring[seq(
                                                from = (subscriptOfClickedPoleOrZero +
-                                                         1),
+                                                         1L),
                                                to = length(tempstring)
                                              )])
                          handles$selectedpole <- list(XData = x, YData = y)
@@ -4875,8 +5689,8 @@ server <- shinyServer(function(input, output, session) {
                            p1 <- outputParametersFromStartdragToMovepez_poleconnect[1]
                            handles$poleloc[p1] <- x - y * (0 + 1i)
                            tempstring <-
-                             c(tempstring[1:(p1 - 1)], x - y * (0 + 1i),
-                               tempstring[seq(from = (p1 + 1),
+                             c(tempstring[1L:(p1 - 1L)], x - y * (0 + 1i),
+                               tempstring[seq(from = (p1 + 1L),
                                               to = length(tempstring))])
                            handles$selectedpole <-
                              list(XData = c(x, x), YData = c(y,-y))
@@ -4896,31 +5710,31 @@ server <- shinyServer(function(input, output, session) {
                          handlestol <- 0.01
                          outputParametersFromStartdragToMovepez_zeroconnect <-
                            zeroconnect
-                         if (Mod(Im((1 / c(
+                         if (Mod(Im((1/ c(
                            handles$poleloc[handles$subscriptOfClickedPoleOrZero]
                          ))) -
                          Im(handles$zeroloc[outputParametersFromStartdragToMovepez_zeroconnect[1]])) <
                          handlestol) {
-                           outputParametersFromStartdragToMovepez_type <- 1
+                           outputParametersFromStartdragToMovepez_type <- 1L
                          }
                          else {
-                           outputParametersFromStartdragToMovepez_type <- 0
+                           outputParametersFromStartdragToMovepez_type <- 0L
                          }
-                         if ((x ^ 2 + y ^ 2) != 1) {
+                         if ((x ^ 2L + y ^ 2L) != 1L) {
                            x <- x + 1e-06
                          }
-                         tempx <- Re(1 / c(x + y * (0 + 1i)))
-                         tempy <- Im(1 / c(x + y * (0 + 1i)))
+                         tempx <- Re(1/ c(x + y * (0 + 1i)))
+                         tempy <- Im(1/ c(x + y * (0 + 1i)))
                          subscriptOfClickedPoleOrZero <-
                            handles$subscriptOfClickedPoleOrZero
                          handles$poleloc[subscriptOfClickedPoleOrZero] <- x +
                            y * (0 + 1i)
                          tempstring <- handles$poleloc
                          tempstring <-
-                           c(tempstring[1:(subscriptOfClickedPoleOrZero -
-                                             1)], x + y * (0 + 1i), tempstring[seq(
+                           c(tempstring[1L:(subscriptOfClickedPoleOrZero -
+                                             1L)], x + y * (0 + 1i), tempstring[seq(
                                                from = (subscriptOfClickedPoleOrZero +
-                                                         1),
+                                                         1L),
                                                to = length(tempstring)
                                              )])
                          handles$selectedpole <- list(XData = x, YData = y)
@@ -4928,8 +5742,8 @@ server <- shinyServer(function(input, output, session) {
                            p1 <- outputParametersFromStartdragToMovepez_poleconnect[1]
                            handles$poleloc[p1] <- x - y * (0 + 1i)
                            tempstring <-
-                             c(tempstring[1:(p1 - 1)], x - y * (0 + 1i),
-                               tempstring[seq(from = (p1 + 1),
+                             c(tempstring[1L:(p1 - 1L)], x - y * (0 + 1i),
+                               tempstring[seq(from = (p1 + 1L),
                                               to = length(tempstring))])
                            handles$selectedpole <-
                              list(XData = c(x, x), YData = c(y,-y))
@@ -4938,21 +5752,21 @@ server <- shinyServer(function(input, output, session) {
                                            choices = tempstring)
                          tempstring <- handles$zeroloc
                          if (outputParametersFromStartdragToMovepez_type ==
-                             1) {
+                             1L) {
                            z1 <- outputParametersFromStartdragToMovepez_zeroconnect[1]
                            handles$zeroloc[z1] <- tempx + tempy * (0 + 1i)
                            tempstring <-
-                             c(tempstring[1:(z1 - 1)], tempx + tempy *
-                                 (0 + 1i), tempstring[seq(from = (z1 + 1),
+                             c(tempstring[1L:(z1 - 1L)], tempx + tempy *
+                                 (0 + 1i), tempstring[seq(from = (z1 + 1L),
                                                           to = length(tempstring))])
                            handles$selectedzero <-
                              list(XData = tempx, YData = tempy)
                            if (length(outputParametersFromStartdragToMovepez_zeroconnect) >
-                               1) {
+                               1L) {
                              z2 <- outputParametersFromStartdragToMovepez_zeroconnect[2]
                              handles$zeroloc[z2] <- tempx - tempy * (0 + 1i)
-                             tempstring <- c(tempstring[1:(z2 - 1)], tempx -
-                                               tempy * (0 + 1i), tempstring[seq(from = (z2 + 1),
+                             tempstring <- c(tempstring[1L:(z2 - 1L)], tempx -
+                                               tempy * (0 + 1i), tempstring[seq(from = (z2 + 1L),
                                                                                 to = length(tempstring))])
                              handles$selectedzero <-
                                list(XData = c(tempx, tempx),
@@ -4963,17 +5777,17 @@ server <- shinyServer(function(input, output, session) {
                            z1 <- outputParametersFromStartdragToMovepez_zeroconnect[1]
                            handles$zeroloc[z1] <- tempx - tempy * (0 + 1i)
                            tempstring <-
-                             c(tempstring[1:(z1 - 1)], tempx - tempy *
-                                 (0 + 1i), tempstring[seq(from = (z1 + 1),
+                             c(tempstring[1L:(z1 - 1L)], tempx - tempy *
+                                 (0 + 1i), tempstring[seq(from = (z1 + 1L),
                                                           to = length(tempstring))])
                            handles$selectedzero <-
                              list(XData = tempx, YData = -tempy)
                            if (length(outputParametersFromStartdragToMovepez_zeroconnect) >
-                               1) {
+                               1L) {
                              z2 <- outputParametersFromStartdragToMovepez_zeroconnect[2]
                              handles$zeroloc[z2] <- tempx + tempy * (0 + 1i)
-                             tempstring <- c(tempstring[1:(z2 - 1)], tempx +
-                                               tempy * (0 + 1i), tempstring[seq(from = (z2 + 1),
+                             tempstring <- c(tempstring[1L:(z2 - 1L)], tempx +
+                                               tempy * (0 + 1i), tempstring[seq(from = (z2 + 1L),
                                                                                 to = length(tempstring))])
                              handles$selectedzero <-
                                list(XData = c(tempx, tempx),
@@ -5143,7 +5957,7 @@ knitr::opts_chunk$set(echo = params$includeSourceCode) # global chunk-option for
 # Notes:
 #
 # Note that due to an issue in `rmarkdown`, the default-value of 
-# any parameter within the header cannot be `NULL`, so we used a default 
+# any parameter within the header cannot be `NUL`, so we used a default 
 # of `NA` for the default-value of all parameters.
 #
 \```
@@ -5164,11 +5978,11 @@ Well, here it is:
 
 ## The Plot
 
-A plot of `r params$n` quantity of 2D normally-distributed random-points.
+A plot of $n=`r params$n`$ quantity of 2D normally-distributed random-points.
 
 \```{r, fig.cap="This is the Plot."}
 plot(rnorm(params$n), rnorm(params$n))
-grid(); abline(h=0); abline(v=0); box(which="figure")
+grid(); abline(h=0L); abline(v=0L); box(which="figure")
 \```
 
 ***
@@ -5186,14 +6000,14 @@ assign("fpmaxx", .Machine$double.xmax)
 
 myfindpeaks <-
   function(x,
-           nups = 1,
+           nups = 1L,
            ndowns = nups,
            zero = "0",
            peakpat = NULL,
            minpeakheight = -Inf,
-           minpeakdistance = 1,
+           minpeakdistance = 1L,
            threshold = 0,
-           npeaks = 0,
+           npeaks = 0L,
            sortstr = FALSE) {
     stopifnot(is.vector(x, mode = "numeric"))
     if (!zero %in% c("0", "+", "-"))
@@ -5206,7 +6020,7 @@ myfindpeaks <-
       peakpat <- sprintf("[+]{%d,}[-]{%d,}", nups, ndowns)
     }
     rc <- gregexpr(peakpat, xc)[[1]]
-    if (rc[1] < 0)
+    if (rc[1] < 0L)
       return(NULL)
     x1 <- rc
     x2 <- rc + attr(rc, "match.length")
@@ -5214,41 +6028,41 @@ myfindpeaks <-
     attributes(x2) <- NULL
     n <- length(x1)
     xv <- xp <- numeric(n)
-    for (i in 1:n) {
-      xp[i] <- which.max(x[x1[i]:x2[i]]) + x1[i] - 1
+    for (i in 1L:n) {
+      xp[i] <- which.max(x[x1[i]:x2[i]]) + x1[i] - 1L
       xv[i] <- x[xp[i]]
     }
     inds <-
       which(xv >= minpeakheight & xv - pmax(x[x1], x[x2]) >= threshold)
     X <- cbind(xv[inds], xp[inds], x1[inds], x2[inds])
-    if (minpeakdistance < 1)
+    if (minpeakdistance < 1L)
       warning("Handling `minpeakdistance < 1`` is logically not possible.")
-    if (sortstr || minpeakdistance > 1) {
+    if (sortstr || minpeakdistance > 1L) {
       sl <- sort.list(X[, 1], na.last = NA, decreasing = TRUE)
       X <- X[sl, , drop = FALSE]
     }
-    if (length(X) == 0)
+    if (length(X) == 0L)
       return(c())
-    if (minpeakdistance > 1) {
+    if (minpeakdistance > 1L) {
       no_peaks <- nrow(X)
       badpeaks <- rep(FALSE, no_peaks)
-      for (i in 1:no_peaks) {
+      for (i in 1L:no_peaks) {
         ipos <- X[i, 2]
         if (!badpeaks[i]) {
           dpos <- abs(ipos - X[, 2])
-          badpeaks <- badpeaks | (dpos > 0 & dpos < minpeakdistance)
+          badpeaks <- badpeaks | (dpos > 0L & dpos < minpeakdistance)
         }
       }
       X <- X[!badpeaks,]
     }
     if (is.vector(X)) {
-      if (npeaks > 0 && npeaks < length(X) / 4) {
-        X <- X[1:npeaks, , drop = FALSE]
+      if (npeaks > 0L && npeaks < length(X) / 4) {
+        X <- X[1L:npeaks, , drop = FALSE]
       }
     }
     else {
-      if (npeaks > 0 && npeaks < nrow(X)) {
-        X <- X[1:npeaks, , drop = FALSE]
+      if (npeaks > 0L && npeaks < nrow(X)) {
+        X <- X[1L:npeaks, , drop = FALSE]
       }
     }
     return(X)
@@ -5297,7 +6111,7 @@ plot(
       20 * log10(max(Mod(rv$h), na.rm = TRUE))
     }
     else {
-      20 * log10(1 / params$edit_gain)
+      20 * log10(1/ params$edit_gain)
     })
   }
   else {
@@ -5310,7 +6124,7 @@ plot(
       max(Mod(rv$h), na.rm = TRUE)
     }
     else {
-      1 / params$edit_gain
+      1/ params$edit_gain
     })
   },
   log = if (params$logarithmicFreqAxis) {
@@ -5320,44 +6134,44 @@ plot(
     ""
   },
   xlim = if (params$logarithmicFreqAxis) {
-    c(max(0.1, 1e-04 * params$samplingfreq / 2),
+    c(max(0.01, 1e-04 * params$samplingfreq / 2),
       params$samplingfreq / 2)
   }
   else {
     c(if (params$twosidedFFT) {
       -params$samplingfreq / 2
     } else {
-      0
+      0L
     }, if (params$FFTshifted) {
       params$samplingfreq / 2
     } else {
       if (params$twosidedFFT) {
         params$samplingfreq / 2
       } else {
-        2 * params$samplingfreq / 2
+        2L * params$samplingfreq / 2
       }
     })
   },
   ylim = if (params$logarithmicMagPlotAmplitude) {
-    c(max(-130, min(-20, 20 * log10(
+    c(max(-130L, min(-20L, 20 * log10(
       min(Mod(rv$h), na.rm = TRUE) / (if (params$normalizedMagPlotAmplitude) {
         max(Mod(rv$h), na.rm = TRUE)
       } else {
-        1 / params$edit_gain
+        1/ params$edit_gain
       })
-    ))), max(0, min(120, 20 * log10(
+    ))), max(0L, min(120, 20 * log10(
       max(Mod(rv$h), na.rm = TRUE) / (if (params$normalizedMagPlotAmplitude) {
         max(Mod(rv$h), na.rm = TRUE)
       } else {
-        1 / params$edit_gain
+        1/ params$edit_gain
       })
     ), na.rm = TRUE)))
   }
   else {
-    c(0, max(1, Mod(rv$h) / (if (params$normalizedMagPlotAmplitude) {
+    c(0L, max(1L, Mod(rv$h) / (if (params$normalizedMagPlotAmplitude) {
       max(Mod(rv$h), na.rm = TRUE)
     } else {
-      1 / params$edit_gain
+      1/ params$edit_gain
     }), na.rm = TRUE))
   },
   type = "l",
@@ -5379,31 +6193,31 @@ plot(
     } ~ ~  ~  ~ "[rads]")
   }
   else if (params$freqaxisunits == "zero2piby2") {
-    expression(2 * omega ~ ~  ~  ~ "[rads]")
+    expression(2L * omega ~ ~  ~  ~ "[rads]")
   }
   else if (params$freqaxisunits == "zero2fs") {
     if (params$twosidedFFT)
       expression(-f[s] %->% ~  ~  ~  ~ f[s] ~ ~  ~  ~ "[Hz]")
     else
-      expression(0 %->% ~  ~  ~  ~ f[s] ~ ~  ~  ~ "[Hz]")
+      expression(0L %->% ~  ~  ~  ~ f[s] ~ ~  ~  ~ "[Hz]")
   }
   else if (params$freqaxisunits == "zero2fsby2") {
     if ((!params$twosidedFFT) &&
         (!params$FFTshifted) && (!params$logarithmicFreqAxis)) {
-      expression(0 %->% ~  ~  ~  ~ f[s] ~ ~  ~  ~ "[Hz]")
+      expression(0L %->% ~  ~  ~  ~ f[s] ~ ~  ~  ~ "[Hz]")
     }
     else {
-      expression(0 %->% ~  ~  ~  ~ f[s] / 2 ~ ~  ~  ~ "[Hz]")
+      expression(0L %->% ~  ~  ~  ~ f[s] / 2 ~ ~  ~  ~ "[Hz]")
     }
   }
   else if (params$freqaxisunits == "zero2fmax") {
-    expression(0 %->% ~  ~  ~  ~ f[max] ~ ~  ~  ~ "[Hz]")
+    expression(0L %->% ~  ~  ~  ~ f[max] ~ ~  ~  ~ "[Hz]")
   }
   else if (params$freqaxisunits == "zero2fmaxby2") {
     if (params$twosidedFFT)
       expression(-f[max] / 2 %->% ~  ~  ~  ~ f[max] / 2 ~ ~  ~  ~ "[Hz]")
     else
-      expression(0 %->% ~  ~  ~  ~ f[max] / 2 ~ ~  ~  ~ "[Hz]")
+      expression(0L %->% ~  ~  ~  ~ f[max] / 2 ~ ~  ~  ~ "[Hz]")
   },
   ylab = if ((params$freqaxisunits == "zero2one") ||
              (params$freqaxisunits ==
@@ -5415,14 +6229,14 @@ plot(
       if (params$logarithmicMagPlotAmplitude) {
         expression(paste(group("|", bold(H(
           e ^ {
-            j * omega
+            1i * omega
           }
         )), "|"), " / max [dB]"))
       }
       else {
         expression(paste(group("|", bold(H(
           e ^ {
-            j * omega
+            1i * omega
           }
         )), "|")), " / max")
       }
@@ -5431,13 +6245,13 @@ plot(
       if (params$logarithmicMagPlotAmplitude) {
         expression(paste(group("|", bold(H(
           e ^ {
-            j * omega
+            1i * omega
           }
         )), "|"), "  [dB]"))
       }
       else {
         expression(group("|", bold(H(e ^ {
-          j * omega
+          1i * omega
         })), "|"))
       }
     }
@@ -5468,22 +6282,22 @@ if (params$checkboxRAY)
     lty = "dashed"
   )
 grid(col = params$grcolor)
-abline(h = 0, col = "black")
-abline(v = 0, col = "black")
+abline(h = 0L, col = "black")
+abline(v = 0L, col = "black")
 if (params$secondaryaxis) {
   if ((params$freqaxisunits == "zero2pi") || (params$freqaxisunits ==
                                              "zero22pi") ||
       (params$freqaxisunits == "zero2piby2")) {
     axis(
-      side = 3,
-      at=pi*c(-6,-5.5,-5,-4.5,-4,-3.5,-3,-2.5,-2,-1.5,-1,-1/2,-1/3,-1/5,1/5,1/3,1/2,1,1.5,2,2.5,3,3.5,4,4.5,5,5.5,6),
+      side = 3L,
+      at=pi*c(-6L,-5.5,-5L,-4.5,-4L,-3.5,-3L,-2.5,-2L,-1.5,-1L,-1/2,-1/3,-1/5,1/5,1/3,1/2,1L,1.5,2L,2.5,3L,3.5,4L,4.5,5L,5.5,6L),
       labels=expression(-6*pi,-11*pi/2,-5*pi,-9*pi/2,-4*pi,-7*pi/2,-3*pi,-5*pi/2,-2*pi,-3*pi/2,-pi,-pi/2,-pi/3,-pi/5,pi/5,pi/3,pi/2,pi,3*pi/2,2*pi,5*pi/2,3*pi,7*pi/2,4*pi,9*pi/2,5*pi,11*pi/2,6*pi),
       tick = TRUE,
       pos = par("usr")[4],
       outer = FALSE,
       col = params$grcolor,
       cex.axis = 0.8,
-      mgp = c(-2.5,-1,0),
+      mgp = c(-2.5,-1L,0L),
       xlab = "pi-based"
     )
   }
@@ -5491,15 +6305,15 @@ if (params$secondaryaxis) {
       (params$freqaxisunits ==
        "zero2half")) {
     axis(
-      side = 3,
-      at = c(-6,-5.5,-5,-4.5,-4,-3.5,-3,-2.5,-2,-1.5,-1,-1/2,-1/3,-1/5,1/5,1/3,1/2,1,1.5,2,2.5,3,3.5,4,4.5,5,5.5,6),
+      side = 3L,
+      at = c(-6L,-5.5,-5L,-4.5,-4L,-3.5,-3L,-2.5,-2L,-1.5,-1L,-1/2,-1/3,-1/5,1/5,1/3,1/2,1L,1.5,2L,2.5,3L,3.5,4L,4.5,5L,5.5,6L),
       labels=expression(-6*pi,-11*pi/2,-5*pi,-9*pi/2,-4*pi,-7*pi/2,-3*pi,-5*pi/2,-2*pi,-3*pi/2,-pi,-pi/2,-pi/3,-pi/5,pi/5,pi/3,pi/2,pi,3*pi/2,2*pi,5*pi/2,3*pi,7*pi/2,4*pi,9*pi/2,5*pi,11*pi/2,6*pi),
       tick = TRUE,
       pos = par("usr")[4],
       outer = FALSE,
       col = params$grcolor,
       cex.axis = 0.8,
-      mgp = c(-2.5,-1,0)
+      mgp = c(-2.5,-1L,0L)
     )
   }
   if ((params$freqaxisunits == "zero2fs") ||
@@ -5507,8 +6321,8 @@ if (params$secondaryaxis) {
        "zero2fmax") ||
       (params$freqaxisunits == "zero2fmaxby2")) {
     axis(
-      side = 3,
-      at = c(-6,-5.5,-5,-4.5,-4,-3.5,-3,-2.5,-2,-1.5,-1,-1/2,-1/3,-1/5,1/5,1/3,1/2,1,1.5,2,2.5,3,3.5,4,4.5,5,5.5,6
+      side = 3L,
+      at = c(-6L,-5.5,-5L,-4.5,-4L,-3.5,-3L,-2.5,-2L,-1.5,-1L,-1/2,-1/3,-1/5,1/5,1/3,1/2,1L,1.5,2L,2.5,3L,3.5,4L,4.5,5L,5.5,6L
       ) * params$samplingfreq / 2,
       labels=expression(-6*pi,-11*pi/2,-5*pi,-9*pi/2,-4*pi,-7*pi/2,-3*pi,-5*pi/2,-2*pi,-3*pi/2,-pi,-pi/2,-pi/3,-pi/5,pi/5,pi/3,pi/2,pi,3*pi/2,2*pi,5*pi/2,3*pi,7*pi/2,4*pi,9*pi/2,5*pi,11*pi/2,6*pi),
       tick = TRUE,
@@ -5517,7 +6331,7 @@ if (params$secondaryaxis) {
       outer = FALSE,
       col = params$grcolor,
       cex.axis = 0.8,
-      mgp = c(-2.5,-1, 0)
+      mgp = c(-2.5,-1L, 0L)
     )
   }
 }
@@ -5551,7 +6365,7 @@ if (params$showPhaseOnMagPlot) {
       }
     },
     col = params$grcolor,
-    lwd = params$LineWidth * 2 / 3,
+    lwd = params$LineWidth * 2/3,
     lty = "dotted"
   )
   if (params$showLegend)
@@ -5571,16 +6385,16 @@ if (params$showMaxMinsOnMagPlot == TRUE) {
     myfindpeaks(
       Mod(rv$h),
       minpeakheight = 1e-12,
-      minpeakdistance = (length(rv$h) / 100) / 2,
+      minpeakdistance = (length(rv$h) / 100L) / 2,
       threshold = 0.001,
-      npeaks = 100
+      npeaks = 100L
     )
   xmins <-
     myfindpeaks(
       -Mod(rv$h),
-      minpeakdistance = (length(rv$h) / 100) / 2,
+      minpeakdistance = (length(rv$h) / 100L) / 2,
       threshold = 0.001,
-      npeaks = 100
+      npeaks = 100L
     )
   if (!pracma::isempty(x)) {
     if (!(is.vector(x))) {
@@ -5640,7 +6454,7 @@ if (params$showMaxMinsOnMagPlot == TRUE) {
         }
         else {
           paramsmagnmaximumsa <- params$magnmaximumsa -
-            20 * log10(1 / params$edit_gain)
+            20 * log10(1/ params$edit_gain)
         }
       }
       else {
@@ -5677,7 +6491,7 @@ if (params$showMaxMinsOnMagPlot == TRUE) {
           paramsmagnmaximumsa <- 20 * log10(x[, 1])
         }
         if (!(params$normalizedMagPlotAmplitude)) {
-          indxs <- which(params$magnmaximumsa < (20 *log10(max(Mod(rv$h), na.rm = TRUE
+          indxs <- which(params$magnmaximumsa < (20L *log10(max(Mod(rv$h), na.rm = TRUE
                                                              )) - 0.01))
           paramsmagnmaximumsa <-
             params$magnmaximumsa[indxs]
@@ -5690,7 +6504,7 @@ if (params$showMaxMinsOnMagPlot == TRUE) {
         }
         else {
           paramsmagnmaximumsa <- params$magnmaximumsa -
-            20 * log10(1 / params$edit_gain)
+            20 * log10(1/ params$edit_gain)
         }
       }
       else {
@@ -5724,9 +6538,9 @@ if (params$showMaxMinsOnMagPlot == TRUE) {
     #   paramsmagnmaximumsa,
     #   type = "b",
     #   lty = "dotted",
-    #   lwd = params$LineWidth * 2 / 3,
-    #   pch = 24,
-    #   cex = 2,
+    #   lwd = params$LineWidth * 2/3,
+    #   pch = 24L,
+    #   cex = 2.0,
     #   bg = "maroon",
     #   col = params$grcolor
     # )
@@ -5837,7 +6651,7 @@ if (params$showMaxMinsOnMagPlot == TRUE) {
     #   paramsmagnminimumsa,
     #   lty = "dotted",
     #   lwd = params$LineWidth,
-    #   pch = 25,
+    #   pch = 25L,
     #   bg = params$BackgroundColor,
     #   col = "maroon"
     # )
@@ -5873,7 +6687,7 @@ plot(
      20 * log10(max(Mod(rv$h), na.rm = TRUE))
    }
    else {
-     20 * log10(1 / params$edit_gain)
+     20 * log10(1/ params$edit_gain)
    })
  }
  else {
@@ -5886,7 +6700,7 @@ plot(
      max(Mod(rv$h), na.rm = TRUE)
    }
    else {
-     1 / params$edit_gain
+     1/ params$edit_gain
    })
  },
  xlim = params$zoomlimXpassband,
@@ -5911,33 +6725,33 @@ plot(
    } ~ ~  ~  ~ "[rads]")
  }
  else if (params$freqaxisunits == "zero2piby2") {
-   expression(2 * omega ~ ~  ~  ~ "[rads]")
+   expression(2L * omega ~ ~  ~  ~ "[rads]")
  }
  else if (params$freqaxisunits == "zero2fs") {
    if (params$twosidedFFT)
      expression(-f[s] %->% ~
                   ~  ~  ~ f[s] ~ ~  ~  ~ "[Hz]")
    else
-     expression(0 %->% ~  ~  ~  ~ f[s] ~ ~  ~  ~ "[Hz]")
+     expression(0L %->% ~  ~  ~  ~ f[s] ~ ~  ~  ~ "[Hz]")
  }
  else if (params$freqaxisunits == "zero2fsby2") {
    if ((!params$twosidedFFT) &&
        (!params$FFTshifted) && (!params$logarithmicFreqAxis)) {
-     expression(0 %->% ~  ~  ~  ~ f[s] ~ ~  ~  ~ "[Hz]")
+     expression(0L %->% ~  ~  ~  ~ f[s] ~ ~  ~  ~ "[Hz]")
    }
    else {
-     expression(0 %->% ~  ~  ~  ~ f[s] / 2 ~ ~  ~  ~ "[Hz]")
+     expression(0L %->% ~  ~  ~  ~ f[s] / 2 ~ ~  ~  ~ "[Hz]")
    }
  }
  else if (params$freqaxisunits == "zero2fmax") {
-   expression(0 %->% ~  ~  ~  ~ f[max] ~ ~  ~  ~ "[Hz]")
+   expression(0L %->% ~  ~  ~  ~ f[max] ~ ~  ~  ~ "[Hz]")
  }
  else if (params$freqaxisunits == "zero2fmaxby2") {
    if (params$twosidedFFT)
      expression(-f[max] /
-                  2 %->% ~  ~  ~  ~ f[max] / 2 ~ ~  ~  ~ "[Hz]")
+                  2L %->% ~  ~  ~  ~ f[max] / 2 ~ ~  ~  ~ "[Hz]")
    else
-     expression(0 %->% ~  ~  ~  ~ f[max] / 2 ~ ~  ~  ~ "[Hz]")
+     expression(0L %->% ~  ~  ~  ~ f[max] / 2 ~ ~  ~  ~ "[Hz]")
  },
  ylab = if ((params$freqaxisunits == "zero2one") ||
             (params$freqaxisunits ==
@@ -5950,14 +6764,14 @@ plot(
      if (params$logarithmicMagPlotAmplitude) {
        expression(paste(group("|", bold(H(
          e ^ {
-           j * omega
+           1i * omega
          }
        )), "|"), " / max [dB]"))
      }
      else {
        expression(paste(group("|", bold(H(
          e ^ {
-           j * omega
+           1i * omega
          }
        )), "|")), " / max")
      }
@@ -5966,13 +6780,13 @@ plot(
      if (params$logarithmicMagPlotAmplitude) {
        expression(paste(group("|", bold(H(
          e ^ {
-           j * omega
+           1i * omega
          }
        )), "|"), "  [dB]"))
      }
      else {
        expression(group("|", bold(H(e ^ {
-         j * omega
+         1i * omega
        })), "|"))
      }
    }
@@ -6001,22 +6815,22 @@ if (params$checkboxRAY)
    lty = "dashed"
  )
 grid(col = params$grcolor)
-abline(h = 0, col = "black")
-abline(v = 0, col = "black")
+abline(h = 0L, col = "black")
+abline(v = 0L, col = "black")
 if (params$secondaryaxis) {
  if ((params$freqaxisunits == "zero2pi") || (params$freqaxisunits ==
                                             "zero22pi") ||
      (params$freqaxisunits == "zero2piby2")) {
    axis(
-     side = 3,
-     at = pi * c(-6,-5.5,-5,-4.5,-4,-3.5,-3,-2.5,-2,-1.5,-1,-1/2,-1/3,-1/5,1/5,1/3,1/2,1,1.5,2,2.5,3,3.5,4,4.5,5,5.5,6),
+     side = 3L,
+     at = pi * c(-6L,-5.5,-5L,-4.5,-4L,-3.5,-3L,-2.5,-2L,-1.5,-1L,-1/2,-1/3,-1/5,1/5,1/3,1/2,1L,1.5,2L,2.5,3L,3.5,4L,4.5,5L,5.5,6L),
      labels=expression(-6*pi,-11*pi/2,-5*pi,-9*pi/2,-4*pi,-7*pi/2,-3*pi,-5*pi/2,-2*pi,-3*pi/2,-pi,-pi/2,-pi/3,-pi/5,pi/5,pi/3,pi/2,pi,3*pi/2,2*pi,5*pi/2,3*pi,7*pi/2,4*pi,9*pi/2,5*pi,11*pi/2,6*pi),
      tick = TRUE,
      pos = par("usr")[4],
      outer = FALSE,
      col = params$grcolor,
      cex.axis = 0.8,
-     mgp = c(-2.5,-1, 0),
+     mgp = c(-2.5,-1L, 0L),
      xlab = "pi-based"
    )
  }
@@ -6024,15 +6838,15 @@ if (params$secondaryaxis) {
      (params$freqaxisunits == "zero2half")
  ) {
    axis(
-     side = 3,
-     at = c(-6,-5.5,-5,-4.5,-4,-3.5,-3,-2.5,-2,-1.5,-1,-1/2,-1/3,-1/5,1/5,1/3,1/2,1,1.5,2,2.5,3,3.5,4,4.5,5,5.5,6),
-     labels = expression(-6*pi,-11*pi/2,       -5 * pi,       -9 * pi / 2,       -4 * pi,       -7 * pi / 2,-3 * pi,       -5 * pi / 2,       -2 * pi,       -3 * pi / 2,       -pi,       -pi / 2,-pi / 3,       -pi / 5,       pi / 5,       pi / 3,       pi / 2,       pi,       3 * pi / 2,       2 * pi,       5 * pi /         2,       3 * pi,       7 * pi / 2,       4 * pi,       9 * pi / 2,       5 * pi,       11 * pi /         2,       6 * pi     ),
+     side = 3L,
+     at = c(-6L,-5.5,-5L,-4.5,-4L,-3.5,-3L,-2.5,-2L,-1.5,-1L,-1/2,-1/3,-1/5,1/5,1/3,1/2,1L,1.5,2L,2.5,3L,3.5,4L,4.5,5L,5.5,6L),
+     labels = expression(-6*pi,-11*pi/2,       -5 * pi,       -9 * pi / 2,       -4 * pi,       -7 * pi / 2,-3 * pi,       -5 * pi / 2,       -2 * pi,       -3 * pi / 2,       -pi,       -pi / 2,-pi / 3,       -pi / 5,       pi / 5,       pi / 3,       pi / 2,       pi,       3 * pi / 2,       2 * pi,       5 * pi /         2L,       3 * pi,       7 * pi / 2,       4 * pi,       9 * pi / 2,       5 * pi,       11 * pi /         2L,       6 * pi     ),
      tick = TRUE,
      pos = par("usr")[4],
      outer = FALSE,
      col = params$grcolor,
      cex.axis = 0.8,
-     mgp = c(-2.5,-1, 0)
+     mgp = c(-2.5,-1L, 0L)
    )
  }
  if ((params$freqaxisunits == "zero2fs") ||
@@ -6040,17 +6854,17 @@ if (params$secondaryaxis) {
      (params$freqaxisunits == "zero2fmaxby2")
  ) {
    axis(
-     side = 3,
-     at = c(-6,-5.5,-5,-4.5,-4,-3.5,-3,-2.5,-2,-1.5,-1,-1/2,-1/3,-1/5,1/5,1/3,1/2,1,1.5,2,2.5,3,3.5,4,4.5,5,5.5,6
+     side = 3L,
+     at = c(-6L,-5.5,-5L,-4.5,-4L,-3.5,-3L,-2.5,-2L,-1.5,-1L,-1/2,-1/3,-1/5,1/5,1/3,1/2,1L,1.5,2L,2.5,3L,3.5,4L,4.5,5L,5.5,6L
      ) * params$samplingfreq / 2,
-     labels = expression(-6*pi,-11*pi/2,       -5 * pi,       -9 *         pi /         2,       -4 * pi,       -7 * pi / 2,       -3 * pi,       -5 * pi / 2,       -2 *         pi,       -3 * pi / 2,       -pi,       -pi / 2,       -pi / 3,       -pi / 5,       pi / 5,       pi / 3,       pi /         2,       pi,       3 * pi / 2,       2 * pi,       5 * pi / 2,       3 * pi,       7 *         pi /         2,       4 * pi,       9 * pi / 2,       5 * pi,       11 * pi / 2,       6 *         pi     ),
+     labels = expression(-6*pi,-11*pi/2,       -5 * pi,       -9L *         pi /         2L,       -4 * pi,       -7 * pi / 2,       -3 * pi,       -5 * pi / 2,       -2L *         pi,       -3 * pi / 2,       -pi,       -pi / 2,       -pi / 3,       -pi / 5,       pi / 5,       pi / 3,       pi /         2L,       pi,       3 * pi / 2,       2 * pi,       5 * pi / 2,       3 * pi,       7L *         pi /         2L,       4 * pi,       9 * pi / 2,       5 * pi,       11 * pi / 2,       6L *         pi     ),
      tick = TRUE,
      line = -0.4,
      pos = par("usr")[4],
      outer = FALSE,
      col = params$grcolor,
      cex.axis = 0.8,
-     mgp = c(-2.5,-1, 0)
+     mgp = c(-2.5,-1L, 0L)
    )
  }
 }
@@ -6074,7 +6888,7 @@ if (params$showPhaseOnMagPlot) {
      Arg(rv$h)
    },
    col = "grey",
-   lwd = params$LineWidth * 2 / 3,
+   lwd = params$LineWidth * 2/3,
    lty = "dotted"
  )
  if (params$showLegend)
@@ -6111,7 +6925,7 @@ plot(
      20 * log10(max(Mod(rv$h), na.rm = TRUE))
    }
    else {
-     0
+     0L
    })
  }
  else {
@@ -6124,7 +6938,7 @@ plot(
      max(Mod(rv$h), na.rm = TRUE)
    }
    else {
-     1 / params$edit_gain
+     1/ params$edit_gain
    })
  },
  xlim = params$zoomlimXstopband,
@@ -6148,33 +6962,33 @@ plot(
    } ~ ~  ~  ~ "[rads]")
  }
  else if (params$freqaxisunits == "zero2piby2") {
-   expression(2 * omega ~ ~  ~  ~ "[rads]")
+   expression(2L * omega ~ ~  ~  ~ "[rads]")
  }
  else if (params$freqaxisunits == "zero2fs") {
    if (params$twosidedFFT)
      expression(-f[s] %->% ~
                   ~  ~  ~ f[s] ~ ~  ~  ~ "[Hz]")
    else
-     expression(0 %->% ~  ~  ~  ~ f[s] ~ ~  ~  ~ "[Hz]")
+     expression(0L %->% ~  ~  ~  ~ f[s] ~ ~  ~  ~ "[Hz]")
  }
  else if (params$freqaxisunits == "zero2fsby2") {
    if ((!params$twosidedFFT) &&
        (!params$FFTshifted) && (!params$logarithmicFreqAxis)) {
-     expression(0 %->% ~  ~  ~  ~ f[s] ~ ~  ~  ~ "[Hz]")
+     expression(0L %->% ~  ~  ~  ~ f[s] ~ ~  ~  ~ "[Hz]")
    }
    else {
-     expression(0 %->% ~  ~  ~  ~ f[s] / 2 ~ ~  ~  ~ "[Hz]")
+     expression(0L %->% ~  ~  ~  ~ f[s] / 2 ~ ~  ~  ~ "[Hz]")
    }
  }
  else if (params$freqaxisunits == "zero2fmax") {
-   expression(0 %->% ~  ~  ~  ~ f[max] ~ ~  ~  ~ "[Hz]")
+   expression(0L %->% ~  ~  ~  ~ f[max] ~ ~  ~  ~ "[Hz]")
  }
  else if (params$freqaxisunits == "zero2fmaxby2") {
    if (params$twosidedFFT)
      expression(-f[max] /
-                  2 %->% ~  ~  ~  ~ f[max] / 2 ~ ~  ~  ~ "[Hz]")
+                  2L %->% ~  ~  ~  ~ f[max] / 2 ~ ~  ~  ~ "[Hz]")
    else
-     expression(0 %->% ~  ~  ~  ~ f[max] / 2 ~ ~  ~  ~ "[Hz]")
+     expression(0L %->% ~  ~  ~  ~ f[max] / 2 ~ ~  ~  ~ "[Hz]")
  },
  ylab = if ((params$freqaxisunits == "zero2one") ||
             (params$freqaxisunits ==
@@ -6187,14 +7001,14 @@ plot(
      if (params$logarithmicMagPlotAmplitude) {
        expression(paste(group("|", bold(H(
          e ^ {
-           j * omega
+           1i * omega
          }
        )), "|"), " / max [dB]"))
      }
      else {
        expression(paste(group("|", bold(H(
          e ^ {
-           j * omega
+           1i * omega
          }
        )), "|")), " / max")
      }
@@ -6203,13 +7017,13 @@ plot(
      if (params$logarithmicMagPlotAmplitude) {
        expression(paste(group("|", bold(H(
          e ^ {
-           j * omega
+           1i * omega
          }
        )), "|"), "  [dB]"))
      }
      else {
        expression(group("|", bold(H(e ^ {
-         j * omega
+         1i * omega
        })), "|"))
      }
    }
@@ -6238,54 +7052,54 @@ if (params$checkboxRAY)
    lty = "dashed"
  )
 grid(col = params$grcolor)
-abline(h = 0, col = "black")
-abline(v = 0, col = "black")
+abline(h = 0L, col = "black")
+abline(v = 0L, col = "black")
 if (params$secondaryaxis) {
  if ((params$freqaxisunits == "zero2pi") || 
      (params$freqaxisunits == "zero22pi") ||
      (params$freqaxisunits == "zero2piby2")) {
    axis(
-     side = 3,
-     at = pi * c(-6,-5.5,-5,-4.5,-4,-3.5,-3,-2.5,-2,-1.5,-1,-1/2,-1/3,-1/5,1/5,1/3,1/2,1,1.5,2,2.5,3,3.5,4,4.5,5,5.5,6),
-     labels = expression(-6*pi,-11*pi/2,       -5 * pi,       -9 * pi / 2,       -4 * pi,       -7 * pi / 2,-3 * pi,       -5 * pi / 2,       -2 * pi,       -3 * pi / 2,       -pi,       -pi / 2,-pi / 3,       -pi / 5,       pi / 5,       pi / 3,       pi / 2,       pi,       3 * pi / 2,       2 * pi,       5 * pi /         2,       3 * pi,       7 * pi / 2,       4 * pi,       9 * pi / 2,       5 * pi,       11 * pi /         2,       6 * pi     ),
+     side = 3L,
+     at = pi * c(-6L,-5.5,-5L,-4.5,-4L,-3.5,-3L,-2.5,-2L,-1.5,-1L,-1/2,-1/3,-1/5,1/5,1/3,1/2,1L,1.5,2L,2.5,3L,3.5,4L,4.5,5L,5.5,6L),
+     labels = expression(-6*pi,-11*pi/2,       -5 * pi,       -9 * pi / 2,       -4 * pi,       -7 * pi / 2,-3 * pi,       -5 * pi / 2,       -2 * pi,       -3 * pi / 2,       -pi,       -pi / 2,-pi / 3,       -pi / 5,       pi / 5,       pi / 3,       pi / 2,       pi,       3 * pi / 2,       2 * pi,       5 * pi /         2L,       3 * pi,       7 * pi / 2,       4 * pi,       9 * pi / 2,       5 * pi,       11 * pi /         2L,       6 * pi     ),
      tick = TRUE,
      pos = par("usr")[4],
      outer = FALSE,
      col = params$grcolor,
      cex.axis = 0.8,
-     mgp = c(-2.5,-1,0),
+     mgp = c(-2.5,-1L,0L),
      xlab = "pi-based"
    )
  }
  if ((params$freqaxisunits == "zero2one") ||
      (params$freqaxisunits == "zero2half")) {
    axis(
-     side = 3,
-     at = c(-6,-5.5,-5,-4.5,-4,-3.5,-3,-2.5,-2,-1.5,-1,-1/2,-1/3,-1/5,1/5,1/3,1/2,1,1.5,2,2.5,3,3.5,4,4.5,5,5.5,6),
-     labels = expression(-6*pi,-11*pi/2,       -5 * pi,       -9 * pi / 2,       -4 * pi,       -7 * pi / 2,-3 * pi,       -5 * pi / 2,       -2 * pi,       -3 * pi / 2,       -pi,       -pi / 2,-pi / 3,       -pi / 5,       pi / 5,       pi / 3,       pi / 2,       pi,       3 * pi / 2,       2 * pi,       5 * pi /         2,       3 * pi,       7 * pi / 2,       4 * pi,       9 * pi / 2,       5 * pi,       11 * pi /         2,       6 * pi     ),
+     side = 3L,
+     at = c(-6L,-5.5,-5L,-4.5,-4L,-3.5,-3L,-2.5,-2L,-1.5,-1L,-1/2,-1/3,-1/5,1/5,1/3,1/2,1L,1.5,2L,2.5,3L,3.5,4L,4.5,5L,5.5,6L),
+     labels = expression(-6*pi,-11*pi/2,       -5 * pi,       -9 * pi / 2,       -4 * pi,       -7 * pi / 2,-3 * pi,       -5 * pi / 2,       -2 * pi,       -3 * pi / 2,       -pi,       -pi / 2,-pi / 3,       -pi / 5,       pi / 5,       pi / 3,       pi / 2,       pi,       3 * pi / 2,       2 * pi,       5 * pi /         2L,       3 * pi,       7 * pi / 2,       4 * pi,       9 * pi / 2,       5 * pi,       11 * pi /         2L,       6 * pi     ),
      tick = TRUE,
      pos = par("usr")[4],
      outer = FALSE,
      col = params$grcolor,
      cex.axis = 0.8,
-     mgp = c(-2.5,-1,0)
+     mgp = c(-2.5,-1L,0L)
    )
  }
  if ((params$freqaxisunits == "zero2fs") ||
      (params$freqaxisunits == "zero2fmax") ||
      (params$freqaxisunits == "zero2fmaxby2")) {
    axis(
-     side = 3,
-     at = c(-6,-5.5,-5,-4.5,-4,-3.5,-3,-2.5,-2,-1.5,-1,-1/2,-1/3,-1/5,1/5,1/3,1/2,1,1.5,2,2.5,3,3.5,4,4.5,5,5.5,6
+     side = 3L,
+     at = c(-6L,-5.5,-5L,-4.5,-4L,-3.5,-3L,-2.5,-2L,-1.5,-1L,-1/2,-1/3,-1/5,1/5,1/3,1/2,1L,1.5,2L,2.5,3L,3.5,4L,4.5,5L,5.5,6L
      ) * params$samplingfreq / 2,
-     labels = expression(-6*pi,-11*pi/2,       -5 * pi,       -9 *         pi /         2,       -4 * pi,       -7 * pi / 2,       -3 * pi,       -5 * pi / 2,       -2 *         pi,       -3 * pi / 2,       -pi,       -pi / 2,       -pi / 3,       -pi / 5,       pi / 5,       pi / 3,       pi /         2,       pi,       3 * pi / 2,       2 * pi,       5 * pi / 2,       3 * pi,       7 *         pi /         2,       4 * pi,       9 * pi / 2,       5 * pi,       11 * pi / 2,       6 *         pi     ),
+     labels = expression(-6*pi,-11*pi/2,       -5 * pi,       -9L *         pi /         2L,       -4 * pi,       -7 * pi / 2,       -3 * pi,       -5 * pi / 2,       -2L *         pi,       -3 * pi / 2,       -pi,       -pi / 2,       -pi / 3,       -pi / 5,       pi / 5,       pi / 3,       pi /         2L,       pi,       3 * pi / 2,       2 * pi,       5 * pi / 2,       3 * pi,       7L *         pi /         2L,       4 * pi,       9 * pi / 2,       5 * pi,       11 * pi / 2,       6L *         pi     ),
      tick = TRUE,
      line = -0.4,
      pos = par("usr")[4],
      outer = FALSE,
      col = params$grcolor,
      cex.axis = 0.8,
-     mgp = c(-2.5,-1, 0)
+     mgp = c(-2.5,-1L, 0L)
    )
  }
 }
@@ -6309,7 +7123,7 @@ if (params$showPhaseOnMagPlot) {
      Arg(rv$h)
    },
    col = "grey",
-   lwd = params$LineWidth * 2 / 3,
+   lwd = params$LineWidth * 2/3,
    lty = "dotted"
  )
  if (params$showLegend)
@@ -6329,21 +7143,25 @@ par(mfrow = c(1,1))
 ***
 
 \```{r bCoefficients}
-kable(params$handlesb, caption = "b Coefficients (moving-average MA)")
+knitr::kable(params$handlesb, caption = "b Coefficients (Mov.-avg. MA)",
+            format.args = list(width =45))
 \```
 
 \```{r aCoefficients}
-kable(params$handlesa, caption = "a Coefficients (autoregressive AR)")
+knitr::kable(params$handlesa, caption = "a Coefficients (Auto-regr. AR)",
+            format.args = list(width =45))
 \```
 
 \```{r MinimumValues}
-kable(cbind(minfreqs=params$magnminimumsf,minamplitudes=params$magnminimumsa), 
-      caption = "Minimum Values")
+knitr::kable(cbind(minfreqs=params$magnminimumsf,minamplitudes=params$magnminimumsa), 
+      caption = "Minimum Values",
+      format.args = list(width =25))
 \```
 
 \```{r MaximumValues}
-kable(cbind(maxfreqs=params$magnmaximumsf,maxamplitudes=params$magnmaximumsa), 
-      caption = "Maximum Values")
+knitr::kable(cbind(maxfreqs=params$magnmaximumsf,maxamplitudes=params$magnmaximumsa), 
+      caption = "Maximum Values",
+      format.args = list(width =25))
 \```
 
 \```{r AllParams}
@@ -6357,7 +7175,7 @@ library(webshot)
 tempScreenshot <- file.path(tempdir(), "ScreenShotPeZdemoR.png")
 list.files(path = params$appwd)
 webshot::appshot(app = file.path(params$appwd), file = tempScreenshot, 
-    vwidth = 1366, delay = 90)
+    vwidth = 1366, delay = 90L)
 \```
 
 
@@ -6436,9 +7254,9 @@ license()
       yImag = c(
         Im(handles$poleloc), Im(handles$zeroloc)
       )), row.names = c(paste0("p",
-                               1:length(
+                               1L:length(
                                  handles$poleloc
-                               )), paste0("z", 1:length(
+                               )), paste0("z", 1L:length(
                                  handles$zeroloc
                                ))))
     point <- nearPoints(
@@ -6446,11 +7264,11 @@ license()
       coordinfo = input$pzplot_hover,
       xvar = "xReal",
       yvar = "yImag",
-      threshold = 7,
-      maxpoints = 1,
+      threshold = 7L,
+      maxpoints = 1L,
       addDist = TRUE
     )
-    if (!(handles$inDragMode) && (NROW(point) == 0))
+    if (!(handles$inDragMode) && (NROW(point) == 0L))
       return(NULL)
     left_pct <-
       (Myhover$x - Myhover$domain$left) / (Myhover$domain$right -
@@ -6480,11 +7298,11 @@ license()
         rownames(point),
         "</b>: [",
         "<b>",
-        round(point$xReal, 2),
+        round(point$xReal, 2L),
         "</b>",
         ", ",
         "<b>",
-        round(point$yImag, 2),
+        round(point$yImag, 2L),
         "</b>]"
       )
     ))
@@ -6494,19 +7312,19 @@ license()
   output$hover_info2 <- renderUI({
     req(handles$magnmaximumsf, handles$magnminimumsa)
     Myhover <- input$magplot_hover
-    if ((length(handles$magnmaximumsa) > 0) ||
+    if ((length(handles$magnmaximumsa) > 0L) ||
         (length(handles$magnminimumsa) >
-         0)) {
+         0L)) {
       Mydf <- as.data.frame(cbind(
         frq = c(handles$magnmaximumsf,
                 handles$magnminimumsf),
         magn = c(handles$magnmaximumsa,
                  handles$magnminimumsa)
       ), row.names = c(paste0(
-        "s", 1:length(handles$magnmaximumsf)
+        "s", 1L:length(handles$magnmaximumsf)
       ),
       paste0(
-        "m", 1:length(handles$magnminimumsf)
+        "m", 1L:length(handles$magnminimumsf)
       )))
       point <-
         nearPoints(
@@ -6514,11 +7332,11 @@ license()
           coordinfo = input$magplot_hover,
           xvar = "frq",
           yvar = "magn",
-          threshold = 7,
-          maxpoints = 1,
+          threshold = 7L,
+          maxpoints = 1L,
           addDist = TRUE
         )
-      if (NROW(point) == 0)
+      if (NROW(point) == 0L)
         return(NULL)
       left_pct <- (if (input$logarithmicFreqAxis) {
         0.001 * log10(Myhover$x)
@@ -6543,8 +7361,7 @@ license()
           "left:",
           paste0(left_px + 2, "px;"),
           "top:",
-          paste0(top_px +
-                   2, "px;")
+          paste0(top_px + 2, "px;")
         )
        # http://www.77dev.com/2016/03/custom-interactive-csshtml-tooltips.html
       wellPanel(style = style, class = "well-sm", HTML(
@@ -6553,11 +7370,11 @@ license()
           rownames(point),
           "</b>: [",
           "<b>",
-          round(point$frq, 2),
+          round(point$frq, 2L),
           "</b>",
           ", ",
           "<b>",
-          round(point$magn, 2),
+          round(point$magn, 2L),
           "</b>]"
         )
       ))
@@ -6588,16 +7405,18 @@ license()
               zeroloc = handles$zeroloc
             ),
             file = file1,
-            ncolumns = 1,
+            ncolumns = 1L,
             append = FALSE,
             sep = " "
           )
+          # close(file1)
         }
         else if (input$textbinaryformatExport == "bin") {
+          # cat(file=stderr(),"L6602 input$filenameExport:",input$filenameExport,".\n")
           zz <- file(paste0(input$filenameExport, ".bin"), open = "wb")
           writeBin(c(
             poleloc = handles$poleloc,
-            0,
+            0L,
             zeroloc = handles$zeroloc
           ),
           con = zz)
@@ -6607,28 +7426,30 @@ license()
           print(readBin(
             con = zz,
             what = complex(),
-            n = 10
+            n = 20L # (maximal) number of records to be read
           ))
           close(zz)
         }
         else if (input$textbinaryformatExport == "RData") {
+          # cat(file=stderr(),"L6620 input$filenameExport:",input$filenameExport,".\n")
           mypolescopy <- handles$poleloc
           myzeroscopy <- handles$zeroloc
           save(myzeroscopy, mypolescopy, file = "rpolezerolocs.RData")
-          load(file = paste0(input$filenameExport, ".RData"),
-               verbose = TRUE)
+          load(file = paste0(input$filenameExport, ".RData"),verbose = TRUE)
         }
         else if (input$textbinaryformatExport == "mat") {
-          mypolescopy <- handles$poleloc
-          myzeroscopy <- handles$zeroloc
+          # cat(file=stderr(),"L6627 input$filenameExport:",input$filenameExport,".\n")
+          mybcopy <- isolate(handlesb())
+          myacopy <- isolate(handlesa())
           R.matlab::writeMat(
             paste0(input$filenameExport, ".mat"),
-            mypolescopy = mypolescopy,
-            myzeroscopy = myzeroscopy,
+            Num = mybcopy, # i.e. Numerator
+            Den = myacopy, # i.e. Denominator
             verbose = TRUE
           )
         }
         else if (input$textbinaryformatExport == "yml") {
+          # cat(file=stderr(),"L6638 input$filenameExport:",input$filenameExport,".\n")
           MyYamlString <-
             yaml::as.yaml(list(
               mypolescopy = as.character(handles$poleloc),
@@ -6640,7 +7461,7 @@ license()
     )
   randomVals <-
     eventReactive(eventExpr = input$pb_showgph, valueExpr = {
-      runif(5)
+      runif(5L)
     })
   plotInput <- function() {
     hist(randomVals())
@@ -6659,7 +7480,7 @@ license()
           width = 480,
           height = 480,
           units = "px",
-          pointsize = 12,
+          pointsize = 12L,
           bg = "white"
         )
         plotInput()
@@ -6676,10 +7497,10 @@ license()
                  filtb[Re(filtb) < -1e+12] <- -1e+12
                  filta[Re(filta) > 1e+12] <- 1e+12
                  filta[Re(filta) < -1e+12] <- -1e+12
-                 filtb[Im(filtb) > 1e+12] <- Re(filtb) + j * 1e+12
-                 filtb[Im(filtb) < -1e+12] <- Re(filtb) - j * 1e+12
-                 filta[Im(filta) > 1e+12] <- Re(filtb) + j * 1e+12
-                 filta[Im(filta) < -1e+12] <- Re(filtb) - j * 1e+12
+                 filtb[Im(filtb) > 1e+12] <- Re(filtb) + 1i * 1e+12
+                 filtb[Im(filtb) < -1e+12] <- Re(filtb) - 1i * 1e+12
+                 filta[Im(filta) > 1e+12] <- Re(filtb) + 1i * 1e+12
+                 filta[Im(filta) < -1e+12] <- Re(filtb) - 1i * 1e+12
                  rv <-
                    signal::freqz(
                      filtb,
@@ -6689,7 +7510,7 @@ license()
                      Fs = 2 *
                        pi * input$samplingfreq / 2
                    )
-                 updateNumericInput(session, inputId = "edit_gain", value = 1 / max(Re(rv$h)))
+                 updateNumericInput(session, inputId = "edit_gain", value = 1/ max(Re(rv$h)))
                  updateCheckboxInput(session, inputId = "normalizedMagPlotAmplitude",
                                      value = TRUE)
                })
@@ -6698,7 +7519,7 @@ license()
   handlesa <- reactive({
     updateSelectInput(session,
                       inputId = "listbox_a",
-                      choices = round(pracma::Poly(handles$poleloc), 6))
+                      choices = round(pracma::Poly(handles$poleloc), 6L))
     shinyjs::disable(id = "listbox_a")
     rawcalc <- pracma::Poly(handles$poleloc)
     rawcalc
@@ -6709,7 +7530,7 @@ license()
     updateSelectInput(session,
                       inputId = "listbox_b",
                       choices = round(pracma::Poly(handles$zeroloc),
-                                      6))
+                                      6L))
     shinyjs::disable(id = "listbox_b")
     rawcalc <- pracma::Poly(handles$zeroloc)
     rawcalc
@@ -6720,36 +7541,36 @@ license()
     N <- 512
     pt <- input$maxLengthImpulseResponse
     pracma::fftshift((fft(c(
-      input$edit_gain * handlesb(), rep(0, N -
+      input$edit_gain * handlesb(), rep(0L, N -
                                           length(input$edit_gain * handlesb()))
     ))) / c(fft(c(
       handlesa(),
-      rep(0, N - length(handlesa()))
+      rep(0L, N - length(handlesa()))
     ))))
   })
   
   hnimag <- reactive({
     pt <- input$maxLengthImpulseResponse
-    if ((length(handlesb()) >= 2) && (length(handlesa()) >= 2)) {
+    if ((length(handlesb()) >= 2L) && (length(handlesa()) >= 2L)) {
       temphnimag <-
-        signal::filter(c(handlesb()[1], Im(handlesb()[2:length(handlesb())])),
-                       c(handlesa()[1], Im(handlesa()[2:length(handlesa())])),
-                       c(1, rep(0, times = (pt - 1)))) # impulse
+        signal::filter(c(handlesb()[1], Im(handlesb()[2L:length(handlesb())])),
+                       c(handlesa()[1], Im(handlesa()[2L:length(handlesa())])),
+                       c(1L, rep(0L, times = (pt - 1L)))) # impulse
     }
-    else if (length(handlesa()) >= 2) {
+    else if (length(handlesa()) >= 2L) {
       temphnimag <-
-        signal::filter(handlesb(), c(handlesa()[1], Im(handlesa()[2:length(handlesa())])),
-                       c(1, rep(0, times = (pt - 1)))) # impulse
+        signal::filter(handlesb(), c(handlesa()[1], Im(handlesa()[2L:length(handlesa())])),
+                       c(1L, rep(0L, times = (pt - 1L)))) # impulse
     }
     else {
-      temphnimag <- signal::filter(handlesb(), handlesa(), c(1, rep(0,
-                                                                    times = (pt - 1))))
+      temphnimag <- signal::filter(handlesb(), handlesa(), c(1L, rep(0L,
+                                                                    times = (pt - 1L))))
     }
-    if (length(temphnimag) < 2) {
-      temphnimag <- temphnimag * 0
+    if (length(temphnimag) < 2L) {
+      temphnimag <- temphnimag * 0L
     }
-    else if (max(abs(temphnimag[2:length(temphnimag)])) > 0) {
-      temphnimag <- temphnimag * 0
+    else if (max(abs(temphnimag[2L:length(temphnimag)])) > 0L) {
+      temphnimag <- temphnimag * 0L
       temphnimag[2] <- (0 + 1i) * Im(handles$poleloc[1])
     }
     temphnimag
@@ -6757,26 +7578,26 @@ license()
   
   hnimagu <- reactive({
     pt <- input$maxLengthImpulseResponse
-    if ((length(handlesb()) >= 2) && (length(handlesa()) >= 2)) {
+    if ((length(handlesb()) >= 2L) && (length(handlesa()) >= 2L)) {
       temphnimag <-
-        signal::filter(c(handlesb()[1], Im(handlesb()[2:length(handlesb())])),
-                       c(handlesa()[1], Im(handlesa()[2:length(handlesa())])),
-                       c(1, rep(1, times = (pt - 1)))) # step
+        signal::filter(c(handlesb()[1], Im(handlesb()[2L:length(handlesb())])),
+                       c(handlesa()[1], Im(handlesa()[2L:length(handlesa())])),
+                       c(1L, rep(1L, times = (pt - 1L)))) # step
     }
-    else if (length(handlesa()) >= 2) {
+    else if (length(handlesa()) >= 2L) {
       temphnimag <-
-        signal::filter(handlesb(), c(handlesa()[1], Im(handlesa()[2:length(handlesa())])),
-                       c(1, rep(1, times = (pt - 1)))) # step
+        signal::filter(handlesb(), c(handlesa()[1], Im(handlesa()[2L:length(handlesa())])),
+                       c(1L, rep(1L, times = (pt - 1L)))) # step
     }
     else {
-      temphnimag <- signal::filter(handlesb(), handlesa(), c(1, rep(0,
-                                                                    times = (pt - 1))))
+      temphnimag <- signal::filter(handlesb(), handlesa(), c(1L, rep(0L,
+                                                                    times = (pt - 1L))))
     }
-    if (length(temphnimag) < 2) {
-      temphnimag <- temphnimag * 0
+    if (length(temphnimag) < 2L) {
+      temphnimag <- temphnimag * 0L
     }
-    else if (max(abs(temphnimag[2:length(temphnimag)])) > 0) {
-      temphnimag <- temphnimag * 0
+    else if (max(abs(temphnimag[2L:length(temphnimag)])) > 0L) {
+      temphnimag <- temphnimag * 0L
       temphnimag[2] <- (0 + 1i) * Im(handles$poleloc[1])
     }
     temphnimag
@@ -6788,12 +7609,12 @@ license()
     # signal::impz(
     #   filt = input$edit_gain * handlesb(),
     #   a = handlesa(),
-    #   n = pt - 1
+    #   n = pt - 1L
     # )
     signal::filter( # real-parts only - imaginary-parts are "discarded in coercion"
       filt = input$edit_gain * handlesb(),
       a = handlesa(),
-      x = c(1, rep(0, times = (pt - 1))) # impulse
+      x = c(1L, rep(0L, times = (pt - 1L))) # impulse
     )
   })
   
@@ -6803,12 +7624,12 @@ license()
     # signal::impz(
     #   filt = input$edit_gain * handlesb(),
     #   a = handlesa(),
-    #   n = pt - 1
+    #   n = pt - 1L
     # )
     signal::filter(
       filt = input$edit_gain * handlesb(),
       a = handlesa(),
-      x = c(1, rep(1, times = (pt - 1))) # unit-step
+      x = c(1, rep(1, times = (pt - 1L))) # unit-step
     )
   })
   
@@ -6845,20 +7666,20 @@ license()
   output$axes_pzplot <-
     renderPlot(width = "auto", height = "auto", {
       req(input$slider1)
-      nc <- 100
-      cc <- 1 * exp((0 + (0 + 1i)) * 2 * pi * c(0:(nc - 1)) / (nc - 1))
+      nc <- 100L
+      cc <- 1L * exp((0L + (0 + 1i)) * 2 * pi * c(0L:(nc - 1L)) / (nc - 1L))
       usr1 <- par("usr")[1]
       usr2 <- par("usr")[2]
       usr3 <- par("usr")[3]
       usr4 <- par("usr")[4]
       xlims <-
-        c(max(-5, 1.05 * min(
+        c(max(-5L, 1.05 * min(
           Re(handles$poleloc),
           Re(handles$zeroloc),
           input$zoomlimX[1],
           na.rm = TRUE
         ), na.rm = TRUE),
-        min(5, 1.05 *
+        min(5L, 1.05 *
               max(
                 Re(handles$poleloc),
                 Re(handles$zeroloc),
@@ -6866,13 +7687,13 @@ license()
                 na.rm = TRUE
               ), na.rm = TRUE))
       ylims <-
-        c(max(-5, 1.05 * min(
+        c(max(-5L, 1.05 * min(
           Im(handles$poleloc),
           Im(handles$zeroloc),
           input$zoomlimY[1],
           na.rm = TRUE
         ), na.rm = TRUE),
-        min(5, 1.05 *
+        min(5L, 1.05 *
               max(
                 Im(handles$poleloc),
                 Im(handles$zeroloc),
@@ -6880,7 +7701,7 @@ license()
                 na.rm = TRUE
               ), na.rm = TRUE))
       plot(
-        1 * cc,
+        1L * cc,
         type = if (input$showUnitCircle) {
           "l"
         }
@@ -6906,64 +7727,64 @@ license()
         main = "Pole-Zero Plot",
         xlab = "Re(z)",
         ylab = "Im(z) * j",
-        las = 0,
-        asp = 1
+        las = 0L,
+        asp = 1L
       )
       if (input$checkboxRAY) {
         # must determine quadrant http://www.intmath.com/trigonometric-functions/5-signs-of-trigonometric-functions.php
-        switch(3 + sign(sin(
+        switch(3L + sign(sin(
           input$slider1 * pi / (input$samplingfreq / 2)
         )) +
           sign(cos(
             input$slider1 * pi / (input$samplingfreq / 2)
           )),
         {
-          rayX <- c(0,-10)
+          rayX <- c(0L,-10L)
           rayY <-
-            c(0,-10 * tan(input$slider1 * pi / (input$samplingfreq / 2)))
+            c(0L,-10L * tan(input$slider1 * pi / (input$samplingfreq / 2)))
         },
         if (abs(sin(
           input$slider1 * pi / (input$samplingfreq / 2)
         )) <=
         2 * eps) {
-          rayX <- c(0,-10)
-          rayY <- c(0, 0)
+          rayX <- c(0L,-10L)
+          rayY <- c(0L, 0L)
         } else {
-          rayX <- c(0, 0)
-          rayY <- c(0,-10)
+          rayX <- c(0L, 0L)
+          rayY <- c(0L,-10L)
         },
-        if (sin(input$slider1 * pi / (input$samplingfreq / 2)) > 0) {
-          rayX <- c(0,-10)
+        if (sin(input$slider1 * pi / (input$samplingfreq / 2)) > 0L) {
+          rayX <- c(0L,-10L)
           rayY <-
-            c(0,-10 * tan(input$slider1 * pi / (input$samplingfreq / 2)))
+            c(0L,-10L * tan(input$slider1 * pi / (input$samplingfreq / 2)))
         } else {
-          rayX <- c(0, 10)
+          rayX <- c(0L, 10L)
           rayY <-
-            c(0, 10 * tan(input$slider1 * pi / (input$samplingfreq / 2)))
+            c(0L, 10L * tan(input$slider1 * pi / (input$samplingfreq / 2)))
         },
         if (abs(sin(
           input$slider1 * pi / (input$samplingfreq / 2)
         )) <=
         2 * eps) {
-          rayX <- c(0, 10)
-          rayY <- c(0, 0)
+          rayX <- c(0L, 10L)
+          rayY <- c(0L, 0L)
         } else {
-          rayX <- c(0, 0)
-          rayY <- c(0, 10)
+          rayX <- c(0L, 0L)
+          rayY <- c(0L, 10L)
         },
         {
-          rayX <- c(0, 10)
+          rayX <- c(0L, 10L)
           rayY <-
-            c(0, 10 * tan(input$slider1 * pi / (input$samplingfreq / 2)))
+            c(0L, 10L * tan(input$slider1 * pi / (input$samplingfreq / 2)))
         })
         if (abs(rayX[1]) < eps)
-          rayX[1] <- 0
+          rayX[1] <- 0L
         if (abs(rayX[2]) < eps)
-          rayX[2] <- 0
+          rayX[2] <- 0L
         if (abs(rayY[1]) < eps)
-          rayY[1] <- 0
+          rayY[1] <- 0L
         if (abs(rayY[2]) < eps)
-          rayY[2] <- 0
+          rayY[2] <- 0L
         lines(rayX, rayY, lwd = input$LineWidth, col = "magenta")
       }
       if (handles$inDragMode) {
@@ -6980,44 +7801,44 @@ license()
           lty = "dotted"
         )
         grid(col = "magenta")
-        abline(h = 0, col = "magenta")
-        abline(v = 0, col = "magenta")
+        abline(h = 0L, col = "magenta")
+        abline(v = 0L, col = "magenta")
       }
-      if (max(Mod(handles$poleloc)) > (1 + 1e-04)) {
+      if (max(Mod(handles$poleloc)) > (1L + 1e-04)) {
         box(
           which = "plot",
           col = MyColourForUnstableSystem,
-          lwd = 3 *
+          lwd = 3L *
             input$LineWidth,
           lty = "dashed"
         )
         box(
           which = "inner",
           col = MyColourForUnstableSystem,
-          lwd = 3 *
+          lwd = 3L *
             input$LineWidth,
           lty = "dotted"
         )
         symbols(
-          0,
-          0,
+          0L,
+          0L,
           circles = 0.99,
           inches = FALSE,
           bg = MyColourForUnstableSystem,
           add = TRUE
         )
         grid(col = MyColourForUnstableSystem)
-        abline(h = 0, col = MyColourForUnstableSystem)
-        abline(v = 0, col = MyColourForUnstableSystem)
+        abline(h = 0L, col = MyColourForUnstableSystem)
+        abline(v = 0L, col = MyColourForUnstableSystem)
       }
       rmin <- 0.2
       rstep <- rmin
-      rmax <- 10 - rstep
+      rmax <- 10L - rstep
       for (r in (seq(rmin, rmax, by = rstep))) {
         lines(r * cc, lty = "dotted", col = if (input$polargrid) {input$grcolor} else {"transparent"})
       }
       lines(
-        1 * cc,
+        1L * cc,
         lty = if (input$showUnitCircle) {
           "solid"
         }
@@ -7032,10 +7853,10 @@ license()
           "transparent"
         }
       )
-      ell <- seq(rmin, 10, by = 1 / nc)
+      ell <- seq(rmin, 10L, by = 1/ nc)
       tmin <- pi / 12
       for (t in (seq(tmin, 2 * pi, by = tmin))) {
-        r <- cos(t) * ell + (0 + (0 + 1i)) * sin(t) * ell
+        r <- cos(t) * ell + (0L + (0 + 1i)) * sin(t) * ell
         lines(Re(r), Im(r), lty = "dotted", col = if (input$polargrid) {input$grcolor} else {"transparent"})
         text(
           cos(t),
@@ -7045,13 +7866,12 @@ license()
           }
           else {
             if (t <= pi / 3) {
-              substitute(paste(frac(pi, MYVALUE)), list(MYVALUE = round(pi / t,
-                                                                        1)))
+              substitute(paste(frac(pi, MYVALUE)), list(MYVALUE = round(pi / t, 1)))
             }
             else if ((t > pi / 3) && (t < pi)) {
               substitute(paste(frac(MYVALUE1 * pi, MYVALUE2)),
                          list(
-                           MYVALUE1 = sub("^1$",
+                           MYVALUE1 = sub("^1$", # "^1L$",
                                           "", as.character(unlist(
                                             strsplit(attr(
                                               MASS::fractions(t / pi,
@@ -7065,7 +7885,7 @@ license()
                          ))
             }
             else if ((t >= pi) && (t <= 2 * pi)) {
-              substitute(paste(MYVALUE, pi), list(MYVALUE = round((t / pi), 2)))
+              substitute(paste(MYVALUE, pi), list(MYVALUE = round((t / pi), 2L)))
             }
           },
           col = if (input$polargrid) {input$grcolor} else {"transparent"},
@@ -7074,7 +7894,7 @@ license()
       }
       tmin <- pi / 8
       for (t in (seq(tmin, 2 * pi, by = tmin))) {
-        r <- cos(t) * ell + (0 + (0 + 1i)) * sin(t) * ell
+        r <- cos(t) * ell + (0L + (0 + 1i)) * sin(t) * ell
         lines(Re(r), Im(r), lty = "dotted", col = if (input$polargrid) {input$grcolor} else {"transparent"})
         text(
           cos(t),
@@ -7084,26 +7904,26 @@ license()
           }
           else {
             if (t <= pi / 3) {
-              substitute(paste(frac(pi, MYVALUE)), list(MYVALUE = round(pi/t, 1)))
+              substitute(paste(frac(pi, MYVALUE)), list(MYVALUE = round(pi/t, 1L)))
             }
             else if ((t > pi / 3) && (t < pi)) {
               substitute(paste(frac(MYVALUE1 * pi, MYVALUE2)),
                          list(
-                           MYVALUE1 = sub("^1$",
+                           MYVALUE1 = sub("^1$", # "^1L$",
                                           "", as.character(unlist(
                                             strsplit(attr(
                                               MASS::fractions(t / pi,
-                                                              max.denominator = 13), "fracs"
+                                                              max.denominator = 13L), "fracs"
                                             ), "/")
                                           )[1])),
                            MYVALUE2 = as.character(unlist(strsplit(
                              attr(MASS::fractions(t / pi,
-                                                  max.denominator = 13), "fracs"), "/"
+                                                  max.denominator = 13L), "fracs"), "/"
                            ))[2])
                          ))
             }
             else if ((t >= pi) && (t <= 2 * pi)) {
-              substitute(paste(MYVALUE * pi), list(MYVALUE = round((t / pi), 2)))
+              substitute(paste(MYVALUE * pi), list(MYVALUE = round((t / pi), 2L)))
             }
           },
           col = if (input$polargrid) {input$grcolor} else {"transparent"},
@@ -7116,27 +7936,27 @@ license()
       
       if (input$rootlocusgrid) { # http://octave.1599824.n4.nabble.com/new-function-zgrid-m-td1646613.html
         # ported from MATLAB after Tarmigan Casebolt, 2007
-        texton <- 1
+        texton <- 1L
         
         zeta <- seq(0.1,1, by=0.1)
-        # wn_a <- pracma::linspace(0,2*pi,n=100)
-        wn_a <- seq(0,2, length.out=100) * pi
+        # wn_a <- pracma::linspace(0L,2*pi,n=100L)
+        wn_a <- seq(0,2, length.out=100L) * pi
         
         # plot the lines for z
         rv <- pracma::meshgrid(zeta,wn_a)
         zz <- rv$X
         wwn <- rv$Y
         
-        s <- -zz * wwn + 1i*wwn * sqrt(1 - zz^2)
+        s <- -zz * wwn + 1i*wwn * sqrt(1L - zz^2)
         z <- exp(s)
         
         # Do this so that we don't wrap around.
-        # z(imag(z)<0) <- real(z(imag(z)<0));
+        # z(imag(z)<0L) <- real(z(imag(z)<0L));
         # We do this ugly `for` loop, so that we don't make an ugly dark-line
         # on the real-axis.
-        for (q in 1:dim(z)[2]) {
+        for (q in 1L:dim(z)[2]) {
           y <- z[,q]
-          y[Im(y)<0] <- Re(y[which( Im(y)<0 ,1)])
+          y[Im(y)<0] <- Re(y[which( Im(y)<0L ,1L)])
           z[,q] <- y
         }
         
@@ -7146,8 +7966,8 @@ license()
           # type="l",
           col=input$grcolor,
           lwd=input$LineWidth/2
-          # ,xlim=c(-1,1)
-          # ,ylim=c(-1,1)
+          # ,xlim=c(-1L,1L)
+          # ,ylim=c(-1L,1L)
           ,lty = "dotted"
         )
         matlines(
@@ -7157,11 +7977,11 @@ license()
           lwd=input$LineWidth/2
         )
         
-        if (texton > 0) {
+        if (texton > 0L) {
           # put in text labels for zeta
-          for (q in 1:(dim(z)[2])) {
+          for (q in 1L:(dim(z)[2])) {
             loc <- z[pracma::ceil(dim(z)[1]/4),q]
-            if (texton == 2) {
+            if (texton == 2L) {
               text(Re(loc),Im(loc),
                    # paste0('zeta = ',pracma::num2str(zeta[q]))
                    substitute(zeta== ZETAQ, 
@@ -7182,8 +8002,8 @@ license()
           }
         }
         
-        # zeta_a <- pracma::linspace(0,1, n=50)
-        zeta_a <- seq(0,1, length.out=50)
+        # zeta_a <- pracma::linspace(0L,1L, n=50L)
+        zeta_a <- seq(0L,1L, length.out=50L)
         wn <- seq(0,1, by=0.1) * pi
         
         # plot the lines for wn.
@@ -7191,7 +8011,7 @@ license()
         zz <- rv$X
         wwn <- rv$Y
         
-        s <- -zz*wwn + 1i*wwn*sqrt(1-zz^2)
+        s <- -zz*wwn + 1i*wwn*sqrt(1L-zz^2)
         z <- exp(s)
         
         matlines(
@@ -7209,10 +8029,10 @@ license()
         
         if (texton) {
           # put in the text labels for wn
-          for (q in 1:(dim(z)[1])) {
-            if (texton == 2) {
+          for (q in 1L:(dim(z)[1])) {
+            if (texton == 2L) {
               text(Re(z[q,1]),0.03+Im(z[q,1]),
-                   # paste0('wn = ',10,pracma::num2str(wn[q]/pi),'*pi/T')
+                   # paste0('wn = ',10L,pracma::num2str(wn[q]/pi),'*pi/T')
                    substitute(w[n]== WNQbyPi*scriptstyle(over(pi,T)),
                               list(WNQbyPi=wn[q]/pi)
                    )
@@ -7234,15 +8054,15 @@ license()
           }
         }
         grid(col = input$grcolor)
-        abline(h = 0, col = "black")
-        abline(v = 0, col = input$grcolor)
+        abline(h = 0L, col = "black")
+        abline(v = 0L, col = input$grcolor)
 
       }
       
       points(
         Re(handles$zeroloc),
         Im(handles$zeroloc),
-        pch = 21,
+        pch = 21L,
         cex = input$LineWidth,
         lwd = input$LineWidth,
         col = input$ForegroundColorZeros,
@@ -7251,38 +8071,39 @@ license()
       points(
         Re(handles$poleloc),
         Im(handles$poleloc),
-        pch = 4,
+        pch = 4L,
         cex = input$LineWidth,
         lwd = input$LineWidth,
         col = input$ForegroundColorPoles
       )
       nCentralBalancePoints <-
         length(handles$poleloc) - length(handles$zeroloc)
-      if ((length(handles$poleloc) == 1) &&
-          (handles$poleloc[1] == 0)) {
-        nCentralBalancePoints <- nCentralBalancePoints - 1
+      if ((length(handles$poleloc) == 1L) &&
+          (handles$poleloc[1] == 0L) # isTRUE(all.equal( #
+          ) {
+        nCentralBalancePoints <- nCentralBalancePoints - 1L
       }
-      else if ((length(handles$zeroloc) == 1) &&
-               (handles$zeroloc[1] ==
-                0)) {
-        nCentralBalancePoints <- nCentralBalancePoints + 1
+      else if ((length(handles$zeroloc) == 1L) &&
+               (handles$zeroloc[1] == 0L) # isTRUE(all.equal( #
+               ) {
+        nCentralBalancePoints <- nCentralBalancePoints + 1L
       }
-      if (nCentralBalancePoints > 0) {
+      if (nCentralBalancePoints > 0L) {
         points(
-          rep(0, nCentralBalancePoints),
-          rep(0, nCentralBalancePoints),
-          pch = 21,
+          rep(0L, nCentralBalancePoints),
+          rep(0L, nCentralBalancePoints),
+          pch = 21L,
           cex = input$LineWidth / 2,
           col = input$ForegroundColorZeros,
           bg = input$BackgroundColor,
           lwd = input$LineWidth
         )
-        if (nCentralBalancePoints > 1) {
+        if (nCentralBalancePoints > 1L) {
           text(
-            0,
-            0,
+            0L,
+            0L,
             labels = nCentralBalancePoints,
-            pos = 1,
+            pos = 1L,
             offset = 0.8,
             cex = input$LineWidth / 2,
             col = input$ForegroundColorZeros,
@@ -7290,21 +8111,21 @@ license()
           )
         }
       }
-      else if (nCentralBalancePoints < 0) {
+      else if (nCentralBalancePoints < 0L) {
         points(
-          rep(0,-nCentralBalancePoints),
-          rep(0,-nCentralBalancePoints),
-          pch = 4,
+          rep(0L,-nCentralBalancePoints),
+          rep(0L,-nCentralBalancePoints),
+          pch = 4L,
           cex = input$LineWidth / 2,
           col = input$ForegroundColorPoles,
           lwd = input$LineWidth
         )
-        if (-nCentralBalancePoints > 1) {
+        if (-nCentralBalancePoints > 1L) {
           text(
-            0,
-            0,
+            0L,
+            0L,
             labels = -nCentralBalancePoints,
-            pos = 3,
+            pos = 3L,
             offset = 0.7,
             cex = input$LineWidth / 2,
             col = input$ForegroundColorPoles
@@ -7312,23 +8133,22 @@ license()
         }
       }
       MyTableZeros <-
-        matrix(data = 0,
+        matrix(data = 0L,
                nrow = length(handles$zeroloc),
-               ncol = 2)
+               ncol = 2L)
       MyTableZeros[, 1] <- handles$zeroloc
-      for (i in 1:NROW(MyTableZeros)) {
-        MyTableZeros[i, 2] <- sum(MyTableZeros[, 1] == MyTableZeros[i,
-                                                                    1])
+      for (i in 1L:NROW(MyTableZeros)) {
+        MyTableZeros[i, 2] <- sum(MyTableZeros[, 1] == MyTableZeros[i, 1]) # isTRUE(all.equal( #
       }
-      MyTableZeros <- MyTableZeros[(Re(MyTableZeros[, 2]) > 1),]
+      MyTableZeros <- MyTableZeros[(Re(MyTableZeros[, 2]) > 1L),]
       MyTableZeros <- unique(MyTableZeros)
-      if (NROW(MyTableZeros) > 0) {
+      if (NROW(MyTableZeros) > 0L) {
         text(
           Re(MyTableZeros[, 1]),
           Im(MyTableZeros[, 1]),
           labels = Re(MyTableZeros[,
                                    2]),
-          pos = 1,
+          pos = 1L,
           offset = 0.8,
           cex = input$LineWidth / 2,
           col = input$ForegroundColorZeros,
@@ -7336,32 +8156,31 @@ license()
         )
       }
       MyTablePoles <-
-        matrix(data = 0,
+        matrix(data = 0L,
                nrow = length(handles$poleloc),
-               ncol = 2)
+               ncol = 2L)
       MyTablePoles[, 1] <- handles$poleloc
-      for (i in 1:NROW(MyTablePoles)) {
-        MyTablePoles[i, 2] <- sum(MyTablePoles[, 1] == MyTablePoles[i,
-                                                                    1])
+      for (i in 1L:NROW(MyTablePoles)) {
+        MyTablePoles[i, 2] <- sum(MyTablePoles[, 1] == MyTablePoles[i, 1]) # isTRUE(all.equal( #
       }
-      MyTablePoles <- MyTablePoles[(Re(MyTablePoles[, 2]) > 1),]
+      MyTablePoles <- MyTablePoles[(Re(MyTablePoles[, 2]) > 1L),]
       MyTablePoles <- unique(MyTablePoles)
-      if (NROW(MyTablePoles) > 0) {
+      if (NROW(MyTablePoles) > 0L) {
         text(
           Re(MyTablePoles[, 1]),
           Im(MyTablePoles[, 1]),
           labels = Re(MyTablePoles[,
                                    2]),
-          pos = 3,
+          pos = 3L,
           offset = 0.7,
           cex = input$LineWidth / 2,
           col = input$ForegroundColorPoles
         )
       }
       MyFarAwayZeros <-
-        matrix(data = 0,
+        matrix(data = 0L,
                nrow = length(handles$zeroloc),
-               ncol = 2)
+               ncol = 2L)
       usr1 <- par("usr")[1]
       usr2 <- par("usr")[2]
       usr3 <- par("usr")[3]
@@ -7378,21 +8197,20 @@ license()
                                             (Re(MyFarAwayZeros[, 1]) > usr2) | (Im(MyFarAwayZeros[,
                                                                                                   1]) < usr3) |
                                             (Im(MyFarAwayZeros[, 1]) > usr4)),]
-        if (length(MyFarAwayZeros) == 2) {
+        if (length(MyFarAwayZeros) == 2L) {
           MyFarAwayZeros <- matrix(data = MyFarAwayZeros,
-                                   ncol = 2,
+                                   ncol = 2L,
                                    byrow = TRUE)
         }
-        for (i in 1:NROW(MyFarAwayZeros)) {
+        for (i in 1L:NROW(MyFarAwayZeros)) {
           MyFarAwayZeros[i, 2] <-
-            sum(MyFarAwayZeros[, 1] == MyFarAwayZeros[i,
-                                                      1])
+            sum(MyFarAwayZeros[, 1] == MyFarAwayZeros[i, 1]) # isTRUE(all.equal( #
         }
         MyFarAwayZeros <- unique(MyFarAwayZeros)
-        if (NROW(MyFarAwayZeros) > 0) {
+        if (NROW(MyFarAwayZeros) > 0L) {
           ReFarAwayZeros <- Re(MyFarAwayZeros[, 1])
           ImFarAwayZeros <- Im(MyFarAwayZeros[, 1])
-          for (i in (1:NROW(MyFarAwayZeros))) {
+          for (i in (1L:NROW(MyFarAwayZeros))) {
             usr1 <- par("usr")[1]
             usr2 <- par("usr")[2]
             usr3 <- par("usr")[3]
@@ -7404,23 +8222,23 @@ license()
             else {
               tantheta <- ImFarAwayZeros[i] / ReFarAwayZeros[i]
             }
-            cottheta <- 1 / tantheta
+            cottheta <- 1/ tantheta
             Myvec1 <-
               pi + c(
                 atan2(usr3, usr1),
-                atan2(usr3, 0),
+                atan2(usr3, 0L),
                 atan2(usr3,
                       usr2),
-                atan2(0, usr2),
+                atan2(0L, usr2),
                 atan2(usr4, usr2),
                 atan2(usr4,
-                      0),
+                      0L),
                 atan2(usr4, usr1),
-                atan2(0, usr1)
+                atan2(0L, usr1)
               )
             mtext(
               side = switch(
-                1 + findInterval(
+                1L + findInterval(
                   x = pi + atan2(ImFarAwayZeros[i],
                                  ReFarAwayZeros[i]),
                   vec = Myvec1,
@@ -7428,12 +8246,12 @@ license()
                   all.inside = FALSE,
                   left.open = FALSE
                 ),
-                2,                1,                1,                4,                4,                3,                3,                2,                2
+                2L,                1L,                1L,                4L,                4L,                3L,                3L,                2L,                2L
               ),
               text = paste0("(O)", Re(MyFarAwayZeros[i,
                                                      2])),
               at = switch(
-                1 + findInterval(
+                1L + findInterval(
                   x = pi + atan2(ImFarAwayZeros[i],
                                  ReFarAwayZeros[i]),
                   vec = Myvec1,
@@ -7442,73 +8260,73 @@ license()
                   left.open = FALSE
                 ),
                 switch(
-                  2 +
+                  2L +
                     sign(ImFarAwayZeros[i]),
                   max(usr3, tantheta * usr1,
                       na.rm = TRUE),
-                  0,
+                  0L,
                   min(usr4, tantheta * usr1, na.rm = TRUE)
                 ),
                 switch(
-                  2 + sign(ReFarAwayZeros[i]),
+                  2L + sign(ReFarAwayZeros[i]),
                   max(usr1, cottheta *
                         usr3, na.rm = TRUE),
-                  0,
+                  0L,
                   min(usr2, cottheta * usr3,
                       na.rm = TRUE)
                 ),
                 switch(
-                  2 + sign(ReFarAwayZeros[i]),
+                  2L + sign(ReFarAwayZeros[i]),
                   max(usr1, cottheta * usr3, na.rm = TRUE),
-                  0,
+                  0L,
                   min(usr2,
                       cottheta * usr3, na.rm = TRUE)
                 ),
                 switch(
-                  2 + sign(ImFarAwayZeros[i]),
+                  2L + sign(ImFarAwayZeros[i]),
                   max(usr3, tantheta * usr2, na.rm = TRUE),
-                  0,
+                  0L,
                   min(usr4,
                       tantheta * usr2, na.rm = TRUE)
                 ),
                 switch(
-                  2 + sign(ImFarAwayZeros[i]),
+                  2L + sign(ImFarAwayZeros[i]),
                   max(usr3, tantheta * usr2, na.rm = TRUE),
-                  0,
+                  0L,
                   min(usr4,
                       tantheta * usr2, na.rm = TRUE)
                 ),
                 switch(
-                  2 + sign(ReFarAwayZeros[i]),
+                  2L + sign(ReFarAwayZeros[i]),
                   max(usr1, cottheta * usr4, na.rm = TRUE),
-                  0,
+                  0L,
                   min(usr2,
                       cottheta * usr4, na.rm = TRUE)
                 ),
                 switch(
-                  2 + sign(ReFarAwayZeros[i]),
+                  2L + sign(ReFarAwayZeros[i]),
                   max(usr1, cottheta * usr4, na.rm = TRUE),
-                  0,
+                  0L,
                   min(usr2,
                       cottheta * usr4, na.rm = TRUE)
                 ),
                 switch(
-                  2 + sign(ImFarAwayZeros[i]),
+                  2L + sign(ImFarAwayZeros[i]),
                   max(usr3, tantheta * usr1, na.rm = TRUE),
-                  0,
+                  0L,
                   min(usr4,
                       tantheta * usr1, na.rm = TRUE)
                 ),
                 switch(
-                  2 + sign(ImFarAwayZeros[i]),
+                  2L + sign(ImFarAwayZeros[i]),
                   max(usr3, tantheta * usr1, na.rm = TRUE),
-                  0,
+                  0L,
                   min(usr4,
                       tantheta * usr1, na.rm = TRUE)
                 )
               ),
               cex = input$LineWidth *
-                2 / 3,
+                2/3,
               col = input$ForegroundColorZeros,
               bg = input$BackgroundColor
             )
@@ -7516,9 +8334,9 @@ license()
         }
       }
       MyFarAwayPoles <-
-        matrix(data = 0,
+        matrix(data = 0L,
                nrow = length(handles$poleloc),
-               ncol = 2)
+               ncol = 2L)
       usr1 <- par("usr")[1]
       usr2 <- par("usr")[2]
       usr3 <- par("usr")[3]
@@ -7536,27 +8354,27 @@ license()
                                               (Re(MyFarAwayPoles[, 1]) > usr2) | (Im(MyFarAwayPoles[,
                                                                                                     1]) < usr3) |
                                               (Im(MyFarAwayPoles[, 1]) > usr4)),]
-          if (length(MyFarAwayPoles) == 2) {
+          if (length(MyFarAwayPoles) == 2L) {
             MyFarAwayPoles <- matrix(data = MyFarAwayPoles,
-                                     ncol = 2,
+                                     ncol = 2L,
                                      byrow = TRUE)
           }
         })
-        if (NROW(MyFarAwayPoles) > 0) {
-          for (i in 1:NROW(MyFarAwayPoles)) {
+        if (NROW(MyFarAwayPoles) > 0L) {
+          for (i in 1L:NROW(MyFarAwayPoles)) {
             isolate({
               MyFarAwayPoles[i, 2] <- sum(MyFarAwayPoles[, 1] ==
-                                            MyFarAwayPoles[i, 1])
+                                            MyFarAwayPoles[i, 1]) # isTRUE(all.equal( #
             })
           }
         }
         isolate({
           MyFarAwayPoles <- unique(MyFarAwayPoles)
         })
-        if (NROW(MyFarAwayPoles) > 0) {
+        if (NROW(MyFarAwayPoles) > 0L) {
           ReFarAwayPoles <- Re(MyFarAwayPoles[, 1])
           ImFarAwayPoles <- Im(MyFarAwayPoles[, 1])
-          for (i in (1:NROW(MyFarAwayPoles))) {
+          for (i in (1L:NROW(MyFarAwayPoles))) {
             if ((is.infinite(ImFarAwayPoles[i])) &&
                 (is.infinite(ReFarAwayPoles[i]))) {
               tantheta <- sign(ImFarAwayPoles[i]) / sign(ReFarAwayPoles[i])
@@ -7564,7 +8382,7 @@ license()
             else {
               tantheta <- ImFarAwayPoles[i] / ReFarAwayPoles[i]
             }
-            cottheta <- 1 / tantheta
+            cottheta <- 1/ tantheta
             usr1 <- par("usr")[1]
             usr2 <- par("usr")[2]
             usr3 <- par("usr")[3]
@@ -7572,19 +8390,19 @@ license()
             Myvec1 <-
               pi + c(
                 atan2(usr3, usr1),
-                atan2(usr3, 0),
+                atan2(usr3, 0L),
                 atan2(usr3,
                       usr2),
-                atan2(0, usr2),
+                atan2(0L, usr2),
                 atan2(usr4, usr2),
                 atan2(usr4,
-                      0),
+                      0L),
                 atan2(usr4, usr1),
-                atan2(0, usr1)
+                atan2(0L, usr1)
               )
             mtext(
               side = switch(
-                1 + findInterval(
+                1L + findInterval(
                   x = pi + atan2(ImFarAwayPoles[i],
                                  ReFarAwayPoles[i]),
                   vec = Myvec1,
@@ -7592,11 +8410,11 @@ license()
                   all.inside = FALSE,
                   left.open = FALSE
                 ),
-                2,1,1,4,4,3,3,2,2
+                2L,1L,1L,4L,4L,3L,3L,2L,2L
               ),
               text = paste0("(X)", Re(MyFarAwayPoles[i, 2])),
               at = switch(
-                1 + findInterval(
+                1L + findInterval(
                   x = pi + atan2(ImFarAwayPoles[i],
                                  ReFarAwayPoles[i]),
                   vec = Myvec1,
@@ -7605,62 +8423,62 @@ license()
                   left.open = FALSE
                 ),
                 switch(
-                  2 +
+                  2L +
                     sign(ImFarAwayPoles[i]),
                   max(usr3, tantheta * usr1, na.rm = TRUE),
-                  0,
+                  0L,
                   min(usr4, tantheta * usr1, na.rm = TRUE)
                 ),
                 switch(
-                  2 + sign(ReFarAwayPoles[i]),
+                  2L + sign(ReFarAwayPoles[i]),
                   max(usr1, cottheta * usr3, na.rm = TRUE),
-                  0,
+                  0L,
                   min(usr2, cottheta * usr3, na.rm = TRUE)
                 ),
                 switch(
-                  2 + sign(ReFarAwayPoles[i]),
+                  2L + sign(ReFarAwayPoles[i]),
                   max(usr1, cottheta * usr3, na.rm = TRUE),
-                  0,
+                  0L,
                   min(usr2, cottheta * usr3, na.rm = TRUE)
                 ),
                 switch(
-                  2 + sign(ImFarAwayPoles[i]),
+                  2L + sign(ImFarAwayPoles[i]),
                   max(usr3, tantheta * usr2, na.rm = TRUE),
-                  0,
+                  0L,
                   min(usr4, tantheta * usr2, na.rm = TRUE)
                 ),
                 switch(
-                  2 + sign(ImFarAwayPoles[i]),
+                  2L + sign(ImFarAwayPoles[i]),
                   max(usr3, tantheta * usr2, na.rm = TRUE),
-                  0,
+                  0L,
                   min(usr4, tantheta * usr2, na.rm = TRUE)
                 ),
                 switch(
-                  2 + sign(ReFarAwayPoles[i]),
+                  2L + sign(ReFarAwayPoles[i]),
                   max(usr1, cottheta * usr4, na.rm = TRUE),
-                  0,
+                  0L,
                   min(usr2, cottheta * usr4, na.rm = TRUE)
                 ),
                 switch(
-                  2 + sign(ReFarAwayPoles[i]),
+                  2L + sign(ReFarAwayPoles[i]),
                   max(usr1, cottheta * usr4, na.rm = TRUE),
-                  0,
+                  0L,
                   min(usr2, cottheta * usr4, na.rm = TRUE)
                 ),
                 switch(
-                  2 + sign(ImFarAwayPoles[i]),
+                  2L + sign(ImFarAwayPoles[i]),
                   max(usr3, tantheta * usr1, na.rm = TRUE),
-                  0,
+                  0L,
                   min(usr4, tantheta * usr1, na.rm = TRUE)
                 ),
                 switch(
-                  2 + sign(ImFarAwayPoles[i]),
+                  2L + sign(ImFarAwayPoles[i]),
                   max(usr3, tantheta * usr1, na.rm = TRUE),
-                  0,
+                  0L,
                   min(usr4, tantheta * usr1, na.rm = TRUE)
                 )
               ),
-              cex = input$LineWidth * 2 / 3,
+              cex = input$LineWidth * 2/3,
               col = input$ForegroundColorPoles
             )
           }
@@ -7672,21 +8490,21 @@ license()
   output$axes_pzplotZoom <-
     renderPlot(width = "auto", height = "auto",
                {
-                 nc <- 100
+                 nc <- 100L
                  cc <-
-                   1 * exp((0 + (0 + 1i)) * 2 * pi * c(0:(nc - 1)) / (nc - 1))
+                   1L * exp((0L + (0 + 1i)) * 2 * pi * c(0L:(nc - 1L)) / (nc - 1L))
                  usr1 <- par("usr")[1]
                  usr2 <- par("usr")[2]
                  usr3 <- par("usr")[3]
                  usr4 <- par("usr")[4]
                  xlims <-
-                   c(max(-5, 1.05 * min(
+                   c(max(-5L, 1.05 * min(
                      Re(handles$poleloc),
                      Re(handles$zeroloc),
                      input$zoomlimX[1],
                      na.rm = TRUE
                    ), na.rm = TRUE),
-                   min(5,
+                   min(5L,
                        1.05 * max(
                          Re(handles$poleloc),
                          Re(handles$zeroloc),
@@ -7694,13 +8512,13 @@ license()
                          na.rm = TRUE
                        ), na.rm = TRUE))
                  ylims <-
-                   c(max(-5, 1.05 * min(
+                   c(max(-5L, 1.05 * min(
                      Im(handles$poleloc),
                      Im(handles$zeroloc),
                      input$zoomlimY[1],
                      na.rm = TRUE
                    ), na.rm = TRUE),
-                   min(5,
+                   min(5L,
                        1.05 * max(
                          Im(handles$poleloc),
                          Im(handles$zeroloc),
@@ -7712,7 +8530,7 @@ license()
                    ylims <- ranges$y
                  }
                  plot(
-                   1 * cc,
+                   1L * cc,
                    type = if (input$showUnitCircle) {
                      "l"
                    }
@@ -7735,106 +8553,106 @@ license()
                    bg = input$BackgroundColor,
                    xlim = xlims,
                    ylim = ylims,
-                   main = "Pole-Zero Plot (Select desired-region within other plot)",
+                   main = "Pole-Zero Plot (Select desired-region within the other plot)",
                    xlab = "Re(z)",
                    ylab = "Im(z) * j",
-                   las = 0,
-                   asp = 1
+                   las = 0L,
+                   asp = 1L
                  )
                  if (input$checkboxRAY) {
-                   switch(3 + sign(sin(
+                   switch(3L + sign(sin(
                      input$slider1 * pi / (input$samplingfreq / 2)
                    )) +
                      sign(cos(
                        input$slider1 * pi / (input$samplingfreq / 2)
                      )),
                    {
-                     rayX <- c(0,-10)
+                     rayX <- c(0L,-10L)
                      rayY <-
-                       c(0,-10 * tan(input$slider1 * pi / (input$samplingfreq / 2)))
+                       c(0L,-10L * tan(input$slider1 * pi / (input$samplingfreq / 2)))
                    },
                    if (abs(sin(
                      input$slider1 * pi / (input$samplingfreq / 2)
                    )) <=
                    2 * eps) {
-                     rayX <- c(0,-10)
-                     rayY <- c(0, 0)
+                     rayX <- c(0L,-10L)
+                     rayY <- c(0L, 0L)
                    } else {
-                     rayX <- c(0, 0)
+                     rayX <- c(0L, 0L)
                      rayY <-
-                       c(0,-10)
+                       c(0L,-10L)
                    },
                    if (sin(input$slider1 * pi / (input$samplingfreq / 2)) >
-                       0) {
-                     rayX <- c(0,-10)
+                       0L) {
+                     rayX <- c(0L,-10L)
                      rayY <-
-                       c(0,-10 * tan(input$slider1 * pi / (input$samplingfreq / 2)))
+                       c(0L,-10L * tan(input$slider1 * pi / (input$samplingfreq / 2)))
                    } else {
-                     rayX <- c(0, 10)
+                     rayX <- c(0L, 10L)
                      rayY <-
-                       c(0, 10 * tan(input$slider1 * pi / (input$samplingfreq / 2)))
+                       c(0L, 10L * tan(input$slider1 * pi / (input$samplingfreq / 2)))
                    },
                    if (abs(sin(
                      input$slider1 * pi / (input$samplingfreq / 2)
                    )) <=
                    2 * eps) {
-                     rayX <- c(0, 10)
-                     rayY <- c(0, 0)
+                     rayX <- c(0L, 10L)
+                     rayY <- c(0L, 0L)
                    } else {
-                     rayX <- c(0, 0)
-                     rayY <- c(0, 10)
+                     rayX <- c(0L, 0L)
+                     rayY <- c(0L, 10L)
                    },
                    {
-                     rayX <- c(0, 10)
+                     rayX <- c(0L, 10L)
                      rayY <-
-                       c(0, 10 * tan(input$slider1 * pi / (input$samplingfreq / 2)))
+                       c(0L, 10L * tan(input$slider1 * pi / (input$samplingfreq / 2)))
                    })
                    if (abs(rayX[1]) < eps)
-                     rayX[1] <- 0
+                     rayX[1] <- 0L
                    if (abs(rayX[2]) < eps)
-                     rayX[2] <- 0
+                     rayX[2] <- 0L
                    if (abs(rayY[1]) < eps)
-                     rayY[1] <- 0
+                     rayY[1] <- 0L
                    if (abs(rayY[2]) < eps)
-                     rayY[2] <- 0
+                     rayY[2] <- 0L
                    lines(rayX, rayY, lwd = input$LineWidth, col = "magenta")
                  }
-                 if (max(Mod(handles$poleloc)) > (1 + 1e-04)) {
+                 if (max(Mod(handles$poleloc)) > (1L + 1e-04)) {
                    box(
                      which = "plot",
                      col = MyColourForUnstableSystem,
-                     lwd = 3 *
+                     lwd = 3L *
                        input$LineWidth,
                      lty = "dashed"
                    )
                    box(
                      which = "inner",
                      col = MyColourForUnstableSystem,
-                     lwd = 3 *
+                     lwd = 3L *
                        input$LineWidth,
                      lty = "dotted"
                    )
                    symbols(
-                     0,
-                     0,
+                     0L,
+                     0L,
                      circles = 0.99,
                      inches = FALSE,
                      bg = MyColourForUnstableSystem,
                      add = TRUE
                    )
                    grid(col = MyColourForUnstableSystem)
-                   abline(h = 0, col = MyColourForUnstableSystem)
-                   abline(v = 0, col = MyColourForUnstableSystem)
+                   abline(h = 0L, col = MyColourForUnstableSystem)
+                   abline(v = 0L, col = MyColourForUnstableSystem)
                  }
                  rmin <- 0.2
                  rstep <- rmin
-                 rmax <- 10 - rstep
+                 rmax <- 10L - rstep
                  for (r in (seq(rmin, rmax, by = rstep))) {
                    lines(r * cc, lty = "dotted", col = if (input$polargrid) {input$grcolor} else {"transparent"})
                  }
                  if (input$showUnitCircle) {
                    lines(
-                     1 * cc,
+                     1L * cc,
                      lty = if (input$showUnitCircle) {
                        "solid"
                      }
@@ -7851,10 +8669,10 @@ license()
                    )
                  }
                  ell <-
-                   seq(rmin, 10, by = 1 / nc)
+                   seq(rmin, 10L, by = 1/ nc)
                  tmin <- pi / 12
                  for (t in (seq(tmin, 2 * pi, by = tmin))) {
-                   r <- cos(t) * ell + (0 + (0 + 1i)) * sin(t) * ell
+                   r <- cos(t) * ell + (0L + (0 + 1i)) * sin(t) * ell
                    lines(Re(r), Im(r), lty = "dotted", col = if (input$polargrid) {input$grcolor} else {"transparent"})
                    text(
                      cos(t),
@@ -7865,38 +8683,38 @@ license()
                      else {
                        if (t <= pi / 3) {
                          substitute(paste(frac(pi, MYVALUE)), list(MYVALUE = round(pi / t,
-                                                                                   1)))
+                                                                                   1L)))
                        }
                        else if ((t > pi / 3) &&
                                 (t < pi)) {
                          substitute(paste(frac(MYVALUE1 * pi, MYVALUE2)),
                                     list(
-                                      MYVALUE1 = sub("^1$",
+                                      MYVALUE1 = sub("^1$", # "^1L$",
                                                      "", as.character(unlist(
                                                        strsplit(attr(
                                                          MASS::fractions(t / pi,
-                                                                         max.denominator = 13), "fracs"
+                                                                         max.denominator = 13L), "fracs"
                                                        ), "/")
                                                      )[1])),
                                       MYVALUE2 = as.character(unlist(strsplit(
                                         attr(MASS::fractions(t / pi,
-                                                             max.denominator = 13), "fracs"), "/"
+                                                             max.denominator = 13L), "fracs"), "/"
                                       ))[2])
                                     ))
                        }
                        else if ((t >= pi) &&
                                 (t <= 2 * pi)) {
                          substitute(paste(MYVALUE, pi), list(MYVALUE = round((t / pi),
-                                                                             2)))
+                                                                             2L)))
                        }
                      },
                      col = if (input$polargrid) {input$grcolor} else {"transparent"},
-                     adj = c(0.5 - 1 * cos(t), 0.5 - 1 * sin(t))
+                     adj = c(0.5 - 1L * cos(t), 0.5 - 1L * sin(t))
                    )
                  }
                  tmin <- pi / 8
                  for (t in (seq(tmin, 2 * pi, by = tmin))) {
-                   r <- cos(t) * ell + (0 + (0 + 1i)) * sin(t) * ell
+                   r <- cos(t) * ell + (0L + (0 + 1i)) * sin(t) * ell
                    lines(Re(r), Im(r), lty = "dotted", col = if (input$polargrid) {input$grcolor} else {"transparent"})
                    text(
                      cos(t),
@@ -7907,29 +8725,29 @@ license()
                      else {
                        if (t <= pi / 3) {
                          substitute(paste(frac(pi, MYVALUE)), list(MYVALUE = round(pi / t,
-                                                                                   1)))
+                                                                                   1L)))
                        }
                        else if ((t > pi / 3) &&
                                 (t < pi)) {
                          substitute(paste(frac(MYVALUE1 * pi, MYVALUE2)),
                                     list(
-                                      MYVALUE1 = sub("^1$",
+                                      MYVALUE1 = sub("^1$", # "^1L$",
                                                      "", as.character(unlist(
                                                        strsplit(attr(
                                                          MASS::fractions(t / pi,
-                                                                         max.denominator = 13), "fracs"
+                                                                         max.denominator = 13L), "fracs"
                                                        ), "/")
                                                      )[1])),
                                       MYVALUE2 = as.character(unlist(strsplit(
                                         attr(MASS::fractions(t / pi,
-                                                             max.denominator = 13), "fracs"), "/"
+                                                             max.denominator = 13L), "fracs"), "/"
                                       ))[2])
                                     ))
                        }
                        else if ((t >= pi) &&
                                 (t <= 2 * pi)) {
                          substitute(paste(MYVALUE, pi), list(MYVALUE = round((t / pi),
-                                                                             2)))
+                                                                             2L)))
                        }
                      },
                      col = if (input$polargrid) {input$grcolor} else {"transparent"},
@@ -7937,12 +8755,12 @@ license()
                    )
                  }
                  grid(col = if (input$polargrid) {input$grcolor} else {"transparent"})
-                 abline(h = 0, col = "black")
-                 abline(v = 0, col = "black")
+                 abline(h = 0L, col = "black")
+                 abline(v = 0L, col = "black")
                  points(
                    Re(handles$zeroloc),
                    Im(handles$zeroloc),
-                   pch = 21,
+                   pch = 21L,
                    cex = input$LineWidth,
                    lwd = input$LineWidth,
                    col = input$ForegroundColorZeros,
@@ -7951,62 +8769,62 @@ license()
                  points(
                    Re(handles$poleloc),
                    Im(handles$poleloc),
-                   pch = 4,
+                   pch = 4L,
                    cex = input$LineWidth,
                    lwd = input$LineWidth,
                    col = input$ForegroundColorPoles
                  )
                  nCentralBalancePoints <-
                    length(handles$poleloc) - length(handles$zeroloc)
-                 if ((length(handles$poleloc) == 1) &&
-                     (handles$poleloc[1] ==
-                      0)) {
-                   nCentralBalancePoints <- nCentralBalancePoints - 1
+                 if ((length(handles$poleloc) == 1L) &&
+                     (handles$poleloc[1] == 0L) # isTRUE(all.equal( #
+                     ) {
+                   nCentralBalancePoints <- nCentralBalancePoints - 1L
                  }
-                 else if ((length(handles$zeroloc) == 1) &&
-                          (handles$zeroloc[1] ==
-                           0)) {
-                   nCentralBalancePoints <- nCentralBalancePoints + 1
+                 else if ((length(handles$zeroloc) == 1L) &&
+                          (handles$zeroloc[1] == 0L) # isTRUE(all.equal( #
+                          ) {
+                   nCentralBalancePoints <- nCentralBalancePoints + 1L
                  }
-                 if (nCentralBalancePoints > 0) {
+                 if (nCentralBalancePoints > 0L) {
                    points(
-                     rep(0, nCentralBalancePoints),
-                     rep(0, nCentralBalancePoints),
-                     pch = 21,
+                     rep(0L, nCentralBalancePoints),
+                     rep(0L, nCentralBalancePoints),
+                     pch = 21L,
                      cex = input$LineWidth / 2,
                      col = input$ForegroundColorZeros,
                      bg = input$BackgroundColor,
                      lwd = input$LineWidth
                    )
-                   if (nCentralBalancePoints > 1) {
+                   if (nCentralBalancePoints > 1L) {
                      text(
-                       0,
-                       0,
+                       0L,
+                       0L,
                        labels = nCentralBalancePoints,
-                       pos = 1,
+                       pos = 1L,
                        offset = 0.8,
                        cex = input$LineWidth /
-                         2,
+                         2L,
                        col = input$ForegroundColorZeros,
                        bg = input$BackgroundColor
                      )
                    }
                  }
-                 else if (nCentralBalancePoints < 0) {
+                 else if (nCentralBalancePoints < 0L) {
                    points(
-                     rep(0,-nCentralBalancePoints),
-                     rep(0,-nCentralBalancePoints),
-                     pch = 4,
+                     rep(0L,-nCentralBalancePoints),
+                     rep(0L,-nCentralBalancePoints),
+                     pch = 4L,
                      cex = input$LineWidth / 2,
                      col = input$ForegroundColorPoles,
                      lwd = input$LineWidth
                    )
-                   if (-nCentralBalancePoints > 1) {
+                   if (-nCentralBalancePoints > 1L) {
                      text(
-                       0,
-                       0,
+                       0L,
+                       0L,
                        labels = -nCentralBalancePoints,
-                       pos = 3,
+                       pos = 3L,
                        offset = 0.7,
                        cex = input$LineWidth / 2,
                        col = input$ForegroundColorPoles
@@ -8014,56 +8832,54 @@ license()
                    }
                  }
                  MyTableZeros <-
-                   matrix(data = 0,
+                   matrix(data = 0L,
                           nrow = length(handles$zeroloc),
-                          ncol = 2)
+                          ncol = 2L)
                  MyTableZeros[, 1] <-
                    handles$zeroloc
-                 for (i in 1:NROW(MyTableZeros)) {
-                   MyTableZeros[i, 2] <- sum(MyTableZeros[, 1] == MyTableZeros[i,
-                                                                               1])
+                 for (i in 1L:NROW(MyTableZeros)) {
+                   MyTableZeros[i, 2] <- sum(MyTableZeros[, 1] == MyTableZeros[i, 1]) # isTRUE(all.equal( #
                  }
                  MyTableZeros <-
-                   MyTableZeros[(Re(MyTableZeros[, 2]) > 1),]
+                   MyTableZeros[(Re(MyTableZeros[, 2]) > 1L),]
                  MyTableZeros <-
                    unique(MyTableZeros)
-                 if (NROW(MyTableZeros) > 0) {
+                 if (NROW(MyTableZeros) > 0L) {
                    text(
                      Re(MyTableZeros[, 1]),
                      Im(MyTableZeros[, 1]),
                      labels = Re(MyTableZeros[,
                                               2]),
-                     pos = 1,
+                     pos = 1L,
                      offset = 0.8,
-                     cex = input$LineWidth * 2 / 3,
+                     cex = input$LineWidth * 2/3,
                      col = input$ForegroundColorZeros,
                      bg = input$BackgroundColor
                    )
                  }
                  MyTablePoles <-
-                   matrix(data = 0,
+                   matrix(data = 0L,
                           nrow = length(handles$poleloc),
-                          ncol = 2)
+                          ncol = 2L)
                  isolate({
                    MyTablePoles[, 1] <- handles$poleloc
-                   for (i in 1:NROW(MyTablePoles)) {
-                     MyTablePoles[i, 2] <- sum(MyTablePoles[, 1] == MyTablePoles[i,
-                                                                                 1])
+                   for (i in 1L:NROW(MyTablePoles)) {
+                     MyTablePoles[i, 2] <- sum(MyTablePoles[, 1] == MyTablePoles[i, 1]) # isTRUE(all.equal( #
                    }
                    MyTablePoles <-
-                     MyTablePoles[(Re(MyTablePoles[, 2]) > 1),]
+                     MyTablePoles[(Re(MyTablePoles[, 2]) > 1L),]
                    MyTablePoles <-
                      unique(MyTablePoles)
-                   if (NROW(MyTablePoles) > 0) {
+                   if (NROW(MyTablePoles) > 0L) {
                      text(
                        Re(MyTablePoles[, 1]),
                        Im(MyTablePoles[, 1]),
                        labels = Re(MyTablePoles[,
                                                 2]),
-                       pos = 3,
+                       pos = 3L,
                        offset = 0.7,
                        cex = input$LineWidth *
-                         2 / 3,
+                         2/3,
                        col = input$ForegroundColorPoles
                      )
                    }
@@ -8074,9 +8890,9 @@ license()
   output$axes_pzplotPolar <-
     renderPlot(width = "auto", height = "auto",
                {
-                 nc <- 100
+                 nc <- 100L
                  cc <-
-                   1 * exp((0 + (0 + 1i)) * 2 * pi * c(0:(nc - 1)) / (nc - 1))
+                   1L * exp((0L + (0 + 1i)) * 2 * pi * c(0L:(nc - 1L)) / (nc - 1L))
                  pracma::polar(
                    Arg(cc),
                    Mod(cc),
@@ -8105,62 +8921,62 @@ license()
                    ylab = "Im(z) * j"
                  )
                  if (input$checkboxRAY) {
-                   switch(3 + sign(sin(
+                   switch(3L + sign(sin(
                      input$slider1 * pi / (input$samplingfreq / 2)
                    )) +
                      sign(cos(
                        input$slider1 * pi / (input$samplingfreq / 2)
                      )),
                    {
-                     rayX <- c(0,-10)
+                     rayX <- c(0L,-10L)
                      rayY <-
-                       c(0,-10 * tan(input$slider1 * pi / (input$samplingfreq / 2)))
+                       c(0L,-10L * tan(input$slider1 * pi / (input$samplingfreq / 2)))
                    },
                    if (abs(sin(
                      input$slider1 * pi / (input$samplingfreq / 2)
                    )) <=
                    2 * eps) {
-                     rayX <- c(0,-10)
-                     rayY <- c(0, 0)
+                     rayX <- c(0L,-10L)
+                     rayY <- c(0L, 0L)
                    } else {
-                     rayX <- c(0, 0)
+                     rayX <- c(0L, 0L)
                      rayY <-
-                       c(0,-10)
+                       c(0L,-10L)
                    },
                    if (sin(input$slider1 * pi / (input$samplingfreq / 2)) >
-                       0) {
-                     rayX <- c(0,-10)
+                       0L) {
+                     rayX <- c(0L,-10L)
                      rayY <-
-                       c(0,-10 * tan(input$slider1 * pi / (input$samplingfreq / 2)))
+                       c(0L,-10L * tan(input$slider1 * pi / (input$samplingfreq / 2)))
                    } else {
-                     rayX <- c(0, 10)
+                     rayX <- c(0L, 10L)
                      rayY <-
-                       c(0, 10 * tan(input$slider1 * pi / (input$samplingfreq / 2)))
+                       c(0L, 10L * tan(input$slider1 * pi / (input$samplingfreq / 2)))
                    },
                    if (abs(sin(
                      input$slider1 * pi / (input$samplingfreq / 2)
                    )) <=
                    2 * eps) {
-                     rayX <- c(0, 10)
-                     rayY <- c(0, 0)
+                     rayX <- c(0L, 10L)
+                     rayY <- c(0L, 0L)
                    } else {
-                     rayX <- c(0, 0)
+                     rayX <- c(0L, 0L)
                      rayY <-
-                       c(0, 10)
+                       c(0L, 10L)
                    },
                    {
-                     rayX <- c(0, 10)
+                     rayX <- c(0L, 10L)
                      rayY <-
-                       c(0, 10 * tan(input$slider1 * pi / (input$samplingfreq / 2)))
+                       c(0L, 10L * tan(input$slider1 * pi / (input$samplingfreq / 2)))
                    })
                    if (abs(rayX[1]) < eps)
-                     rayX[1] <- 0
+                     rayX[1] <- 0L
                    if (abs(rayX[2]) < eps)
-                     rayX[2] <- 0
+                     rayX[2] <- 0L
                    if (abs(rayY[1]) < eps)
-                     rayY[1] <- 0
+                     rayY[1] <- 0L
                    if (abs(rayY[2]) < eps)
-                     rayY[2] <- 0
+                     rayY[2] <- 0L
                    lines(rayX, rayY, lwd = input$LineWidth, col = "magenta")
                  }
                  pracma::polar(
@@ -8171,7 +8987,7 @@ license()
                    ),
                    type = "p",
                    lwd = input$LineWidth,
-                   pch = 21,
+                   pch = 21L,
                    col = input$ForegroundColorZeros,
                    bg = input$BackgroundColor,
                    add = TRUE,
@@ -8185,24 +9001,24 @@ license()
                    ),
                    type = "p",
                    lwd = input$LineWidth,
-                   pch = 4,
+                   pch = 4L,
                    col = input$ForegroundColorPoles,
                    add = TRUE,
                    cex = input$LineWidth
                  )
-                 axis(side = 1)
-                 axis(side = 2)
+                 axis(side = 1L)
+                 axis(side = 2L)
                  if (input$showUnitCircle) {
                    lines(
                      sin(seq(
-                       from = 0,
+                       from = 0L,
                        to = 2 * pi,
-                       by = 2 * pi / 40
+                       by = 2 * pi / 40L
                      )),
                      cos(seq(
-                       from = 0,
+                       from = 0L,
                        to = 2 * pi,
-                       by = 2 * pi / 40
+                       by = 2 * pi / 40L
                      )),
                      col = input$ForegroundColor,
                      lty = "solid",
@@ -8210,8 +9026,8 @@ license()
                    )
                  }
                  grid(col = if (input$polargrid) {input$grcolor} else {"transparent"})
-                 abline(h = 0, col = "black")
-                 abline(v = 0, col = "black")
+                 abline(h = 0L, col = "black")
+                 abline(v = 0L, col = "black")
                  pracma::polar(
                    atan2(Im(handles$zeroloc), Re(handles$zeroloc)),
                    sqrt(
@@ -8220,7 +9036,7 @@ license()
                    ),
                    type = "p",
                    lwd = input$LineWidth,
-                   pch = 21,
+                   pch = 21L,
                    col = input$ForegroundColorZeros,
                    bg = input$BackgroundColor,
                    add = TRUE,
@@ -8234,7 +9050,7 @@ license()
                    ),
                    type = "p",
                    lwd = input$LineWidth,
-                   pch = 4,
+                   pch = 4L,
                    col = input$ForegroundColorPoles,
                    add = TRUE,
                    cex = input$LineWidth
@@ -8256,35 +9072,31 @@ license()
                  filta[Re(filta) < -1e+12] <-
                    -1e+12
                  filtb[Im(filtb) > 1e+12] <-
-                   Re(filtb) + j * 1e+12
+                   Re(filtb) + 1i * 1e+12
                  filtb[Im(filtb) < -1e+12] <-
-                   Re(filtb) - j * 1e+12
+                   Re(filtb) - 1i * 1e+12
                  filta[Im(filta) > 1e+12] <-
-                   Re(filtb) + j * 1e+12
+                   Re(filtb) + 1i * 1e+12
                  filta[Im(filta) < -1e+12] <-
-                   Re(filtb) - j * 1e+12
+                   Re(filtb) - 1i * 1e+12
                  rv <-
                    signal::freqz(
                      filtb,
                      filta,
                      region = "whole",
                      n = 2 ^ 20,
-                     Fs = 2 * pi * input$samplingfreq /
-                       2
+                     Fs = 2 * pi * input$samplingfreq / 2
                    )
                  radjusted <-
                    60 + 20 * log10(Mod(rv$h)) - 20 * log10(max(Mod(rv$h),
                                                                na.rm = TRUE))
-                 radjusted[radjusted < 0] <-
-                   0
-                 radjusted[radjusted > 60] <-
-                   60
+                 radjusted[radjusted < 0] <- 0
+                 radjusted[radjusted > 60] <- 60
                  pracma::polar(
                    t = rv$f,
                    r = radjusted,
                    xlim = c(0, 60),
-                   ylim = c(0,
-                            60),
+                   ylim = c(0, 60),
                    type = "l",
                    col = input$ForegroundColor,
                    lwd = input$LineWidth,
@@ -8301,11 +9113,11 @@ license()
                    )
                  }
                  axis(
-                   side = 2,
-                   pos = 0,
+                   side = 2L,
+                   pos = 0L,
                    at = c(0, 10, 20, 30, 40, 50, 60),
                    labels = c(-60,-50,-40,-30,-20,-10, 0),
-                   las = 1
+                   las = 1L
                  )
                  grid(col = if (input$polargrid) {input$grcolor} else {"transparent"})
                  abline(h = 0, col = "black")
@@ -8320,7 +9132,7 @@ license()
                    x <- seq(-4.2, 4.2, by = 0.005)
                    y <- seq(-4.2, 4.2, by = 0.005)
                    rv <- pracma::meshgrid(x, y)
-                   z <- rv$X + rv$Y * j
+                   z <- rv$X + rv$Y * 1i
                    shiny::setProgress(0.2)
                    aPolyValueAtz <- pracma::polyval(handlesa(), z)
                    if (max(abs(aPolyValueAtz)) > 2 * eps) {
@@ -8338,21 +9150,21 @@ license()
                    HzImag <- pmin(HzImag, 1e+13)
                    HzImag <- pmax(HzImag,-1e+13)
                    HzImag[(abs(HzImag) < 1e-12)] <- 1e-12
-                   Hz <- HzReal + HzImag * j
+                   Hz <- HzReal + HzImag * 1i
                    filtb <- handlesb()
                    filta <- handlesa()
                    filtb[Re(filtb) > 1e+12] <- 1e+12
                    filtb[Re(filtb) < -1e+12] <- -1e+12
                    filta[Re(filta) > 1e+12] <- 1e+12
                    filta[Re(filta) < -1e+12] <- -1e+12
-                   filtb[Im(filtb) > 1e+12] <- Re(filtb) + j * 1e+12
+                   filtb[Im(filtb) > 1e+12] <- Re(filtb) + 1i * 1e+12
                    filtb[Im(filtb) < -1e+12] <-
-                     Re(filtb) - j * 1e+12
-                   filta[Im(filta) > 1e+12] <- Re(filtb) + j * 1e+12
+                     Re(filtb) - 1i * 1e+12
+                   filta[Im(filta) > 1e+12] <- Re(filtb) + 1i * 1e+12
                    filta[Im(filta) < -1e+12] <-
-                     Re(filtb) - j * 1e+12
+                     Re(filtb) - 1i * 1e+12
                    rv <-
-                     signal::freqz(filtb, filta, region = "whole", n = 1024)
+                     signal::freqz(filtb, filta, region = "whole", n = 1024L)
                    xx <- rep(x, times = length(y))
                    yy <- rep(y, each = length(x))
                    zz <- as.vector(Mod(Hz))
@@ -8367,7 +9179,7 @@ license()
                    col <- topo.colors(input$colors3D)
                    shiny::setProgress(0.4)
                    zz <- 20 * log10(zz)
-                   zz[zz == 0] <- NA
+                   zz[zz == 0] <- NA # isTRUE(all.equal( #
                    x <-
                      threejs::scatterplot3js(
                        x = xx,
@@ -8386,10 +9198,8 @@ license()
                    if (input$showUnitCircle) {
                      print(
                        x$points3d(
-                         1 * cos(rv$f + pi / 2),
-                         1 * sin(rv$f +
-                                   pi /
-                                   2),
+                         1L * cos(rv$f + pi / 2),
+                         1L * sin(rv$f + pi / 2),
                          20 * log10(Mod(rv$h)),
                          color = "red",
                          labels = "freq-response",
@@ -8400,42 +9210,41 @@ license()
                    shiny::setProgress(0.6)
                    if (input$usezerozplane) {
                      x$points3d(
-                       seq(-2.5, 2.5, length.out = 1001),
-                       0,
-                       0,
+                       seq(-2.5, 2.5, length.out = 1001L),
+                       0L,
+                       0L,
                        color = "black",
                        labels = "x-axis",
                        size = 0.1
                      )
                      x$points3d(
-                       0,
-                       seq(-2.5, 2.5, length.out = 1001),
-                       0,
+                       0L,
+                       seq(-2.5, 2.5, length.out = 1001L),
+                       0L,
                        color = "black",
                        labels = "y-axis",
                        size = 0.1
                      )
                      x$points3d(
-                       0,
-                       0,
-                       seq(-2.5, 2.5, length.out = 1001),
+                       0L,
+                       0L,
+                       seq(-2.5, 2.5, length.out = 1001L),
                        color = "black",
                        labels = "z-axis",
                        size = 0.1
                      )
                      x$points3d(
-                       seq(-2.5, 2.5, length.out = 20),
-                       seq(-2.5,
-                           2.5, length.out = 20),
-                       0,
+                       seq(-2.5, 2.5, length.out = 20L),
+                       seq(-2.5, 2.5, length.out = 20L),
+                       0L,
                        color = "black",
                        labels = "grid z=0",
                        size = 0.2
                      )
                      x$points3d(
                        seq(-2.5, 2.5, length.out = input$nticks3D),
-                       seq(-2.5, 2.5, length.out = 201),
-                       0,
+                       seq(-2.5, 2.5, length.out = 201L),
+                       0L,
                        color = input$grcolor,
                        labels = "grid z=0",
                        size = 0.2
@@ -8451,10 +9260,10 @@ license()
     try(rgl.close())
     withProgress(message = "Calculation in progress", detail = "This may take a while...",
                  {
-                   x <- seq(-1.3, 1.3, length.out = 256)
-                   y <- seq(-1.3, 1.3, length.out = 256)
+                   x <- seq(-1.3, 1.3, length.out = 256L)
+                   y <- seq(-1.3, 1.3, length.out = 256L)
                    rvmg <- pracma::meshgrid(x, y)
-                   z <- t(rvmg$X + rvmg$Y * j)
+                   z <- t(rvmg$X + rvmg$Y * 1i)
                    shiny::setProgress(0.3)
                    aPolyValueAtz <- pracma::polyval(handlesa(), z)
                    if (max(abs(aPolyValueAtz), na.rm = TRUE) > 2 * eps) {
@@ -8471,7 +9280,7 @@ license()
                    HdBImag <- pmin(HdBImag, 1e+13)
                    HdBImag <- pmax(HdBImag,-1e+13)
                    HdBImag[(abs(HdBImag) < 1e-12)] <- 1e-12
-                   HdB <- HdBReal + HdBImag * j
+                   HdB <- HdBReal + HdBImag * 1i
                    HdB <- 20 * log10(Mod(input$edit_gain * HdB))
                    HdB[abs(HdB) <= 20 * log10(1.04)] <- NA
                    if ((input$showUnitCircle) ||
@@ -8483,13 +9292,13 @@ license()
                      filta[Re(filta) > 1e+12] <- 1e+12
                      filta[Re(filta) < -1e+12] <- -1e+12
                      filtb[Im(filtb) > 1e+12] <-
-                       Re(filtb) + j * 1e+12
+                       Re(filtb) + 1i * 1e+12
                      filtb[Im(filtb) < -1e+12] <-
-                       Re(filtb) - j * 1e+12
+                       Re(filtb) - 1i * 1e+12
                      filta[Im(filta) > 1e+12] <-
-                       Re(filtb) + j * 1e+12
+                       Re(filtb) + 1i * 1e+12
                      filta[Im(filta) < -1e+12] <-
-                       Re(filtb) - j * 1e+12
+                       Re(filtb) - 1i * 1e+12
                      rv <-
                        signal::freqz(filtb, filta, region = "whole", n = 256)
                      rvhReal <- Re(rv$h)
@@ -8500,7 +9309,7 @@ license()
                      rvhImag <- pmin(rvhImag, 1e+06)
                      rvhImag <- pmax(rvhImag,-1e+06)
                      rvhImag[(abs(rvhImag) < 1e-06)] <- 1e-06
-                     rvh <- rvhReal + rvhImag * j
+                     rvh <- rvhReal + rvhImag * 1i
                    }
                    col2 <-
                      topo.colors(length(HdB))[rank(HdB, na.last = TRUE)]
@@ -8520,16 +9329,16 @@ license()
                        ylab = "Imag(z) * j",
                        zlab = "|H(z)| [dB]",
                        zlim = c(max(c(
-                         -130, min(20 * log10(Mod(
+                         -130L, min(20 * log10(Mod(
                            input$edit_gain *
                              rvh
-                         )), na.rm = TRUE) - 10
+                         )), na.rm = TRUE) - 10L
                        ), na.rm = TRUE), min(c(
-                         130,
+                         130L,
                          max(20 * log10(Mod(
                            input$edit_gain * rvh
                          )), na.rm = TRUE) +
-                           10
+                           10L
                        ), na.rm = TRUE)),
                        forceClipregion = TRUE
                      )
@@ -8544,8 +9353,8 @@ license()
                      )
                    if (input$showUnitCircle) {
                      rgl::plot3d(
-                       1 * cos(rv$f),
-                       1 * sin(rv$f),
+                       1L * cos(rv$f),
+                       1L * sin(rv$f),
                        20 * log10(Mod(input$edit_gain * rvh)),
                        type = "h",
                        col = "red",
@@ -8553,86 +9362,86 @@ license()
                        lty = "dashed",
                        add = TRUE,
                        zlim = c(max(c(
-                         -130, min(20 *
+                         -130L, min(20L *
                                      log10(Mod(
                                        input$edit_gain * rvh
                                      )), na.rm = TRUE) -
-                           10
+                           10L
                        ), na.rm = TRUE), min(c(
-                         130, max(20 * log10(Mod(
+                         130L, max(20 * log10(Mod(
                            input$edit_gain * rvh
-                         )), na.rm = TRUE) + 10
+                         )), na.rm = TRUE) + 10L
                        ), na.rm = TRUE)),
                        forceClipregion = TRUE
                      )
                      rgl::lines3d(
-                       1 * cos(rv$f),
-                       1 * sin(rv$f),
+                       1L * cos(rv$f),
+                       1L * sin(rv$f),
                        20 * log10(Mod(input$edit_gain * rvh)),
                        col = "red",
-                       lwd = 10 * input$LineWidth,
+                       lwd = 10L * input$LineWidth,
                        add = TRUE,
                        zlim = c(max(c(
-                         -130, min(20 * log10(Mod(
+                         -130L, min(20 * log10(Mod(
                            input$edit_gain * rvh
-                         )), na.rm = TRUE) - 10
+                         )), na.rm = TRUE) - 10L
                        ), na.rm = TRUE), 
                        min(c(
-                         130,
+                         130L,
                          max(20 * log10(Mod(
                            input$edit_gain * rvh
                          )), na.rm = TRUE) +
-                           10
+                           10L
                        ), na.rm = TRUE)),
                        forceClipregion = TRUE
                      )
                    }
                    if (input$checkboxRAY) {
-                     switch(3 + sign(sin(
+                     switch(3L + sign(sin(
                        input$slider1 * pi / (input$samplingfreq / 2)
                      )) +
                        sign(cos(
                          input$slider1 * pi / (input$samplingfreq / 2)
                        )),
                      {
-                       rayX <- c(0, 1.04 * cos(input$slider1 * pi / (input$samplingfreq / 2)))
+                       rayX <- c(0L, 1.04 * cos(input$slider1 * pi / (input$samplingfreq / 2)))
                        rayY <-
-                         c(0, 1.04 * sin(input$slider1 * pi / (input$samplingfreq / 2)))
+                         c(0L, 1.04 * sin(input$slider1 * pi / (input$samplingfreq / 2)))
                      },
                      if (abs(sin(
                        input$slider1 * pi / (input$samplingfreq / 2)
                      )) <=
                      2 * eps) {
-                       rayX <- c(0, 1.04 * cos(input$slider1 * pi / (input$samplingfreq / 2)))
-                       rayY <- c(0, 0)
+                       rayX <- c(0L, 1.04 * cos(input$slider1 * pi / (input$samplingfreq / 2)))
+                       rayY <- c(0L, 0L)
                      } else {
-                       rayX <- c(0, 0)
+                       rayX <- c(0L, 0L)
                        rayY <-
-                         c(0, 1.04 * sin(input$slider1 * pi / (input$samplingfreq / 2)))
+                         c(0L, 1.04 * sin(input$slider1 * pi / (input$samplingfreq / 2)))
                      },
-                     if (sin(input$slider1 * pi / (input$samplingfreq / 2)) > 0) {
-                       rayX <- c(0, 1.04 * cos(input$slider1 * pi / (input$samplingfreq / 2)))
+                     if (sin(input$slider1 * pi / (input$samplingfreq / 2)) > 0L) {
+                       rayX <- c(0L, 1.04 * cos(input$slider1 * pi / (input$samplingfreq / 2)))
                        rayY <-
-                         c(0, 1.04 * sin(input$slider1 * pi / (input$samplingfreq / 2)))
+                         c(0L, 1.04 * sin(input$slider1 * pi / (input$samplingfreq / 2)))
                      } else {
-                       rayX <- c(0, 1.04 * cos(input$slider1 * pi / (input$samplingfreq / 2)))
+                       rayX <- c(0L, 1.04 * cos(input$slider1 * pi / (input$samplingfreq / 2)))
                        rayY <-
-                         c(0, 1.04 * sin(input$slider1 * pi / (input$samplingfreq / 2)))
+                         c(0L, 1.04 * sin(input$slider1 * pi / (input$samplingfreq / 2)))
                      },
                      if (abs(sin(
                        input$slider1 * pi / (input$samplingfreq / 2) )) <= 2 * eps
                      ) {
-                       rayX <- c(0, 1.04 * cos(input$slider1 * pi / (input$samplingfreq / 2)))
-                       rayY <- c(0, 0)
+                       rayX <- c(0L, 1.04 * cos(input$slider1 * pi / (input$samplingfreq / 2)))
+                       rayY <- c(0L, 0L)
                      } else {
-                       rayX <- c(0, 0)
+                       rayX <- c(0L, 0L)
                        rayY <-
-                         c(0, 1.04 * sin(input$slider1 * pi / (input$samplingfreq / 2)))
+                         c(0L, 1.04 * sin(input$slider1 * pi / (input$samplingfreq / 2)))
                      },
                      {
-                       rayX <- c(0, 1.04 * cos(input$slider1 * pi / (input$samplingfreq / 2)))
+                       rayX <- c(0L, 1.04 * cos(input$slider1 * pi / (input$samplingfreq / 2)))
                        rayY <-
-                         c(0, 1.04 * sin(input$slider1 * pi / (input$samplingfreq / 2)))
+                         c(0L, 1.04 * sin(input$slider1 * pi / (input$samplingfreq / 2)))
                      })
                      if (abs(rayX[1]) < 1e-12)
                        rayX[1] <- 1e-12
@@ -8645,53 +9454,53 @@ license()
                      rgl::lines3d(
                        rayX,
                        rayY,
-                       c(0, max(20 * log10(
+                       c(0L, max(20 * log10(
                          Mod(input$edit_gain * rvh)
                        ), na.rm = TRUE)),
-                       lwd = 10 * input$LineWidth,
+                       lwd = 10L * input$LineWidth,
                        col = "magenta",
                        add = TRUE,
                        zlim = c(max(c(
-                         -130, min(20 *
+                         -130L, min(20L *
                                      log10(Mod(
                                        input$edit_gain * rvh
-                                     )), na.rm = TRUE) - 10
+                                     )), na.rm = TRUE) - 10L
                        ), na.rm = TRUE), min(c(
-                         130, max(20 * log10(Mod(
+                         130L, max(20 * log10(Mod(
                            input$edit_gain *
                              rvh
-                         )), na.rm = TRUE) + 10
+                         )), na.rm = TRUE) + 10L
                        ), na.rm = TRUE)),
                        forceClipregion = TRUE
                      )
                      rgl::lines3d(
                        rayX,
                        rayY,
-                       c(0, max(20 * log10(
+                       c(0L, max(20 * log10(
                          Mod(input$edit_gain *
                                rvh)
                        ), na.rm = TRUE)),
-                       lwd = 10 * input$LineWidth,
+                       lwd = 10L * input$LineWidth,
                        col = "magenta",
                        add = TRUE,
                        zlim = c(max(c(
-                         -130, min(20 *
+                         -130L, min(20L *
                                      log10(Mod(
                                        input$edit_gain * rvh
                                      )), na.rm = TRUE) -
-                           10
+                           10L
                        ), na.rm = TRUE), min(c(
-                         130, max(20 * log10(Mod(
+                         130L, max(20 * log10(Mod(
                            input$edit_gain *
                              rvh
-                         )), na.rm = TRUE) + 10
+                         )), na.rm = TRUE) + 10L
                        ), na.rm = TRUE)),
                        forceClipregion = TRUE
                      )
                      rgl::plot3d(
                        rayX,
                        rayY,
-                       c(0, min(20 * log10(
+                       c(0L, min(20 * log10(
                          Mod(input$edit_gain *
                                rvh)
                        ))),
@@ -8700,54 +9509,54 @@ license()
                        col = "magenta",
                        add = TRUE,
                        zlim = c(max(c(
-                         -130, min(20 * log10(Mod(
+                         -130L, min(20 * log10(Mod(
                            input$edit_gain *
                              rvh
-                         )), na.rm = TRUE) - 10
+                         )), na.rm = TRUE) - 10L
                        ), na.rm = TRUE), min(c(
-                         130,
+                         130L,
                          max(20 * log10(Mod(
                            input$edit_gain * rvh
                          )), na.rm = TRUE) +
-                           10
+                           10L
                        ), na.rm = TRUE)),
                        forceClipregion = TRUE
                      )
                      rgl::plot3d(
                        rayX,
                        rayY,
-                       c(0, max(20 * log10(
+                       c(0L, max(20 * log10(
                          Mod(input$edit_gain *
                                rvh)
                        ), na.rm = TRUE)),
                        type = "s",
-                       size = 1,
+                       size = 1L,
                        lwd = input$LineWidth,
                        col = "magenta",
                        add = TRUE,
                        zlim = c(max(c(
-                         -130, min(20 *
+                         -130L, min(20L *
                                      log10(Mod(
                                        input$edit_gain * rvh
                                      )), na.rm = TRUE) -
-                           10
+                           10L
                        ), na.rm = TRUE), min(c(
-                         130, max(20 * log10(Mod(
+                         130L, max(20 * log10(Mod(
                            input$edit_gain *
                              rvh
-                         )), na.rm = TRUE) + 10
+                         )), na.rm = TRUE) + 10L
                        ), na.rm = TRUE)),
                        forceClipregion = TRUE
                      )
                      rgl::arrow3d(c(rayX[1], rayY[1], min(c(
-                       120, max(20 *
+                       120, max(20L *
                                   log10(Mod(
                                     input$edit_gain * rvh
                                   )), na.rm = TRUE)
                      ),
                      na.rm = TRUE)),
                      c(rayX[2], rayY[2], min(c(
-                       120, max(20 *
+                       120, max(20L *
                                   log10(Mod(
                                     input$edit_gain * rvh
                                   )), na.rm = TRUE)
@@ -8763,12 +9572,12 @@ license()
   # output$downloadRGL - downloadHandler ----
   output$downloadRGL <-
     downloadHandler(
-      filename = "RGL.html",
+      filename = "RG.html",
       content = function(file) {
                    x <- seq(-1.3, 1.3, length.out = 256)
                    y <- seq(-1.3, 1.3, length.out = 256)
                    rvmg <- pracma::meshgrid(x, y)
-                   z <- t(rvmg$X + rvmg$Y * j)
+                   z <- t(rvmg$X + rvmg$Y * 1i)
                    shiny::setProgress(0.3)
                    aPolyValueAtz <- pracma::polyval(handlesa(), z)
                    if (max(abs(aPolyValueAtz), na.rm = TRUE) > 2 * eps) {
@@ -8785,7 +9594,7 @@ license()
                    HdBImag <- pmin(HdBImag, 1e+13)
                    HdBImag <- pmax(HdBImag,-1e+13)
                    HdBImag[(abs(HdBImag) < 1e-12)] <- 1e-12
-                   HdB <- HdBReal + HdBImag * j
+                   HdB <- HdBReal + HdBImag * 1i
                    HdB <- 20 * log10(Mod(input$edit_gain * HdB))
                    HdB[abs(HdB) <= 20 * log10(1.04)] <- NA
                    if ((input$showUnitCircle) ||
@@ -8797,13 +9606,13 @@ license()
                      filta[Re(filta) > 1e+12] <- 1e+12
                      filta[Re(filta) < -1e+12] <- -1e+12
                      filtb[Im(filtb) > 1e+12] <-
-                       Re(filtb) + j * 1e+12
+                       Re(filtb) + 1i * 1e+12
                      filtb[Im(filtb) < -1e+12] <-
-                       Re(filtb) - j * 1e+12
+                       Re(filtb) - 1i * 1e+12
                      filta[Im(filta) > 1e+12] <-
-                       Re(filtb) + j * 1e+12
+                       Re(filtb) + 1i * 1e+12
                      filta[Im(filta) < -1e+12] <-
-                       Re(filtb) - j * 1e+12
+                       Re(filtb) - 1i * 1e+12
                      rv <-
                        signal::freqz(filtb, filta, region = "whole", n = 256)
                      rvhReal <- Re(rv$h)
@@ -8814,13 +9623,13 @@ license()
                      rvhImag <- pmin(rvhImag, 1e+06)
                      rvhImag <- pmax(rvhImag,-1e+06)
                      rvhImag[(abs(rvhImag) < 1e-06)] <- 1e-06
-                     rvh <- rvhReal + rvhImag * j
+                     rvh <- rvhReal + rvhImag * 1i
                    }
 
         # x <- seq(-1.3, 1.3, length.out = 256)
         # y <- seq(-1.3, 1.3, length.out = 256)
         # rv <- pracma::meshgrid(x, y)
-        # z <- rv$X + rv$Y * j
+        # z <- rv$X + rv$Y * 1i
         # aPolyValueAtz <- pracma::polyval(handlesa(), z)
         # if (max(abs(aPolyValueAtz), na.rm = TRUE) > 2 * eps) {
         #   HdB <- pracma::polyval(handlesb(), z) / aPolyValueAtz
@@ -8836,7 +9645,7 @@ license()
         # HdBImag <- pmin(HdBImag, 1e+13)
         # HdBImag <- pmax(HdBImag,-1e+13)
         # HdBImag[(abs(HdBImag) < 1e-12)] <- 1e-12
-        # HdB <- HdBReal + HdBImag * j
+        # HdB <- HdBReal + HdBImag * 1i
         # HdB <- 20 * log10(Mod(input$edit_gain * HdB))
         # filtb <- handlesb()
         # filta <- handlesa()
@@ -8844,10 +9653,10 @@ license()
         # filtb[Re(filtb) < -1e+12] <- -1e+12
         # filta[Re(filta) > 1e+12] <- 1e+12
         # filta[Re(filta) < -1e+12] <- -1e+12
-        # filtb[Im(filtb) > 1e+12] <- Re(filtb) + j * 1e+12
-        # filtb[Im(filtb) < -1e+12] <- Re(filtb) - j * 1e+12
-        # filta[Im(filta) > 1e+12] <- Re(filtb) + j * 1e+12
-        # filta[Im(filta) < -1e+12] <- Re(filtb) - j * 1e+12
+        # filtb[Im(filtb) > 1e+12] <- Re(filtb) + 1i * 1e+12
+        # filtb[Im(filtb) < -1e+12] <- Re(filtb) - 1i * 1e+12
+        # filta[Im(filta) > 1e+12] <- Re(filtb) + 1i * 1e+12
+        # filta[Im(filta) < -1e+12] <- Re(filtb) - 1i * 1e+12
         # rv <- signal::freqz(filtb, filta, region = "whole", n = 256)
                    
         col2 <- topo.colors(length(HdB))[rank(HdB, na.last = TRUE)]
@@ -8860,19 +9669,19 @@ license()
           xlab = "Imag(z) * j",
           zlab = "|H(z)| [dB]",
           zlim = c(max(c(
-            -130, min(20 * log10(Mod(
+            -130L, min(20 * log10(Mod(
               input$edit_gain * rvh
             )))
           ), na.rm = TRUE), min(c(
-            130, max(20 * log10(Mod(
+            130L, max(20 * log10(Mod(
               input$edit_gain * rvh
             )), na.rm = TRUE)
           ), na.rm = TRUE))
         )
         if (input$showUnitCircle) {
           rgl::plot3d(
-            1 * cos(rv$f + pi / 2),
-            1 * sin(rv$f + pi / 2),
+            1L * cos(rv$f + pi / 2),
+            1L * sin(rv$f + pi / 2),
             20 * log10(Mod(input$edit_gain * rv$h)),
             type = "h",
             col = "red",
@@ -8880,15 +9689,15 @@ license()
             lty = "dashed",
             add = TRUE,
             zlim = c(max(c(
-              -130,
+              -130L,
               min(20 * log10(Mod(
                 input$edit_gain * rvh
-              )), na.rm = TRUE) - 10
+              )), na.rm = TRUE) - 10L
             ), na.rm = TRUE), min(c(
-              130, max(20 * log10(Mod(
+              130L, max(20 * log10(Mod(
                 input$edit_gain *
                   rvh
-              )), na.rm = TRUE) + 10
+              )), na.rm = TRUE) + 10L
             ), na.rm = TRUE)),
             forceClipregion = TRUE
           )
@@ -8915,17 +9724,17 @@ license()
     filtb[Re(filtb) < -1e+12] <- -1e+12
     filta[Re(filta) > 1e+12] <- 1e+12
     filta[Re(filta) < -1e+12] <- -1e+12
-    filtb[Im(filtb) > 1e+12] <- Re(filtb) + j * 1e+12
-    filtb[Im(filtb) < -1e+12] <- Re(filtb) - j * 1e+12
-    filta[Im(filta) > 1e+12] <- Re(filtb) + j * 1e+12
-    filta[Im(filta) < -1e+12] <- Re(filtb) - j * 1e+12
+    filtb[Im(filtb) > 1e+12] <- Re(filtb) + 1i * 1e+12
+    filtb[Im(filtb) < -1e+12] <- Re(filtb) - 1i * 1e+12
+    filta[Im(filta) > 1e+12] <- Re(filtb) + 1i * 1e+12
+    filta[Im(filta) < -1e+12] <- Re(filtb) - 1i * 1e+12
     rv <-
       signal::freqz(
         filtb,
         filta,
         region = "whole",
-        n = 2 ^ 20,
-        Fs = 2 *
+        n = 2L ^ 20L,
+        Fs = 2L *
           pi * input$samplingfreq / 2
       )
     par(mgp = c(2.5, 1, 0))
@@ -8951,7 +9760,7 @@ license()
           20 * log10(max(Mod(rv$h), na.rm = TRUE))
         }
         else {
-          20 * log10(1 / input$edit_gain)
+          20 * log10(1/ input$edit_gain)
         })
       }
       else {
@@ -8964,7 +9773,7 @@ license()
           max(Mod(rv$h), na.rm = TRUE)
         }
         else {
-          1 / input$edit_gain
+          1/ input$edit_gain
         })
       },
       log = if (input$logarithmicFreqAxis) {
@@ -8974,44 +9783,44 @@ license()
         ""
       },
       xlim = if (input$logarithmicFreqAxis) {
-        c(max(0.1, 1e-04 * input$samplingfreq / 2),
+        c(max(0.01, 1e-04 * input$samplingfreq / 2),
           input$samplingfreq / 2)
       }
       else {
         c(if (input$twosidedFFT) {
           -input$samplingfreq / 2
         } else {
-          0
+          0L
         }, if (input$FFTshifted) {
           input$samplingfreq / 2
         } else {
           if (input$twosidedFFT) {
             input$samplingfreq / 2
           } else {
-            2 * input$samplingfreq / 2
+            2L * input$samplingfreq / 2
           }
         })
       },
       ylim = if (input$logarithmicMagPlotAmplitude) {
-        c(max(-130, min(-20, 20 * log10(
+        c(max(-130L, min(-20L, 20 * log10(
           min(Mod(rv$h), na.rm = TRUE) / (if (input$normalizedMagPlotAmplitude) {
             max(Mod(rv$h), na.rm = TRUE)
           } else {
-            1 / input$edit_gain
+            1/ input$edit_gain
           })
-        ))), max(0, min(120, 20 * log10(
+        ))), max(0L, min(120, 20 * log10(
           max(Mod(rv$h), na.rm = TRUE) / (if (input$normalizedMagPlotAmplitude) {
             max(Mod(rv$h), na.rm = TRUE)
           } else {
-            1 / input$edit_gain
+            1/ input$edit_gain
           })
         ), na.rm = TRUE)))
       }
       else {
-        c(0, max(1, Mod(rv$h) / (if (input$normalizedMagPlotAmplitude) {
+        c(0L, max(1L, Mod(rv$h) / (if (input$normalizedMagPlotAmplitude) {
           max(Mod(rv$h), na.rm = TRUE)
         } else {
-          1 / input$edit_gain
+          1/ input$edit_gain
         }), na.rm = TRUE))
       },
       type = "l",
@@ -9033,50 +9842,49 @@ license()
         } ~ ~  ~  ~ "[rads]")
       }
       else if (input$freqaxisunits == "zero2piby2") {
-        expression(2 * omega ~ ~  ~  ~ "[rads]")
+        expression(2L * omega ~ ~  ~  ~ "[rads]")
       }
       else if (input$freqaxisunits == "zero2fs") {
         if (input$twosidedFFT)
           expression(-f[s] %->% ~  ~  ~  ~ f[s] ~ ~  ~  ~ "[Hz]")
         else
-          expression(0 %->% ~  ~  ~  ~ f[s] ~ ~  ~  ~ "[Hz]")
+          expression(0L %->% ~  ~  ~  ~ f[s] ~ ~  ~  ~ "[Hz]")
       }
       else if (input$freqaxisunits == "zero2fsby2") {
         if ((!input$twosidedFFT) &&
             (!input$FFTshifted) && (!input$logarithmicFreqAxis)) {
-          expression(0 %->% ~  ~  ~  ~ f[s] ~ ~  ~  ~ "[Hz]")
+          expression(0L %->% ~  ~  ~  ~ f[s] ~ ~  ~  ~ "[Hz]")
         }
         else {
-          expression(0 %->% ~  ~  ~  ~ f[s] / 2 ~ ~  ~  ~ "[Hz]")
+          expression(0L %->% ~  ~  ~  ~ f[s] / 2 ~ ~  ~  ~ "[Hz]")
         }
       }
       else if (input$freqaxisunits == "zero2fmax") {
-        expression(0 %->% ~  ~  ~  ~ f[max] ~ ~  ~  ~ "[Hz]")
+        expression(0L %->% ~  ~  ~  ~ f[max] ~ ~  ~  ~ "[Hz]")
       }
       else if (input$freqaxisunits == "zero2fmaxby2") {
         if (input$twosidedFFT)
           expression(-f[max] / 2 %->% ~  ~  ~  ~ f[max] / 2 ~ ~  ~  ~ "[Hz]")
         else
-          expression(0 %->% ~  ~  ~  ~ f[max] / 2 ~ ~  ~  ~ "[Hz]")
+          expression(0L %->% ~  ~  ~  ~ f[max] / 2 ~ ~  ~  ~ "[Hz]")
       },
       ylab = if ((input$freqaxisunits == "zero2one") ||
-                 (input$freqaxisunits ==
-                  "zero2pi") ||
-                 (input$freqaxisunits == "zero22pi") || (input$freqaxisunits ==
-                                                         "zero2half") ||
+                 (input$freqaxisunits == "zero2pi") ||
+                 (input$freqaxisunits == "zero22pi") || 
+                 (input$freqaxisunits == "zero2half") ||
                  (input$freqaxisunits == "zero2piby2")) {
         if (input$normalizedMagPlotAmplitude) {
           if (input$logarithmicMagPlotAmplitude) {
             expression(paste(group("|", bold(H(
               e ^ {
-                j * omega
+                1i * omega
               }
             )), "|"), " / max [dB]"))
           }
           else {
             expression(paste(group("|", bold(H(
               e ^ {
-                j * omega
+                1i * omega
               }
             )), "|")), " / max")
           }
@@ -9085,13 +9893,13 @@ license()
           if (input$logarithmicMagPlotAmplitude) {
             expression(paste(group("|", bold(H(
               e ^ {
-                j * omega
+                1i * omega
               }
             )), "|"), "  [dB]"))
           }
           else {
             expression(group("|", bold(H(e ^ {
-              j * omega
+              1i * omega
             })), "|"))
           }
         }
@@ -9122,58 +9930,56 @@ license()
         lty = "dashed"
       )
     grid(col = input$grcolor)
-    abline(h = 0, col = "black")
-    abline(v = 0, col = "black")
+    abline(h = 0L, col = "black")
+    abline(v = 0L, col = "black")
     if (input$secondaryaxis) {
-      if ((input$freqaxisunits == "zero2pi") || (input$freqaxisunits ==
-                                                 "zero22pi") ||
+      if ((input$freqaxisunits == "zero2pi") || 
+          (input$freqaxisunits == "zero22pi") ||
           (input$freqaxisunits == "zero2piby2")) {
         axis(
-          side = 3,
-          at = pi * c(-6,-5.5,-5,-4.5,-4,-3.5,-3,-2.5,-2,-1.5,-1,-1/2,-1/3,-1/5,1/5,1/3,1/2,1,1.5,2,2.5,3,3.5,4,4.5,5,5.5,6),
+          side = 3L,
+          at = pi * c(-6L,-5.5,-5L,-4.5,-4L,-3.5,-3L,-2.5,-2L,-1.5,-1L,-1/2,-1/3,-1/5,1/5,1/3,1/2,1L,1.5,2L,2.5,3L,3.5,4L,4.5,5L,5.5,6L),
           labels = expression(-6*pi,-11*pi/2,            -5 * pi,            -9 * pi / 2,            -4 * pi,            -7 * pi / 2,-3 * pi,            -5 * pi / 2,            -2 * pi,            -3 * pi / 2,            -pi,            -pi / 2,            -pi / 3,-pi / 5,            pi / 5,            pi / 3,            pi / 2,            pi,            3 * pi / 2,            2 * pi,            5 * pi / 2,            3 * pi,            7 * pi / 2,            4 * pi,            9 * pi / 2,            5 * pi,            11 * pi / 2,            6 * pi          ),
           tick = TRUE,
           pos = par("usr")[4],
           outer = FALSE,
           col = input$grcolor,
           cex.axis = 0.8,
-          mgp = c(-2.5,-1,
-                  0),
+          mgp = c(-2.5,-1L,
+                  0L),
           xlab = "pi-based"
         )
       }
       if ((input$freqaxisunits == "zero2one") ||
-          (input$freqaxisunits ==
-           "zero2half")) {
+          (input$freqaxisunits == "zero2half")) {
         axis(
-          side = 3,
-          at = c(-6,-5.5,-5,-4.5,-4,-3.5,-3,-2.5,-2,-1.5,-1,-1/2,-1/3,-1/5,1/5,1/3,1/2,1,1.5,2,2.5,3,3.5,4,4.5,5,5.5,6),
+          side = 3L,
+          at = c(-6L,-5.5,-5L,-4.5,-4L,-3.5,-3L,-2.5,-2L,-1.5,-1L,-1/2,-1/3,-1/5,1/5,1/3,1/2,1L,1.5,2L,2.5,3L,3.5,4L,4.5,5L,5.5,6L),
           labels = expression(-6*pi,-11*pi/2,            -5 * pi,            -9 * pi / 2,            -4 * pi,            -7 * pi / 2,-3 * pi,            -5 * pi / 2,            -2 * pi,            -3 * pi / 2,            -pi,            -pi / 2,            -pi / 3,-pi / 5,            pi / 5,            pi / 3,            pi / 2,            pi,            3 * pi / 2,            2 * pi,            5 * pi / 2,            3 * pi,            7 * pi / 2,            4 * pi,            9 * pi / 2,            5 * pi,            11 * pi / 2,            6 * pi          ),
           tick = TRUE,
           pos = par("usr")[4],
           outer = FALSE,
           col = input$grcolor,
           cex.axis = 0.8,
-          mgp = c(-2.5,-1,
-                  0)
+          mgp = c(-2.5,-1L,
+                  0L)
         )
       }
       if ((input$freqaxisunits == "zero2fs") ||
-          (input$freqaxisunits ==
-           "zero2fmax") ||
+          (input$freqaxisunits == "zero2fmax") ||
           (input$freqaxisunits == "zero2fmaxby2")) {
         axis(
-          side = 3,
-          at = c(-6,-5.5,-5,-4.5,-4,-3.5,-3,-2.5,-2,-1.5,-1,-1/2,-1/3,-1/5,1/5,1/3,1/2,1,1.5,2,2.5,3,3.5,4,4.5,5,5.5,6
+          side = 3L,
+          at = c(-6L,-5.5,-5L,-4.5,-4L,-3.5,-3L,-2.5,-2L,-1.5,-1L,-1/2,-1/3,-1/5,1/5,1/3,1/2,1L,1.5,2L,2.5,3L,3.5,4L,4.5,5L,5.5,6L
           ) * input$samplingfreq / 2,
-          labels = expression(-6*pi,-11*pi/2,            -5 * pi,            -9 *              pi / 2,            -4 * pi,            -7 * pi / 2,            -3 * pi,            -5 * pi / 2,            -2 *              pi,            -3 * pi / 2,            -pi,            -pi / 2,            -pi / 3,            -pi / 5,            pi / 5,            pi / 3,            pi / 2,            pi,            3 * pi / 2,            2 * pi,            5 * pi / 2,            3 * pi,            7 * pi / 2,            4 * pi,            9 * pi / 2,            5 * pi,            11 * pi / 2,            6 * pi          ),
+          labels = expression(-6*pi,-11*pi/2,            -5 * pi,            -9L *              pi / 2,            -4 * pi,            -7 * pi / 2,            -3 * pi,            -5 * pi / 2,            -2L *              pi,            -3 * pi / 2,            -pi,            -pi / 2,            -pi / 3,            -pi / 5,            pi / 5,            pi / 3,            pi / 2,            pi,            3 * pi / 2,            2 * pi,            5 * pi / 2,            3 * pi,            7 * pi / 2,            4 * pi,            9 * pi / 2,            5 * pi,            11 * pi / 2,            6 * pi          ),
           tick = TRUE,
           line = -0.4,
           pos = par("usr")[4],
           outer = FALSE,
           col = input$grcolor,
           cex.axis = 0.8,
-          mgp = c(-2.5,-1, 0)
+          mgp = c(-2.5,-1L, 0L)
         )
       }
     }
@@ -9207,7 +10013,7 @@ license()
           }
         },
         col = input$grcolor,
-        lwd = input$LineWidth * 2 / 3,
+        lwd = input$LineWidth * 2/3,
         lty = "dotted"
       )
       if (input$showLegend)
@@ -9227,16 +10033,16 @@ license()
         myfindpeaks(
           Mod(rv$h),
           minpeakheight = 1e-12,
-          minpeakdistance = (length(rv$h) / 100) / 2,
+          minpeakdistance = (length(rv$h) / 100L) / 2,
           threshold = 0.001,
-          npeaks = 100
+          npeaks = 100L
         )
       xmins <-
         myfindpeaks(
           -Mod(rv$h),
-          minpeakdistance = (length(rv$h) / 100) / 2,
+          minpeakdistance = (length(rv$h) / 100L) / 2,
           threshold = 0.001,
-          npeaks = 100
+          npeaks = 100L
         )
       if (!pracma::isempty(x)) {
         if (!(is.vector(x))) {
@@ -9283,7 +10089,7 @@ license()
               handles$magnmaximumsa <- 20 * log10(x[1])
             }
             if (!(input$normalizedMagPlotAmplitude)) {
-              indxs <- which(isolate(handles$magnmaximumsa) < (20 *
+              indxs <- which(isolate(handles$magnmaximumsa) < (20L *
                                                                  log10(max(
                                                                    Mod(rv$h), na.rm = TRUE
                                                                  )) - 0.01))
@@ -9298,7 +10104,7 @@ license()
             }
             else {
               handles$magnmaximumsa <- isolate(handles$magnmaximumsa) -
-                20 * log10(1 / input$edit_gain)
+                20 * log10(1/ input$edit_gain)
             }
           }
           else {
@@ -9336,7 +10142,7 @@ license()
               handles$magnmaximumsa <- 20 * log10(x[, 1])
             }
             if (!(input$normalizedMagPlotAmplitude)) {
-              indxs <- which(isolate(handles$magnmaximumsa) < (20 *
+              indxs <- which(isolate(handles$magnmaximumsa) < (20L *
                                                                  log10(max(
                                                                    Mod(rv$h), na.rm = TRUE
                                                                  )) - 0.01))
@@ -9351,7 +10157,7 @@ license()
             }
             else {
               handles$magnmaximumsa <- isolate(handles$magnmaximumsa) -
-                20 * log10(1 / input$edit_gain)
+                20 * log10(1/ input$edit_gain)
             }
           }
           else {
@@ -9385,9 +10191,9 @@ license()
           handles$magnmaximumsa,
           type = "b",
           lty = "dotted",
-          lwd = input$LineWidth * 2 / 3,
-          pch = 24,
-          cex = 2,
+          lwd = input$LineWidth * 2/3,
+          pch = 24L,
+          cex = 2.0,
           bg = "maroon",
           col = input$grcolor
         )
@@ -9501,7 +10307,7 @@ license()
           handles$magnminimumsa,
           lty = "dotted",
           lwd = input$LineWidth,
-          pch = 25,
+          pch = 25L,
           bg = input$BackgroundColor,
           col = "maroon"
         )
@@ -9525,21 +10331,21 @@ license()
                  filta[Re(filta) < -1e+12] <-
                    -1e+12
                  filtb[Im(filtb) > 1e+12] <-
-                   Re(filtb) + j * 1e+12
+                   Re(filtb) + 1i * 1e+12
                  filtb[Im(filtb) < -1e+12] <-
-                   Re(filtb) - j * 1e+12
+                   Re(filtb) - 1i * 1e+12
                  filta[Im(filta) > 1e+12] <-
-                   Re(filtb) + j * 1e+12
+                   Re(filtb) + 1i * 1e+12
                  filta[Im(filta) < -1e+12] <-
-                   Re(filtb) - j * 1e+12
+                   Re(filtb) - 1i * 1e+12
                  rv <-
                    signal::freqz(
                      filtb,
                      filta,
                      region = "whole",
-                     n = 2 ^ 20,
+                     n = 2L ^ 20L,
                      Fs = 2 * pi * input$samplingfreq /
-                       2
+                       2L
                    )
                  par(mgp = c(2.5, 1, 0))
                  par(mfrow = c(1, 2))
@@ -9565,7 +10371,7 @@ license()
                        20 * log10(max(Mod(rv$h), na.rm = TRUE))
                      }
                      else {
-                       20 * log10(1 / input$edit_gain)
+                       20 * log10(1/ input$edit_gain)
                      })
                    }
                    else {
@@ -9578,7 +10384,7 @@ license()
                        max(Mod(rv$h), na.rm = TRUE)
                      }
                      else {
-                       1 / input$edit_gain
+                       1/ input$edit_gain
                      })
                    },
                    xlim = input$zoomlimXpassband,
@@ -9587,8 +10393,7 @@ license()
                    col = input$ForegroundColor,
                    bg = input$BackgroundColor,
                    lwd = input$LineWidth,
-                   xlab = if (input$freqaxisunits ==
-                              "zero2one") {
+                   xlab = if (input$freqaxisunits == "zero2one") {
                      expression("Normalized Frequency (" %*% pi ~ ~ "[rads/Sample])")
                    }
                    else if (input$freqaxisunits == "zero2pi") {
@@ -9603,53 +10408,51 @@ license()
                      } ~ ~  ~  ~ "[rads]")
                    }
                    else if (input$freqaxisunits == "zero2piby2") {
-                     expression(2 * omega ~ ~  ~  ~ "[rads]")
+                     expression(2L * omega ~ ~  ~  ~ "[rads]")
                    }
                    else if (input$freqaxisunits == "zero2fs") {
                      if (input$twosidedFFT)
                        expression(-f[s] %->% ~
                                     ~  ~  ~ f[s] ~ ~  ~  ~ "[Hz]")
                      else
-                       expression(0 %->% ~  ~  ~  ~ f[s] ~ ~  ~  ~ "[Hz]")
+                       expression(0L %->% ~  ~  ~  ~ f[s] ~ ~  ~  ~ "[Hz]")
                    }
                    else if (input$freqaxisunits == "zero2fsby2") {
                      if ((!input$twosidedFFT) &&
                          (!input$FFTshifted) && (!input$logarithmicFreqAxis)) {
-                       expression(0 %->% ~  ~  ~  ~ f[s] ~ ~  ~  ~ "[Hz]")
+                       expression(0L %->% ~  ~  ~  ~ f[s] ~ ~  ~  ~ "[Hz]")
                      }
                      else {
-                       expression(0 %->% ~  ~  ~  ~ f[s] / 2 ~ ~  ~  ~ "[Hz]")
+                       expression(0L %->% ~  ~  ~  ~ f[s] / 2 ~ ~  ~  ~ "[Hz]")
                      }
                    }
                    else if (input$freqaxisunits == "zero2fmax") {
-                     expression(0 %->% ~  ~  ~  ~ f[max] ~ ~  ~  ~ "[Hz]")
+                     expression(0L %->% ~  ~  ~  ~ f[max] ~ ~  ~  ~ "[Hz]")
                    }
                    else if (input$freqaxisunits == "zero2fmaxby2") {
                      if (input$twosidedFFT)
                        expression(-f[max] /
-                                    2 %->% ~  ~  ~  ~ f[max] / 2 ~ ~  ~  ~ "[Hz]")
+                                    2L %->% ~  ~  ~  ~ f[max] / 2 ~ ~  ~  ~ "[Hz]")
                      else
-                       expression(0 %->% ~  ~  ~  ~ f[max] / 2 ~ ~  ~  ~ "[Hz]")
+                       expression(0L %->% ~  ~  ~  ~ f[max] / 2 ~ ~  ~  ~ "[Hz]")
                    },
                    ylab = if ((input$freqaxisunits == "zero2one") ||
-                              (input$freqaxisunits ==
-                               "zero2pi") ||
+                              (input$freqaxisunits == "zero2pi") ||
                               (input$freqaxisunits == "zero22pi") ||
                               (input$freqaxisunits == "zero2half") ||
-                              (input$freqaxisunits ==
-                               "zero2piby2")) {
+                              (input$freqaxisunits == "zero2piby2")) {
                      if (input$normalizedMagPlotAmplitude) {
                        if (input$logarithmicMagPlotAmplitude) {
                          expression(paste(group("|", bold(H(
                            e ^ {
-                             j * omega
+                             1i * omega
                            }
                          )), "|"), " / max [dB]"))
                        }
                        else {
                          expression(paste(group("|", bold(H(
                            e ^ {
-                             j * omega
+                             1i * omega
                            }
                          )), "|")), " / max")
                        }
@@ -9658,13 +10461,13 @@ license()
                        if (input$logarithmicMagPlotAmplitude) {
                          expression(paste(group("|", bold(H(
                            e ^ {
-                             j * omega
+                             1i * omega
                            }
                          )), "|"), "  [dB]"))
                        }
                        else {
                          expression(group("|", bold(H(e ^ {
-                           j * omega
+                           1i * omega
                          })), "|"))
                        }
                      }
@@ -9693,56 +10496,54 @@ license()
                      lty = "dashed"
                    )
                  grid(col = input$grcolor)
-                 abline(h = 0, col = "black")
-                 abline(v = 0, col = "black")
+                 abline(h = 0L, col = "black")
+                 abline(v = 0L, col = "black")
                  if (input$secondaryaxis) {
-                   if ((input$freqaxisunits == "zero2pi") || (input$freqaxisunits ==
-                                                              "zero22pi") ||
+                   if ((input$freqaxisunits == "zero2pi") || 
+                       (input$freqaxisunits == "zero22pi") ||
                        (input$freqaxisunits == "zero2piby2")) {
                      axis(
-                       side = 3,
-                       at = pi * c(-6,-5.5,-5,-4.5,-4,-3.5,-3,-2.5,-2,-1.5,-1,-1/2,-1/3,-1/5,1/5,1/3,1/2,1,1.5,2,2.5,3,3.5,4,4.5,5,5.5,6),
-                       labels = expression(-6*pi,-11*pi/2,                         -5 * pi,                         -9 * pi / 2,                         -4 * pi,                         -7 * pi / 2,-3 * pi,                         -5 * pi / 2,                         -2 * pi,                         -3 * pi / 2,                         -pi,                         -pi / 2,-pi / 3,                         -pi / 5,                         pi / 5,                         pi / 3,                         pi / 2,                         pi,                         3 * pi / 2,                         2 * pi,                         5 * pi /                           2,                         3 * pi,                         7 * pi / 2,                         4 * pi,                         9 * pi / 2,                         5 * pi,                         11 * pi /                           2,                         6 * pi                       ),
+                       side = 3L,
+                       at = pi * c(-6L,-5.5,-5L,-4.5,-4L,-3.5,-3L,-2.5,-2L,-1.5,-1L,-1/2,-1/3,-1/5,1/5,1/3,1/2,1L,1.5,2L,2.5,3L,3.5,4L,4.5,5L,5.5,6L),
+                       labels = expression(-6*pi,-11*pi/2,                         -5 * pi,                         -9 * pi / 2,                         -4 * pi,                         -7 * pi / 2,-3 * pi,                         -5 * pi / 2,                         -2 * pi,                         -3 * pi / 2,                         -pi,                         -pi / 2,-pi / 3,                         -pi / 5,                         pi / 5,                         pi / 3,                         pi / 2,                         pi,                         3 * pi / 2,                         2 * pi,                         5 * pi /                           2L,                         3 * pi,                         7 * pi / 2,                         4 * pi,                         9 * pi / 2,                         5 * pi,                         11 * pi /                           2L,                         6 * pi                       ),
                        tick = TRUE,
                        pos = par("usr")[4],
                        outer = FALSE,
                        col = input$grcolor,
                        cex.axis = 0.8,
-                       mgp = c(-2.5,-1, 0),
+                       mgp = c(-2.5,-1L, 0L),
                        xlab = "pi-based"
                      )
                    }
                    if ((input$freqaxisunits == "zero2one") ||
-                       (input$freqaxisunits ==
-                        "zero2half")) {
+                       (input$freqaxisunits == "zero2half")) {
                      axis(
-                       side = 3,
-                       at = c(-6,-5.5,-5,-4.5,-4,-3.5,-3,-2.5,-2,-1.5,-1,-1/2,-1/3,-1/5,1/5,1/3,1/2,1,1.5,2,2.5,3,3.5,4,4.5,5,5.5,6),
-                       labels = expression(-6*pi,-11*pi/2,                         -5 * pi,                         -9 * pi / 2,                         -4 * pi,                         -7 * pi / 2,-3 * pi,                         -5 * pi / 2,                         -2 * pi,                         -3 * pi / 2,                         -pi,                         -pi / 2,-pi / 3,                         -pi / 5,                         pi / 5,                         pi / 3,                         pi / 2,                         pi,                         3 * pi / 2,                         2 * pi,                         5 * pi /                           2,                         3 * pi,                         7 * pi / 2,                         4 * pi,                         9 * pi / 2,                         5 * pi,                         11 * pi /                           2,                         6 * pi                       ),
+                       side = 3L,
+                       at = c(-6L,-5.5,-5L,-4.5,-4L,-3.5,-3L,-2.5,-2L,-1.5,-1L,-1/2,-1/3,-1/5,1/5,1/3,1/2,1L,1.5,2L,2.5,3L,3.5,4L,4.5,5L,5.5,6L),
+                       labels = expression(-6*pi,-11*pi/2,                         -5 * pi,                         -9 * pi / 2,                         -4 * pi,                         -7 * pi / 2,-3 * pi,                         -5 * pi / 2,                         -2 * pi,                         -3 * pi / 2,                         -pi,                         -pi / 2,-pi / 3,                         -pi / 5,                         pi / 5,                         pi / 3,                         pi / 2,                         pi,                         3 * pi / 2,                         2 * pi,                         5 * pi /                           2L,                         3 * pi,                         7 * pi / 2,                         4 * pi,                         9 * pi / 2,                         5 * pi,                         11 * pi /                           2L,                         6 * pi                       ),
                        tick = TRUE,
                        pos = par("usr")[4],
                        outer = FALSE,
                        col = input$grcolor,
                        cex.axis = 0.8,
-                       mgp = c(-2.5,-1, 0)
+                       mgp = c(-2.5,-1L, 0L)
                      )
                    }
                    if ((input$freqaxisunits == "zero2fs") ||
-                       (input$freqaxisunits ==
-                        "zero2fmax") ||
+                       (input$freqaxisunits == "zero2fmax") ||
                        (input$freqaxisunits == "zero2fmaxby2")) {
                      axis(
-                       side = 3,
-                       at = c(-6,-5.5,-5,-4.5,-4,-3.5,-3,-2.5,-2,-1.5,-1,-1/2,-1/3,-1/5,1/5,1/3,1/2,1,1.5,2,2.5,3,3.5,4,4.5,5,5.5,6
+                       side = 3L,
+                       at = c(-6L,-5.5,-5L,-4.5,-4L,-3.5,-3L,-2.5,-2L,-1.5,-1L,-1/2,-1/3,-1/5,1/5,1/3,1/2,1L,1.5,2L,2.5,3L,3.5,4L,4.5,5L,5.5,6L
                        ) * input$samplingfreq / 2,
-                       labels = expression(-6*pi,-11*pi/2,                         -5 * pi,                         -9 *                           pi /                           2,                         -4 * pi,                         -7 * pi / 2,                         -3 * pi,                         -5 * pi / 2,                         -2 *                           pi,                         -3 * pi / 2,                         -pi,                         -pi / 2,                         -pi / 3,                         -pi / 5,                         pi / 5,                         pi / 3,                         pi /                           2,                         pi,                         3 * pi / 2,                         2 * pi,                         5 * pi / 2,                         3 * pi,                         7 *                           pi /                           2,                         4 * pi,                         9 * pi / 2,                         5 * pi,                         11 * pi / 2,                         6 *                           pi                       ),
+                       labels = expression(-6*pi,-11*pi/2,                         -5 * pi,                         -9L *                           pi /                           2L,                         -4 * pi,                         -7 * pi / 2,                         -3 * pi,                         -5 * pi / 2,                         -2L *                           pi,                         -3 * pi / 2,                         -pi,                         -pi / 2,                         -pi / 3,                         -pi / 5,                         pi / 5,                         pi / 3,                         pi /                           2L,                         pi,                         3 * pi / 2,                         2 * pi,                         5 * pi / 2,                         3 * pi,                         7L *                           pi /                           2L,                         4 * pi,                         9 * pi / 2,                         5 * pi,                         11 * pi / 2,                         6L *                           pi                       ),
                        tick = TRUE,
                        line = -0.4,
                        pos = par("usr")[4],
                        outer = FALSE,
                        col = input$grcolor,
                        cex.axis = 0.8,
-                       mgp = c(-2.5,-1, 0)
+                       mgp = c(-2.5,-1L, 0L)
                      )
                    }
                  }
@@ -9766,7 +10567,7 @@ license()
                        Arg(rv$h)
                      },
                      col = "grey",
-                     lwd = input$LineWidth * 2 / 3,
+                     lwd = input$LineWidth * 2/3,
                      lty = "dotted"
                    )
                    if (input$showLegend)
@@ -9803,7 +10604,7 @@ license()
                        20 * log10(max(Mod(rv$h), na.rm = TRUE))
                      }
                      else {
-                       0
+                       0L
                      })
                    }
                    else {
@@ -9816,7 +10617,7 @@ license()
                        max(Mod(rv$h), na.rm = TRUE)
                      }
                      else {
-                       1 / input$edit_gain
+                       1/ input$edit_gain
                      })
                    },
                    xlim = input$zoomlimXstopband,
@@ -9825,8 +10626,7 @@ license()
                    col = input$ForegroundColor,
                    bg = input$BackgroundColor,
                    lwd = input$LineWidth,
-                   xlab = if (input$freqaxisunits ==
-                              "zero2one") {
+                   xlab = if (input$freqaxisunits == "zero2one") {
                      expression("Normalized Frequency (" %*% pi ~ ~ "[rads/Sample])")
                    }
                    else if (input$freqaxisunits == "zero2pi") {
@@ -9841,53 +10641,51 @@ license()
                      } ~ ~  ~  ~ "[rads]")
                    }
                    else if (input$freqaxisunits == "zero2piby2") {
-                     expression(2 * omega ~ ~  ~  ~ "[rads]")
+                     expression(2L * omega ~ ~  ~  ~ "[rads]")
                    }
                    else if (input$freqaxisunits == "zero2fs") {
                      if (input$twosidedFFT)
                        expression(-f[s] %->% ~
                                     ~  ~  ~ f[s] ~ ~  ~  ~ "[Hz]")
                      else
-                       expression(0 %->% ~  ~  ~  ~ f[s] ~ ~  ~  ~ "[Hz]")
+                       expression(0L %->% ~  ~  ~  ~ f[s] ~ ~  ~  ~ "[Hz]")
                    }
                    else if (input$freqaxisunits == "zero2fsby2") {
                      if ((!input$twosidedFFT) &&
                          (!input$FFTshifted) && (!input$logarithmicFreqAxis)) {
-                       expression(0 %->% ~  ~  ~  ~ f[s] ~ ~  ~  ~ "[Hz]")
+                       expression(0L %->% ~  ~  ~  ~ f[s] ~ ~  ~  ~ "[Hz]")
                      }
                      else {
-                       expression(0 %->% ~  ~  ~  ~ f[s] / 2 ~ ~  ~  ~ "[Hz]")
+                       expression(0L %->% ~  ~  ~  ~ f[s] / 2 ~ ~  ~  ~ "[Hz]")
                      }
                    }
                    else if (input$freqaxisunits == "zero2fmax") {
-                     expression(0 %->% ~  ~  ~  ~ f[max] ~ ~  ~  ~ "[Hz]")
+                     expression(0L %->% ~  ~  ~  ~ f[max] ~ ~  ~  ~ "[Hz]")
                    }
                    else if (input$freqaxisunits == "zero2fmaxby2") {
                      if (input$twosidedFFT)
                        expression(-f[max] /
-                                    2 %->% ~  ~  ~  ~ f[max] / 2 ~ ~  ~  ~ "[Hz]")
+                                    2L %->% ~  ~  ~  ~ f[max] / 2 ~ ~  ~  ~ "[Hz]")
                      else
-                       expression(0 %->% ~  ~  ~  ~ f[max] / 2 ~ ~  ~  ~ "[Hz]")
+                       expression(0L %->% ~  ~  ~  ~ f[max] / 2 ~ ~  ~  ~ "[Hz]")
                    },
                    ylab = if ((input$freqaxisunits == "zero2one") ||
-                              (input$freqaxisunits ==
-                               "zero2pi") ||
+                              (input$freqaxisunits == "zero2pi") ||
                               (input$freqaxisunits == "zero22pi") ||
                               (input$freqaxisunits == "zero2half") ||
-                              (input$freqaxisunits ==
-                               "zero2piby2")) {
+                              (input$freqaxisunits == "zero2piby2")) {
                      if (input$normalizedMagPlotAmplitude) {
                        if (input$logarithmicMagPlotAmplitude) {
                          expression(paste(group("|", bold(H(
                            e ^ {
-                             j * omega
+                             1i * omega
                            }
                          )), "|"), " / max [dB]"))
                        }
                        else {
                          expression(paste(group("|", bold(H(
                            e ^ {
-                             j * omega
+                             1i * omega
                            }
                          )), "|")), " / max")
                        }
@@ -9896,13 +10694,13 @@ license()
                        if (input$logarithmicMagPlotAmplitude) {
                          expression(paste(group("|", bold(H(
                            e ^ {
-                             j * omega
+                             1i * omega
                            }
                          )), "|"), "  [dB]"))
                        }
                        else {
                          expression(group("|", bold(H(e ^ {
-                           j * omega
+                           1i * omega
                          })), "|"))
                        }
                      }
@@ -9931,47 +10729,45 @@ license()
                      lty = "dashed"
                    )
                  grid(col = input$grcolor)
-                 abline(h = 0, col = "black")
-                 abline(v = 0, col = "black")
+                 abline(h = 0L, col = "black")
+                 abline(v = 0L, col = "black")
                  if (input$secondaryaxis) {
-                   if ((input$freqaxisunits == "zero2pi") || (input$freqaxisunits ==
-                                                              "zero22pi") ||
+                   if ((input$freqaxisunits == "zero2pi") || 
+                       (input$freqaxisunits == "zero22pi") ||
                        (input$freqaxisunits == "zero2piby2")) {
                      axis(
-                       side = 3,
-                       at = pi * c(-6,-5.5,-5,-4.5,-4,-3.5,-3,-2.5,-2,-1.5,-1,-1/2,-1/3,-1/5,1/5,1/3,1/2,1,1.5,2,2.5,3,3.5,4,4.5,5,5.5,6),
-                       labels = expression(-6*pi,-11*pi/2,                         -5 * pi,                         -9 * pi / 2,                         -4 * pi,                         -7 * pi / 2,-3 * pi,                         -5 * pi / 2,                         -2 * pi,                         -3 * pi / 2,                         -pi,                         -pi / 2,-pi / 3,                         -pi / 5,                         pi / 5,                         pi / 3,                         pi / 2,                         pi,                         3 * pi / 2,                         2 * pi,                         5 * pi /                           2,                         3 * pi,                         7 * pi / 2,                         4 * pi,                         9 * pi / 2,                         5 * pi,                         11 * pi /                           2,                         6 * pi                       ),
+                       side = 3L,
+                       at = pi * c(-6L,-5.5,-5L,-4.5,-4L,-3.5,-3L,-2.5,-2L,-1.5,-1L,-1/2,-1/3,-1/5,1/5,1/3,1/2,1L,1.5,2L,2.5,3L,3.5,4L,4.5,5L,5.5,6L),
+                       labels = expression(-6*pi,-11*pi/2,                         -5 * pi,                         -9 * pi / 2,                         -4 * pi,                         -7 * pi / 2,-3 * pi,                         -5 * pi / 2,                         -2 * pi,                         -3 * pi / 2,                         -pi,                         -pi / 2,-pi / 3,                         -pi / 5,                         pi / 5,                         pi / 3,                         pi / 2,                         pi,                         3 * pi / 2,                         2 * pi,                         5 * pi /                           2L,                         3 * pi,                         7 * pi / 2,                         4 * pi,                         9 * pi / 2,                         5 * pi,                         11 * pi /                           2L,                         6 * pi                       ),
                        tick = TRUE,
                        pos = par("usr")[4],
                        outer = FALSE,
                        col = input$grcolor,
                        cex.axis = 0.8,
-                       mgp = c(-2.5,-1, 0),
+                       mgp = c(-2.5,-1L, 0L),
                        xlab = "pi-based"
                      )
                    }
                    if ((input$freqaxisunits == "zero2one") ||
-                       (input$freqaxisunits ==
-                        "zero2half")) {
+                       (input$freqaxisunits == "zero2half")) {
                      axis(
-                       side = 3,
-                       at = c(-6,-5.5,-5,-4.5,-4,-3.5,-3,-2.5,-2,-1.5,-1,-1/2,-1/3,-1/5,1/5,1/3,1/2,1,1.5,2,2.5,3,3.5,4,4.5,5,5.5,6),
-                       labels = expression(-6*pi,-11*pi/2,                         -5 * pi,                         -9 * pi / 2,                         -4 * pi,                         -7 * pi / 2,-3 * pi,                         -5 * pi / 2,                         -2 * pi,                         -3 * pi / 2,                         -pi,                         -pi / 2,-pi / 3,                         -pi / 5,                         pi / 5,                         pi / 3,                         pi / 2,                         pi,                         3 * pi / 2,                         2 * pi,                         5 * pi /                           2,                         3 * pi,                         7 * pi / 2,                         4 * pi,                         9 * pi / 2,                         5 * pi,                         11 * pi /                           2,                         6 * pi                       ),
+                       side = 3L,
+                       at = c(-6L,-5.5,-5L,-4.5,-4L,-3.5,-3L,-2.5,-2L,-1.5,-1L,-1/2,-1/3,-1/5,1/5,1/3,1/2,1L,1.5,2L,2.5,3L,3.5,4L,4.5,5L,5.5,6L),
+                       labels = expression(-6*pi,-11*pi/2,                         -5 * pi,                         -9 * pi / 2,                         -4 * pi,                         -7 * pi / 2,-3 * pi,                         -5 * pi / 2,                         -2 * pi,                         -3 * pi / 2,                         -pi,                         -pi / 2,-pi / 3,                         -pi / 5,                         pi / 5,                         pi / 3,                         pi / 2,                         pi,                         3 * pi / 2,                         2 * pi,                         5 * pi /                           2L,                         3 * pi,                         7 * pi / 2,                         4 * pi,                         9 * pi / 2,                         5 * pi,                         11 * pi /                           2L,                         6 * pi                       ),
                        tick = TRUE,
                        pos = par("usr")[4],
                        outer = FALSE,
                        col = input$grcolor,
                        cex.axis = 0.8,
-                       mgp = c(-2.5,-1, 0)
+                       mgp = c(-2.5,-1L, 0L)
                      )
                    }
                    if ((input$freqaxisunits == "zero2fs") ||
-                       (input$freqaxisunits ==
-                        "zero2fmax") ||
+                       (input$freqaxisunits == "zero2fmax") ||
                        (input$freqaxisunits == "zero2fmaxby2")) {
                      axis(
-                       side = 3,
-                       at = c(-6,-5.5,-5,-4.5,-4,-3.5,-3,-2.5,-2,-1.5,-1,-1/2,-1/3,-1/5,1/5,1/3,1/2,1,1.5,2,2.5,3,3.5,4,4.5,5,5.5,6
+                       side = 3L,
+                       at = c(-6L,-5.5,-5L,-4.5,-4L,-3.5,-3L,-2.5,-2L,-1.5,-1L,-1/2,-1/3,-1/5,1/5,1/3,1/2,1L,1.5,2L,2.5,3L,3.5,4L,4.5,5L,5.5,6L
                        ) * input$samplingfreq / 2,
                        labels=expression(-6*pi,-11*pi/2,-5*pi,-9*pi/2,-4*pi,-7*pi/2,-3*pi,-5*pi/2,-2*pi,-3*pi/2,-pi,-pi/2,-pi/3,-pi/5,pi/5,pi/3,pi/2,pi,3*pi/2,2*pi,5*pi/2,3*pi,7*pi/2,4*pi,9*pi/2,5*pi,11*pi/2,6*pi),
                        tick = TRUE,
@@ -9980,7 +10776,7 @@ license()
                        outer = FALSE,
                        col = input$grcolor,
                        cex.axis = 0.8,
-                       mgp = c(-2.5,-1, 0)
+                       mgp = c(-2.5,-1L, 0L)
                      )
                    }
                  }
@@ -10004,7 +10800,7 @@ license()
                        Arg(rv$h)
                      },
                      col = "grey",
-                     lwd = input$LineWidth * 2 / 3,
+                     lwd = input$LineWidth * 2/3,
                      lty = "dotted"
                    )
                    if (input$showLegend)
@@ -10030,17 +10826,17 @@ license()
     filtb[Re(filtb) < -1e+12] <- -1e+12
     filta[Re(filta) > 1e+12] <- 1e+12
     filta[Re(filta) < -1e+12] <- -1e+12
-    filtb[Im(filtb) > 1e+12] <- Re(filtb) + j * 1e+12
-    filtb[Im(filtb) < -1e+12] <- Re(filtb) - j * 1e+12
-    filta[Im(filta) > 1e+12] <- Re(filtb) + j * 1e+12
-    filta[Im(filta) < -1e+12] <- Re(filtb) - j * 1e+12
+    filtb[Im(filtb) > 1e+12] <- Re(filtb) + 1i * 1e+12
+    filtb[Im(filtb) < -1e+12] <- Re(filtb) - 1i * 1e+12
+    filta[Im(filta) > 1e+12] <- Re(filtb) + 1i * 1e+12
+    filta[Im(filta) < -1e+12] <- Re(filtb) - 1i * 1e+12
     rv <-
       signal::freqz(
         filtb,
         filta,
         region = "whole",
-        n = 2 ^ 20,
-        Fs = 2 *
+        n = 2L ^ 20L,
+        Fs = 2L *
           pi * input$samplingfreq / 2
       )
     plot(
@@ -10094,14 +10890,14 @@ license()
       xlim = c(if (input$twosidedFFT) {
         -input$samplingfreq / 2
       } else {
-        0
+        0L
       }, if (input$FFTshifted) {
         input$samplingfreq / 2
       } else {
         if (input$twosidedFFT) {
           input$samplingfreq / 2
         } else {
-          2 * input$samplingfreq / 2
+          2L * input$samplingfreq / 2
         }
       }),
       ylim = if (input$unwrapPhase) {
@@ -10111,7 +10907,7 @@ license()
         NULL
       }
       else {
-        c(-1, 1)
+        c(-1L, 1L)
       },
       type = "l",
       col = input$ForegroundColor,
@@ -10132,46 +10928,45 @@ license()
         } ~ ~  ~  ~ "[rads]")
       }
       else if (input$freqaxisunits == "zero2piby2") {
-        expression(2 * omega ~ ~  ~  ~ "[rads]")
+        expression(2L * omega ~ ~  ~  ~ "[rads]")
       }
       else if (input$freqaxisunits == "zero2fs") {
         if (input$twosidedFFT)
           expression(-f[s] %->% ~  ~  ~  ~ f[s] ~ ~  ~  ~ "[Hz]")
         else
-          expression(0 %->% ~  ~  ~  ~ f[s] ~ ~  ~  ~ "[Hz]")
+          expression(0L %->% ~  ~  ~  ~ f[s] ~ ~  ~  ~ "[Hz]")
       }
       else if (input$freqaxisunits == "zero2fsby2") {
         if ((!input$twosidedFFT) &&
             (!input$FFTshifted) && (!input$logarithmicFreqAxis)) {
-          expression(0 %->% ~  ~  ~  ~ f[s] ~ ~  ~  ~ "[Hz]")
+          expression(0L %->% ~  ~  ~  ~ f[s] ~ ~  ~  ~ "[Hz]")
         }
         else {
-          expression(0 %->% ~  ~  ~  ~ f[s] / 2 ~ ~  ~  ~ "[Hz]")
+          expression(0L %->% ~  ~  ~  ~ f[s] / 2 ~ ~  ~  ~ "[Hz]")
         }
       }
       else if (input$freqaxisunits == "zero2fmax") {
-        expression(0 %->% ~  ~  ~  ~ f[max] ~ ~  ~  ~ "[Hz]")
+        expression(0L %->% ~  ~  ~  ~ f[max] ~ ~  ~  ~ "[Hz]")
       }
       else if (input$freqaxisunits == "zero2fmaxby2") {
         if (input$twosidedFFT)
           expression(-f[max] / 2 %->% ~  ~  ~  ~ f[max] / 2 ~ ~  ~  ~ "[Hz]")
         else
-          expression(0 %->% ~  ~  ~  ~ f[max] / 2 ~ ~  ~  ~ "[Hz]")
+          expression(0L %->% ~  ~  ~  ~ f[max] / 2 ~ ~  ~  ~ "[Hz]")
       },
       ylab = if ((input$freqaxisunits == "zero2one") ||
-                 (input$freqaxisunits ==
-                  "zero2pi") ||
-                 (input$freqaxisunits == "zero22pi") || (input$freqaxisunits ==
-                                                         "zero2half") ||
+                 (input$freqaxisunits == "zero2pi") ||
+                 (input$freqaxisunits == "zero22pi") || 
+                 (input$freqaxisunits == "zero2half") ||
                  (input$freqaxisunits == "zero2piby2")) {
         if (input$degreesgrid) {
           expression(paste("Angle ", bold(H(e ^ {
-            j * omega
+            1i * omega
           }))))
         }
         else {
           expression(paste("Angle ", bold(H(e ^ {
-            j * omega
+            1i * omega
           }))) %*% pi)
         }
       }
@@ -10192,45 +10987,45 @@ license()
         lty = "dashed"
       )
     grid(col = input$grcolor)
-    abline(h = 0, col = "black")
-    abline(v = 0, col = "black")
+    abline(h = 0L, col = "black")
+    abline(v = 0L, col = "black")
     if (input$secondaryaxis) {
       axis(
-        side = 4,
+        side = 4L,
         at = if (input$degreesgrid) {
-          180 * c(-6,-5.5,-5,-4.5,-4,-3.5,-3,-2.5,-2,-1.5,-1,-1/2,-1/3,-1/5,1/5,1/3,1/2,1,1.5,2,2.5,3,3.5,4,4.5,5,5.5,6)
+          180 * c(-6L,-5.5,-5L,-4.5,-4L,-3.5,-3L,-2.5,-2L,-1.5,-1L,-1/2,-1/3,-1/5,1/5,1/3,1/2,1L,1.5,2L,2.5,3L,3.5,4L,4.5,5L,5.5,6L)
         }
         else {
-          c(-6,-5.5,-5,-4.5,-4,-3.5,-3,-2.5,-2,-1.5,-1,-1/2,-1/3,-1/5,1/5,1/3,1/2,1,1.5,2,2.5,3,3.5,4,4.5,5,5.5,6)
+          c(-6L,-5.5,-5L,-4.5,-4L,-3.5,-3L,-2.5,-2L,-1.5,-1L,-1/2,-1/3,-1/5,1/5,1/3,1/2,1L,1.5,2L,2.5,3L,3.5,4L,4.5,5L,5.5,6L)
         },
         labels = expression(
           -6 * pi,
-          -frac(11 * pi, 2),
+          -frac(11 * pi, 2L),
           -5 * pi,
-          -frac(9 * pi, 2),
+          -frac(9 * pi, 2L),
           -4 * pi,
-          -frac(7 * pi, 2),
+          -frac(7 * pi, 2L),
           -3 * pi,
-          -frac(5 * pi, 2),
+          -frac(5 * pi, 2L),
           -2 * pi,
-          -frac(3 * pi, 2),
+          -frac(3 * pi, 2L),
           -pi,
-          frac(-pi, 2),
-          frac(-pi, 3),
-          frac(-pi, 5),
-          frac(pi, 5),
-          frac(pi, 3),
-          frac(pi, 2),
+          frac(-pi, 2L),
+          frac(-pi, 3L),
+          frac(-pi, 5L),
+          frac(pi, 5L),
+          frac(pi, 3L),
+          frac(pi, 2L),
           pi,
-          frac(3 * pi, 2),
+          frac(3 * pi, 2L),
           2 * pi,
-          frac(5 * pi, 2),
+          frac(5 * pi, 2L),
           3 * pi,
-          frac(7 * pi, 2),
+          frac(7 * pi, 2L),
           4 * pi,
-          frac(9 * pi, 2),
+          frac(9 * pi, 2L),
           5 * pi,
-          frac(11 * pi, 2),
+          frac(11 * pi, 2L),
           6 * pi
         ),
         tick = TRUE,
@@ -10238,46 +11033,43 @@ license()
         outer = FALSE,
         col = input$grcolor,
         cex.axis = 0.8,
-        las = 1
+        las = 1L
       )
       if ((input$freqaxisunits == "zero2pi") ||
-          (input$freqaxisunits ==
-           "zero22pi") ||
+          (input$freqaxisunits == "zero22pi") ||
           (input$freqaxisunits == "zero2piby2")) {
         axis(
-          side = 3,
-          at = pi * c(-6,-5.5,-5,-4.5,-4,-3.5,-3,-2.5,-2,-1.5,-1,-1/2,-1/3,-1/5,1/5,1/3,1/2,1,1.5,2,2.5,3,3.5,4,4.5,5,5.5,6),
+          side = 3L,
+          at = pi * c(-6L,-5.5,-5L,-4.5,-4L,-3.5,-3L,-2.5,-2L,-1.5,-1L,-1/2,-1/3,-1/5,1/5,1/3,1/2,1L,1.5,2L,2.5,3L,3.5,4L,4.5,5L,5.5,6L),
           labels=expression(-6*pi,-11*pi/2,-5*pi,-9*pi/2,-4*pi,-7*pi/2,-3*pi,-5*pi/2,-2*pi,-3*pi/2,-pi,-pi/2,-pi/3,-pi/5,pi/5,pi/3,pi/2,pi,3*pi/2,2*pi,5*pi/2,3*pi,7*pi/2,4*pi,9*pi/2,5*pi,11*pi/2,6*pi),
           tick = TRUE,
           pos = par("usr")[4],
           outer = FALSE,
           col = input$grcolor,
           cex.axis = 0.8,
-          mgp = c(-2.5,-1,0)
+          mgp = c(-2.5,-1L,0L)
         )
       }
       if ((input$freqaxisunits == "zero2one") ||
-          (input$freqaxisunits ==
-           "zero2half")) {
+          (input$freqaxisunits == "zero2half")) {
         axis(
-          side = 3,
-          at = c(-6,-5.5,-5,-4.5,-4,-3.5,-3,-2.5,-2,-1.5,-1,-1/2,-1/3,-1/5,1/5,1/3,1/2,1,1.5,2,2.5,3,3.5,4,4.5,5,5.5,6),
+          side = 3L,
+          at = c(-6L,-5.5,-5L,-4.5,-4L,-3.5,-3L,-2.5,-2L,-1.5,-1L,-1/2,-1/3,-1/5,1/5,1/3,1/2,1L,1.5,2L,2.5,3L,3.5,4L,4.5,5L,5.5,6L),
           labels=expression(-6*pi,-11*pi/2,-5*pi,-9*pi/2,-4*pi,-7*pi/2,-3*pi,-5*pi/2,-2*pi,-3*pi/2,-pi,-pi/2,-pi/3,-pi/5,pi/5,pi/3,pi/2,pi,3*pi/2,2*pi,5*pi/2,3*pi,7*pi/2,4*pi,9*pi/2,5*pi,11*pi/2,6*pi),
           tick = TRUE,
           pos = par("usr")[4],
           outer = FALSE,
           col = input$grcolor,
           cex.axis = 0.8,
-          mgp = c(-2.5,-1,0)
+          mgp = c(-2.5,-1L,0L)
         )
       }
       if ((input$freqaxisunits == "zero2fs") ||
-          (input$freqaxisunits ==
-           "zero2fmax") ||
+          (input$freqaxisunits == "zero2fmax") ||
           (input$freqaxisunits == "zero2fmaxby2")) {
         axis(
-          side = 3,
-          at = c(-6,-5.5,-5,-4.5,-4,-3.5,-3,-2.5,-2,-1.5,-1,-1/2,-1/3,-1/5,1/5,1/3,1/2,1,1.5,2,2.5,3,3.5,4,4.5,5,5.5,6
+          side = 3L,
+          at = c(-6L,-5.5,-5L,-4.5,-4L,-3.5,-3L,-2.5,-2L,-1.5,-1L,-1/2,-1/3,-1/5,1/5,1/3,1/2,1L,1.5,2L,2.5,3L,3.5,4L,4.5,5L,5.5,6L
           ) * input$samplingfreq / 2,
           labels=expression(-6*pi,-11*pi/2,-5*pi,-9*pi/2,-4*pi,-7*pi/2,-3*pi,-5*pi/2,-2*pi,-3*pi/2,-pi,-pi/2,-pi/3,-pi/5,pi/5,pi/3,pi/2,pi,3*pi/2,2*pi,5*pi/2,3*pi,7*pi/2,4*pi,9*pi/2,5*pi,11*pi/2,6*pi),
           tick = TRUE,
@@ -10286,7 +11078,7 @@ license()
           outer = FALSE,
           col = input$grcolor,
           cex.axis = 0.8,
-          mgp = c(-2.5,-1, 0)
+          mgp = c(-2.5,-1L, 0L)
         )
       }
     }
@@ -10334,29 +11126,28 @@ license()
                    xlim = c(if (input$twosidedFFT) {
                      -input$samplingfreq / 2
                    } else {
-                     0
+                     0L
                    }, if (input$FFTshifted) {
                      input$samplingfreq / 2
                    } else {
                      if (input$twosidedFFT) {
                        input$samplingfreq / 2
                      } else {
-                       2 * input$samplingfreq / 2
+                       2L * input$samplingfreq / 2
                      }
                    }),
                    ylim = c(max(c(
-                     -10, min(rv$gd, max(rv$gd, na.rm = TRUE) -
-                                1, na.rm = TRUE)
+                     -10L, min(rv$gd, max(rv$gd, na.rm = TRUE) -
+                                1L, na.rm = TRUE)
                    ), na.rm = TRUE), min(c(
-                     100, max(rv$gd,
-                              min(rv$gd, na.rm = TRUE) + 1, na.rm = TRUE)
+                     100L, max(rv$gd,
+                              min(rv$gd, na.rm = TRUE) + 1L, na.rm = TRUE)
                    ), na.rm = TRUE)),
                    type = "l",
                    col = input$ForegroundColor,
                    bg = input$BackgroundColor,
                    lwd = input$LineWidth,
-                   xlab = if (input$freqaxisunits ==
-                              "zero2one") {
+                   xlab = if (input$freqaxisunits == "zero2one") {
                      expression("Normalized Frequency (" %*% pi ~ ~ "[rads/Sample])")
                    }
                    else if (input$freqaxisunits == "zero2pi") {
@@ -10371,41 +11162,42 @@ license()
                      } ~ ~  ~  ~ "[rads]")
                    }
                    else if (input$freqaxisunits == "zero2piby2") {
-                     expression(2 * omega ~ ~  ~  ~ "[rads]")
+                     expression(2L * omega ~ ~  ~  ~ "[rads]")
                    }
                    else if (input$freqaxisunits == "zero2fs") {
                      if (input$twosidedFFT)
                        expression(-f[s] %->% ~  ~  ~
                                     ~ f[s] ~ ~  ~  ~ "[Hz]")
                      else
-                       expression(0 %->% ~  ~  ~  ~ f[s] ~ ~  ~  ~ "[Hz]")
+                       expression(0L %->% ~  ~  ~  ~ f[s] ~ ~  ~  ~ "[Hz]")
                    }
                    else if (input$freqaxisunits == "zero2fsby2") {
                      if ((!input$twosidedFFT) &&
-                         (!input$FFTshifted) && (!input$logarithmicFreqAxis)) {
-                       expression(0 %->% ~  ~  ~  ~ f[s] ~ ~  ~  ~ "[Hz]")
+                         (!input$FFTshifted) && 
+                         (!input$logarithmicFreqAxis)
+                         ) {
+                       expression(0L %->% ~  ~  ~  ~ f[s] ~ ~  ~  ~ "[Hz]")
                      }
                      else {
-                       expression(0 %->% ~  ~  ~  ~ f[s] / 2 ~ ~  ~  ~ "[Hz]")
+                       expression(0L %->% ~  ~  ~  ~ f[s] / 2 ~ ~  ~  ~ "[Hz]")
                      }
                    }
                    else if (input$freqaxisunits == "zero2fmax") {
-                     expression(0 %->% ~  ~  ~  ~ f[max] ~ ~  ~  ~ "[Hz]")
+                     expression(0L %->% ~  ~  ~  ~ f[max] ~ ~  ~  ~ "[Hz]")
                    }
                    else if (input$freqaxisunits == "zero2fmaxby2") {
                      if (input$twosidedFFT)
                        expression(-f[max] / 2 %->% ~
                                     ~  ~  ~ f[max] / 2 ~ ~  ~  ~ "[Hz]")
                      else
-                       expression(0 %->% ~  ~  ~  ~ f[max] / 2 ~ ~  ~  ~ "[Hz]")
+                       expression(0L %->% ~  ~  ~  ~ f[max] / 2 ~ ~  ~  ~ "[Hz]")
                    },
                    ylab = if ((input$freqaxisunits == "zero2one") ||
-                              (input$freqaxisunits ==
-                               "zero2pi") ||
+                              (input$freqaxisunits == "zero2pi") ||
                               (input$freqaxisunits == "zero22pi") ||
                               (input$freqaxisunits == "zero2half") ||
-                              (input$freqaxisunits ==
-                               "zero2piby2")) {
+                              (input$freqaxisunits == "zero2piby2")
+                              ) {
                      if (input$degreesgrid) {
                        expression(paste({
                          d * varphi
@@ -10438,8 +11230,8 @@ license()
                      lty = "dashed"
                    )
                  grid(col = input$grcolor)
-                 abline(h = 0, col = "black")
-                 abline(v = 0, col = "black")
+                 abline(h = 0L, col = "black")
+                 abline(v = 0L, col = "black")
                })
   
   # output$axes_imp ----
@@ -10461,20 +11253,18 @@ license()
                    box(
                      which = "plot",
                      col = MyColourForUnstableSystem,
-                     lwd = 3 *
-                       input$LineWidth,
+                     lwd = 3L * input$LineWidth,
                      lty = "dashed"
                    )
                    box(
                      which = "inner",
                      col = MyColourForUnstableSystem,
-                     lwd = 3 *
-                       input$LineWidth,
+                     lwd = 3L * input$LineWidth,
                      lty = "dotted"
                    )
                    grid(col = MyColourForUnstableSystem)
-                   abline(h = 0, col = MyColourForUnstableSystem)
-                   abline(v = 0, col = MyColourForUnstableSystem)
+                   abline(h = 0L, col = MyColourForUnstableSystem)
+                   abline(v = 0L, col = MyColourForUnstableSystem)
                  }
                })
 
@@ -10497,20 +11287,19 @@ license()
                    box(
                      which = "plot",
                      col = MyColourForUnstableSystem,
-                     lwd = 3 *
-                       input$LineWidth,
+                     lwd = 3L * input$LineWidth,
                      lty = "dashed"
                    )
                    box(
                      which = "inner",
                      col = MyColourForUnstableSystem,
-                     lwd = 3 *
+                     lwd = 3L *
                        input$LineWidth,
                      lty = "dotted"
                    )
                    grid(col = MyColourForUnstableSystem)
-                   abline(h = 0, col = MyColourForUnstableSystem)
-                   abline(v = 0, col = MyColourForUnstableSystem)
+                   abline(h = 0L, col = MyColourForUnstableSystem)
+                   abline(v = 0L, col = MyColourForUnstableSystem)
                  }
                })
   
@@ -10519,17 +11308,17 @@ license()
     par(mfrow = c(2, 1))
     acf(Re(handleshn()),
         main = "Auto-Correlation Function of Re(h[n])",
-        xlim = c(0, if (!is.null(handleshn())) {
-          min(length(handleshn()) - 1, 10 * log10(length(handleshn())))
+        xlim = c(0L, if (!is.null(handleshn())) {
+          min(length(handleshn()) - 1L, 10L * log10(length(handleshn())))
         } else {
-          1
+          1L
         }))
     pacf(Re(handleshn()),
          main = "Partial Auto-Correlation Function of Re(h[n])",
-         xlim = c(0, if (!is.null(handleshn())) {
-           min(length(handleshn()) - 1, 10 * log10(length(handleshn())))
+         xlim = c(0L, if (!is.null(handleshn())) {
+           min(length(handleshn()) - 1L, 10L * log10(length(handleshn())))
          } else {
-           1
+           1L
          }))
     par(mfrow = c(1, 1))
   })
@@ -10543,13 +11332,13 @@ license()
         "\\frac{Y(z)}{X(z)} &= b_0\\cdot\\frac{",
         {
           accumulatorstring <- NULL
-          for (i in 1:length(handles$zeroloc)) {
+          for (i in 1L:length(handles$zeroloc)) {
             switch(
               abs(sign(Re(
                 handles$zeroloc[i]
-              ))) + 1,
+              ))) + 1L,
               accumulatorstring <- paste0(accumulatorstring,
-                                          paste0(if (i > 1) {
+                                          paste0(if (i > 1L) {
                                             "\\cdot "
                                           }, if (abs(Im(handles$zeroloc[i])) <= 1e-06) {
                                             "z"
@@ -10562,7 +11351,7 @@ license()
                                                    "\\\\jmath", stripImagZero(round(
                                                      handles$zeroloc[i],
                                                      max(c(
-                                                       2,
+                                                       2L,
                                                        countZeroDigitsRightOfDecimalPoint(handles$zeroloc[i])
                                                      ))
                                                    ))),
@@ -10571,7 +11360,7 @@ license()
                                           })),
               accumulatorstring <- paste0(
                 accumulatorstring,
-                if (i > 1) {
+                if (i > 1L) {
                   "\\cdot "
                 },
                 "(z-\\overbrace{z_{[",
@@ -10580,7 +11369,7 @@ license()
                 gsub("i", "\\\\jmath",
                      stripImagZero(round(
                        handles$zeroloc[i], max(c(
-                         2,
+                         2L,
                          countZeroDigitsRightOfDecimalPoint(handles$zeroloc[i])
                        ))
                      ))),
@@ -10593,13 +11382,13 @@ license()
         "}{",
         {
           accumulatorstring <- NULL
-          for (i in 1:length(handles$poleloc)) {
+          for (i in 1L:length(handles$poleloc)) {
             switch(
               abs(sign(Re(
                 handles$poleloc[i]
-              ))) + 1,
+              ))) + 1L,
               accumulatorstring <- paste0(accumulatorstring,
-                                          if (i > 1) {
+                                          if (i > 1L) {
                                             "\\cdot "
                                           }, if (abs(Im(
                                             handles$poleloc[i]
@@ -10614,7 +11403,7 @@ license()
                                                    "\\\\jmath", stripImagZero(round(
                                                      handles$poleloc[i],
                                                      max(c(
-                                                       2,
+                                                       2L,
                                                        countZeroDigitsRightOfDecimalPoint(handles$poleloc[i])
                                                      ))
                                                    ))),
@@ -10623,7 +11412,7 @@ license()
                                           }),
               accumulatorstring <- paste0(
                 accumulatorstring,
-                if (i > 1) {
+                if (i > 1L) {
                   "\\cdot "
                 },
                 "(z-\\underbrace{p_{[",
@@ -10632,7 +11421,7 @@ license()
                 gsub("i", "\\\\jmath",
                      stripImagZero(round(
                        handles$poleloc[i], max(c(
-                         2,
+                         2L,
                          countZeroDigitsRightOfDecimalPoint(handles$poleloc[i])
                        ))
                      ))),
@@ -10643,8 +11432,8 @@ license()
           accumulatorstring
         },
         if ((length(handles$zeroloc) + length(handles$poleloc) >
-             8) &&
-            (length(handles$poleloc) > 2)) {
+             8L) &&
+            (length(handles$poleloc) > 2L)) {
           "}\\\\&="
         }
         else {
@@ -10658,13 +11447,13 @@ license()
         "}^{G\\equiv b_{[0]}}\\cdot\\frac{",
         {
           accumulatorstring <- NULL
-          for (i in 1:length(handles$zeroloc)) {
+          for (i in 1L:length(handles$zeroloc)) {
             switch(
               abs(sign(Re(
                 handles$zeroloc[i]
-              ))) + 1,
+              ))) + 1L,
               accumulatorstring <- paste0(accumulatorstring,
-                                          if (i > 1) {
+                                          if (i > 1L) {
                                             "\\cdot "
                                           }, if (abs(Im(
                                             handles$zeroloc[i]
@@ -10683,10 +11472,10 @@ license()
                                               ")}^{z_{[",
                                               i,
                                               "]}",
-                                              if (i > 1) {
+                                              if (i > 1L) {
                                                 {
                                                   subaccumulatorstring <- NULL
-                                                  for (k in seq(1, (i - 1), by = 1)) {
+                                                  for (k in seq(1L, (i - 1L), by = 1L)) {
                                                     if (((is.infinite(Re(
                                                       handles$zeroloc[i]
                                                     ))) &&
@@ -10735,24 +11524,24 @@ license()
                                           }),
               accumulatorstring <- paste0(
                 accumulatorstring,
-                if (i > 1) {
+                if (i > 1L) {
                   "\\cdot "
                 },
                 "(z-\\overbrace{(",
                 gsub("i", "\\\\jmath", stripImagZero(round(
                   handles$zeroloc[i],
                   max(c(
-                    2,
+                    2L,
                     countZeroDigitsRightOfDecimalPoint(handles$zeroloc[i])
                   ))
                 ))),
                 ")}^{z_{[",
                 i,
                 "]}",
-                if (i > 1) {
+                if (i > 1L) {
                   {
                     subaccumulatorstring <- NULL
-                    for (k in seq(1, (i - 1), by = 1)) {
+                    for (k in seq(1L, (i - 1L), by = 1L)) {
                       if (((is.infinite(Re(
                         handles$zeroloc[i]
                       ))) &&
@@ -10795,13 +11584,13 @@ license()
         "}{",
         {
           accumulatorstring <- NULL
-          for (i in 1:length(handles$poleloc)) {
+          for (i in 1L:length(handles$poleloc)) {
             switch(
               abs(sign(Re(
                 handles$poleloc[i]
-              ))) + 1,
+              ))) + 1L,
               accumulatorstring <- paste0(accumulatorstring,
-                                          if (i > 1) {
+                                          if (i > 1L) {
                                             "\\cdot "
                                           }, if (abs(Im(
                                             handles$poleloc[i]
@@ -10813,16 +11602,16 @@ license()
                                               gsub("i", "\\\\jmath",
                                                    stripImagZero(round(
                                                      handles$poleloc[i], max(c(
-                                                       2,
+                                                       2L,
                                                        countZeroDigitsRightOfDecimalPoint(handles$poleloc[i])
                                                      ))
                                                    ))),
                                               ")}_{p_{[",
                                               i,
                                               "]}",
-                                              if (i > 1) {
+                                              if (i > 1L) {
                                                 subaccumulatorstring <- NULL
-                                                for (k in seq(1, (i - 1), by = 1)) {
+                                                for (k in seq(1L, (i - 1L), by = 1L)) {
                                                   if (((is.infinite(Re(
                                                     handles$poleloc[i]
                                                   ))) &&
@@ -10861,23 +11650,23 @@ license()
                                           }),
               accumulatorstring <- paste0(
                 accumulatorstring,
-                if (i > 1) {
+                if (i > 1L) {
                   "\\cdot "
                 },
                 "(z-\\underbrace{(",
                 gsub("i", "\\\\jmath", stripImagZero(round(
                   handles$poleloc[i],
                   max(c(
-                    2,
+                    2L,
                     countZeroDigitsRightOfDecimalPoint(handles$poleloc[i])
                   ))
                 ))),
                 ")}_{p_{[",
                 i,
                 "]}",
-                if (i > 1) {
+                if (i > 1L) {
                   subaccumulatorstring <- NULL
-                  for (k in seq(1, (i - 1), by = 1)) {
+                  for (k in seq(1L, (i - 1L), by = 1L)) {
                     if (((is.infinite(Re(
                       handles$poleloc[i]
                     ))) && (is.infinite(Re(
@@ -10917,25 +11706,25 @@ license()
         },
         "}\\\\",
         "H(z) &=",
-        if ((length(handles$zeroloc) <= 2) &&
-            (length(handles$poleloc) <= 2)) {
+        if ((length(handles$zeroloc) <= 2L) &&
+            (length(handles$poleloc) <= 2L)) {
           paste0(
             "\\overbrace{",
             gsub("i", "\\\\jmath", round(input$edit_gain,
                                          max(
                                            c(
-                                             5,
+                                             5L,
                                              countZeroDigitsRightOfDecimalPoint(input$edit_gain)
                                            )
                                          ))),
             "}^{G\\equiv b_{[0]}}\\cdot\\frac{",
             "1",
             if (length(handlesb()) >
-                1) {
+                1L) {
               paste0(switch(
                 abs(sign(Re(
                   handles$zeroloc[1]
-                ))) + 1,
+                ))) + 1L,
                 if (abs(Im(handles$zeroloc[1])) <= 1e-06) {
                   "+(0\\cdot z^{-1})"
                 } else {
@@ -10944,17 +11733,17 @@ license()
                     gsub("i", "\\\\jmath",
                          stripImagZero(round(
                            handles$zeroloc[1], max(c(
-                             2,
+                             2L,
                              countZeroDigitsRightOfDecimalPoint(handles$zeroloc[1])
                            ))
                          ))),
                     ")",
-                    if (length(handles$zeroloc) > 1) {
+                    if (length(handles$zeroloc) > 1L) {
                       paste0("-(", gsub("i", "\\\\jmath", stripImagZero(
                         round(handles$zeroloc[2],
                               max(
                                 c(
-                                  2,
+                                  2L,
                                   countZeroDigitsRightOfDecimalPoint(handles$zeroloc[2])
                                 )
                               ))
@@ -10967,7 +11756,7 @@ license()
                            round(handlesb()[2] / handlesb()[1],
                                  max(
                                    c(
-                                     2,
+                                     2L,
                                      countZeroDigitsRightOfDecimalPoint(handlesb()[2] / handlesb()[1])
                                    )
                                  ))
@@ -10980,16 +11769,16 @@ license()
                   gsub("i", "\\\\jmath",
                        stripImagZero(round(
                          handles$zeroloc[1], max(c(
-                           2,
+                           2L,
                            countZeroDigitsRightOfDecimalPoint(handles$zeroloc[1])
                          ))
                        ))),
                   ")",
-                  if (length(handles$zeroloc) > 1) {
+                  if (length(handles$zeroloc) > 1L) {
                     paste0("-(", gsub("i", "\\\\jmath", stripImagZero(round(
                       handles$zeroloc[2],
                       max(c(
-                        2,
+                        2L,
                         countZeroDigitsRightOfDecimalPoint(handles$zeroloc[2])
                       ))
                     ))),
@@ -11001,19 +11790,19 @@ license()
                          round(handlesb()[2] / handlesb()[1],
                                max(
                                  c(
-                                   2,
+                                   2L,
                                    countZeroDigitsRightOfDecimalPoint(handlesb()[2] / handlesb()[1])
                                  )
                                ))
                        )),
                   "}\\cdot z^{-1}"
                 )
-              ), if (length(handlesb()) > 2) {
+              ), if (length(handlesb()) > 2L) {
                 switch(
                   abs(sign(Re(
                     handlesb()[3] / handlesb()[1]
                   ))) +
-                    1,
+                    1L,
                   if (abs(Im(handlesb()[3] / handlesb()[1])) <=
                       1e-06) {
                     "+(0\\cdot z^{-2})"
@@ -11024,7 +11813,7 @@ license()
                         round(handles$zeroloc[2],
                               max(
                                 c(
-                                  2,
+                                  2L,
                                   countZeroDigitsRightOfDecimalPoint(handles$zeroloc[i])
                                 )
                               ))
@@ -11035,9 +11824,8 @@ license()
                              round(handlesb()[3] / handlesb()[1],
                                    max(
                                      c(
-                                       2,
-                                       countZeroDigitsRightOfDecimalPoint(handlesb()[2 +
-                                                                                       1] /
+                                       2L,
+                                       countZeroDigitsRightOfDecimalPoint(handlesb()[2L + 1] /
                                                                             handlesb()[1])
                                      )
                                    ))
@@ -11050,7 +11838,7 @@ license()
                     gsub("i", "\\\\jmath",
                          stripImagZero(round(
                            handles$zeroloc[1], max(c(
-                             2,
+                             2L,
                              countZeroDigitsRightOfDecimalPoint(handles$zeroloc[1])
                            ))
                          ))),
@@ -11059,7 +11847,7 @@ license()
                     gsub("i", "\\\\jmath", stripImagZero(round(
                       handles$zeroloc[2],
                       max(c(
-                        2,
+                        2L,
                         countZeroDigitsRightOfDecimalPoint(handles$zeroloc[i])
                       ))
                     ))),
@@ -11069,7 +11857,7 @@ license()
                            round(handlesb()[3] / handlesb()[1],
                                  max(
                                    c(
-                                     2,
+                                     2L,
                                      countZeroDigitsRightOfDecimalPoint(handlesb()[i +
                                                                                      1] /
                                                                           handlesb()[1])
@@ -11083,11 +11871,11 @@ license()
             },
             "}{",
             "1",
-            if (length(handlesa()) > 1) {
+            if (length(handlesa()) > 1L) {
               paste0(switch(
                 abs(sign(Re(
                   handles$poleloc[1]
-                ))) + 1,
+                ))) + 1L,
                 if (abs(Im(handles$poleloc[1])) <= 1e-06) {
                   "-(0\\cdot z^{-1})"
                 } else {
@@ -11096,17 +11884,16 @@ license()
                     gsub("i", "\\\\jmath",
                          stripImagZero(round(
                            handles$poleloc[1], max(c(
-                             2,
+                             2L,
                              countZeroDigitsRightOfDecimalPoint(handles$poleloc[1])
                            ))
                          ))),
                     ")",
-                    if (length(handles$poleloc) > 1) {
+                    if (length(handles$poleloc) > 1L) {
                       paste0("+(", gsub("i", "\\\\jmath", stripImagZero(
                         round(handles$poleloc[2],
                               max(
-                                c(
-                                  2,
+                                c(2L,
                                   countZeroDigitsRightOfDecimalPoint(handles$poleloc[2])
                                 )
                               ))
@@ -11117,7 +11904,7 @@ license()
                     gsub("i", "\\\\jmath",
                          stripImagZero(round(
                            handlesa()[2], max(c(
-                             2,
+                             2L,
                              countZeroDigitsRightOfDecimalPoint(handlesa()[2])
                            ))
                          ))),
@@ -11129,16 +11916,16 @@ license()
                   gsub("i", "\\\\jmath",
                        stripImagZero(round(
                          handles$poleloc[1], max(c(
-                           2,
+                           2L,
                            countZeroDigitsRightOfDecimalPoint(handles$poleloc[1])
                          ))
                        ))),
                   ")",
-                  if (length(handles$poleloc) > 1) {
+                  if (length(handles$poleloc) > 1L) {
                     paste0("+(", gsub("i", "\\\\jmath", stripImagZero(round(
                       handles$poleloc[2],
                       max(c(
-                        2,
+                        2L,
                         countZeroDigitsRightOfDecimalPoint(handles$poleloc[2])
                       ))
                     ))),
@@ -11148,16 +11935,16 @@ license()
                   gsub("i", "\\\\jmath",
                        stripImagZero(round(
                          handlesa()[2], max(c(
-                           2, countZeroDigitsRightOfDecimalPoint(handlesa()[2])
+                           2L, countZeroDigitsRightOfDecimalPoint(handlesa()[2])
                          ))
                        ))),
                   "}\\cdot z^{-1}"
                 )
-              ), if (length(handlesa()) > 2) {
+              ), if (length(handlesa()) > 2L) {
                 switch(
                   abs(sign(Re(
                     handlesa()[3]
-                  ))) + 1,
+                  ))) + 1L,
                   if (abs(Im(handlesa()[3])) <=
                       1e-06) {
                     "-(0\\cdot z^{-2})"
@@ -11168,7 +11955,7 @@ license()
                            stripImagZero(
                              round(handles$poleloc[1], max(
                                c(
-                                 2,
+                                 2L,
                                  countZeroDigitsRightOfDecimalPoint(handles$poleloc[1])
                                )
                              ))
@@ -11179,7 +11966,7 @@ license()
                         round(handles$poleloc[2],
                               max(
                                 c(
-                                  2,
+                                  2L,
                                   countZeroDigitsRightOfDecimalPoint(handles$poleloc[i])
                                 )
                               ))
@@ -11188,7 +11975,7 @@ license()
                       gsub("i", "\\\\jmath", stripImagZero(round(
                         handlesa()[3],
                         max(c(
-                          2,
+                          2L,
                           countZeroDigitsRightOfDecimalPoint(handlesa()[i +
                                                                           1])
                         ))
@@ -11201,7 +11988,7 @@ license()
                     gsub("i", "\\\\jmath",
                          stripImagZero(round(
                            handles$poleloc[1], max(c(
-                             2,
+                             2L,
                              countZeroDigitsRightOfDecimalPoint(handles$poleloc[1])
                            ))
                          ))),
@@ -11210,7 +11997,7 @@ license()
                     gsub("i", "\\\\jmath", stripImagZero(round(
                       handles$poleloc[2],
                       max(c(
-                        2,
+                        2L,
                         countZeroDigitsRightOfDecimalPoint(handles$poleloc[i])
                       ))
                     ))),
@@ -11218,7 +12005,7 @@ license()
                     gsub("i", "\\\\jmath", stripImagZero(round(
                       handlesa()[3],
                       max(c(
-                        2, countZeroDigitsRightOfDecimalPoint(handlesa()[i +
+                        2L, countZeroDigitsRightOfDecimalPoint(handlesa()[i +
                                                                            1])
                       ))
                     ))),
@@ -11233,7 +12020,7 @@ license()
         if (input$edit_gain != 1) {
           paste0(round(input$edit_gain, max(
             c(
-              5,
+              5L,
               countZeroDigitsRightOfDecimalPoint(input$edit_gain)
             )
           )),
@@ -11242,9 +12029,9 @@ license()
         "\\frac{",
         {
           polyproduct <- 1
-          for (i in 1:length(handles$zeroloc)) {
+          for (i in 1L:length(handles$zeroloc)) {
             polyproduct <-
-              pracma::polymul(polyproduct, c(1, handles$zeroloc[i]))
+              pracma::polymul(polyproduct, c(1, handles$zeroloc[i])) # pracma::conv(polyproduct, c(1, handles$zeroloc[i])) # stats::convolve(polyproduct, rev(c(1, handles$zeroloc[i])))
           }
           numeratorstring <-
             if (max(Mod(polyproduct)) > 1e+06) {
@@ -11253,14 +12040,13 @@ license()
           else {
             "1"
           }
-          if (length(polyproduct) > 1) {
-            for (i in 2:length(polyproduct)) {
+          if (length(polyproduct) > 1L) {
+            for (i in 2L:length(polyproduct)) {
               switch(
-                sign(Re(polyproduct[i])) + 2,
+                sign(Re(polyproduct[i])) + 2L,
                 numeratorstring <- paste0(numeratorstring,
-                                          switch((i %%
-                                                    2) + 1, "+", "-"), if (polyproduct[i] ==
-                                                                           1) {
+                                          switch((i %% 2L) + 1L, "+", "-"), 
+                                          if (polyproduct[i] == 1) { # isTRUE(all.equal( #
                                                       ""
                                                     } else {
                                                       paste0(if ((abs(Im(
@@ -11300,12 +12086,11 @@ license()
                                                         ")"
                                                       },
                                                       "\\cdot ")
-                                                    }, "z^{-", i - 1, "}"),
+                                                    }, "z^{-", i - 1L, "}"),
                 "",
                 numeratorstring <- paste0(numeratorstring,
-                                          switch((i %%
-                                                    2) + 1, "-", "+"), if (polyproduct[i] ==
-                                                                           -1) {
+                                          switch((i %% 2L) + 1L, "-", "+"), 
+                                          if (polyproduct[i] == -1) { # isTRUE(all.equal( #
                                                       ""
                                                     } else {
                                                       paste0(if ((abs(Im(
@@ -11345,7 +12130,7 @@ license()
                                                         ")"
                                                       },
                                                       "\\cdot ")
-                                                    }, "z^{-", i - 1, "}")
+                                                    }, "z^{-", i - 1L, "}")
               )
             }
           }
@@ -11354,9 +12139,9 @@ license()
         "}{",
         {
           polyproduct <- 1
-          for (i in 1:length(handles$poleloc)) {
+          for (i in 1L:length(handles$poleloc)) {
             polyproduct <-
-              pracma::polymul(polyproduct, c(1, handles$poleloc[i]))
+              pracma::polymul(polyproduct, c(1, handles$poleloc[i])) # pracma::conv(polyproduct, c(1, handles$poleloc[i])) # stats::convolve(polyproduct, rev(c(1, handles$poleloc[i])))
           }
           denominatorstring <-
             if (max(Mod(polyproduct)) > 1e+06) {
@@ -11365,16 +12150,15 @@ license()
           else {
             "1"
           }
-          if (length(polyproduct) > 1) {
-            for (i in 2:length(polyproduct)) {
+          if (length(polyproduct) > 1L) {
+            for (i in 2L:length(polyproduct)) {
               switch(
-                sign(Re(polyproduct[i])) + 2,
+                sign(Re(polyproduct[i])) + 2L,
                 denominatorstring <- paste0(
                   denominatorstring,
                   switch((i %%
-                            2) + 1, "+", "-"),
-                  if (polyproduct[i] ==
-                      1) {
+                            2L) + 1L, "+", "-"),
+                  if (polyproduct[i] == 1) { # isTRUE(all.equal( #
                     ""
                   } else {
                     paste0(if ((abs(Im(
@@ -11416,16 +12200,15 @@ license()
                     "\\cdot ")
                   },
                   "z^{-",
-                  i - 1,
+                  i - 1L,
                   "}"
                 ),
                 "",
                 denominatorstring <- paste0(
                   denominatorstring,
                   switch((i %%
-                            2) + 1, "-", "+"),
-                  if (polyproduct[i] ==
-                      -1) {
+                            2L) + 1L, "-", "+"),
+                  if (polyproduct[i] == -1) { # isTRUE(all.equal( #
                     ""
                   } else {
                     paste0(if ((abs(Im(
@@ -11467,7 +12250,7 @@ license()
                     "\\cdot ")
                   },
                   "z^{-",
-                  i - 1,
+                  i - 1L,
                   "}"
                 )
               )
@@ -11496,17 +12279,17 @@ license()
         "y_{[n]} =",
         {
           accumulatorstring <- NULL
-          for (i in 2:length(handlesa())) {
-            if (i > 2) {
+          for (i in 2L:length(handlesa())) {
+            if (i > 2L) {
               accumulatorstring <- paste0(accumulatorstring, "+")
             }
             switch(
               abs(sign(Re(
                 handlesa()[i]
-              ))) + 1,
+              ))) + 1L,
               accumulatorstring <- paste0(accumulatorstring,
                                           if (Im(handlesa()[i])) {
-                                            paste0("(0\\cdot y_{[n-", i - 1, "]})")
+                                            paste0("(0\\cdot y_{[n-", i - 1L, "]})")
                                           } else {
                                             paste0(
                                               "\\underbrace{(",
@@ -11517,9 +12300,9 @@ license()
                                                 ))
                                               ))),
                                               ")}_{a_{[",
-                                              i - 1,
+                                              i - 1L,
                                               "]}}\\cdot y_{[n-",
-                                              i - 1,
+                                              i - 1L,
                                               "]}"
                                             )
                                           }),
@@ -11529,13 +12312,13 @@ license()
                 gsub("i", "\\\\jmath", stripImagZero(round(
                   handlesa()[i],
                   max(c(
-                    2, countZeroDigitsRightOfDecimalPoint(handlesa()[i])
+                    2L, countZeroDigitsRightOfDecimalPoint(handlesa()[i])
                   ))
                 ))),
                 ")}_{a_{[",
-                i - 1,
+                i - 1L,
                 "]}}\\cdot y_{[n-",
-                i - 1,
+                i - 1L,
                 "]}"
               )
             )
@@ -11543,7 +12326,7 @@ license()
           accumulatorstring
         },
         switch(
-          abs(sign(Re(1))) + 1,
+          abs(sign(Re(1))) + 1L,
           "&+(0\\cdot x_{[n]})",
           paste0(
             "&+\\underbrace{",
@@ -11553,17 +12336,17 @@ license()
         ),
         {
           accumulatorstring <- NULL
-          for (i in 2:length(handlesb())) {
+          for (i in 2L:length(handlesb())) {
             switch(
               abs(sign(Re(
                 handlesb()[i] / handlesb()[1]
-              ))) + 1,
+              ))) + 1L,
               accumulatorstring <-
                 paste0(accumulatorstring, if (abs(Im(
                   handlesb()[i] / handlesb()[1]
                 )) <=
                 1e-06) {
-                  paste0("+(0\\cdot x_{[n-", i - 1, "]})")
+                  paste0("+(0\\cdot x_{[n-", i - 1L, "]})")
                 } else {
                   paste0(
                     "+ \\underbrace{(",
@@ -11572,15 +12355,15 @@ license()
                            round(handlesb()[i] / handlesb()[1],
                                  max(
                                    c(
-                                     2,
+                                     2L,
                                      countZeroDigitsRightOfDecimalPoint(handlesb()[i] / handlesb()[1])
                                    )
                                  ))
                          )),
                     ")}_{b_{[",
-                    i - 1,
+                    i - 1L,
                     "]}/b_{[0]}}\\cdot x_{[n-",
-                    i - 1,
+                    i - 1L,
                     "]}"
                   )
                 }),
@@ -11591,16 +12374,15 @@ license()
                   round(handlesb()[i] / handlesb()[1],
                         max(
                           c(
-                            2,
+                            2L,
                             countZeroDigitsRightOfDecimalPoint(handlesb()[i] / handlesb()[1])
                           )
                         ))
                 )),
                 ")}_{b_{[",
-                i - 1,
+                i - 1L,
                 "]}/b_{[0]}}\\cdot x_{[n-",
-                i -
-                  1,
+                i - 1L,
                 "]}"
               )
             )
@@ -11611,17 +12393,17 @@ license()
         "\\underbrace{}_{a_{[0]}\\equiv1}y_{[n]}",
         {
           accumulatorstring <- NULL
-          for (i in 2:length(handlesa())) {
+          for (i in 2L:length(handlesa())) {
             switch(
               abs(sign(Re(
                 handlesa()[i]
-              ))) + 1,
+              ))) + 1L,
               accumulatorstring <- paste0(accumulatorstring,
                                           if (Im(handlesa()[i])) {
                                             paste0("+(\\underbrace{0}_{a_{[",
-                                                   i - 1,
+                                                   i - 1L,
                                                    "]}}\\cdot y_{[n-",
-                                                   i - 1,
+                                                   i - 1L,
                                                    "]})")
                                           } else {
                                             paste0(
@@ -11631,23 +12413,23 @@ license()
                                                    "\\\\jmath", stripImagZero(round(
                                                      handlesa()[i],
                                                      max(c(
-                                                       2, countZeroDigitsRightOfDecimalPoint(handlesa()[i])
+                                                       2L, countZeroDigitsRightOfDecimalPoint(handlesa()[i])
                                                      ))
                                                    ))),
                                               ")}_{a_{[",
-                                              i - 1,
+                                              i - 1L,
                                               "]}}}_{-a_{[",
-                                              i - 1,
+                                              i - 1L,
                                               "]}=",
                                               gsub("i", "\\\\jmath", stripImagZero(round(
                                                 -handlesa()[i],
                                                 max(c(
-                                                  2,
+                                                  2L,
                                                   countZeroDigitsRightOfDecimalPoint(-handlesa()[i])
                                                 ))
                                               ))),
                                               "}\\cdot y_{[n-",
-                                              i - 1,
+                                              i - 1L,
                                               "]}"
                                             )
                                           }),
@@ -11658,23 +12440,23 @@ license()
                 gsub("i", "\\\\jmath",
                      stripImagZero(round(
                        handlesa()[i], max(c(
-                         2, countZeroDigitsRightOfDecimalPoint(handlesa()[i])
+                         2L, countZeroDigitsRightOfDecimalPoint(handlesa()[i])
                        ))
                      ))),
                 ")}_{a_{[",
-                i - 1,
+                i - 1L,
                 "]}}}_{-a_{[",
-                i - 1,
+                i - 1L,
                 "]}=",
                 gsub("i",
                      "\\\\jmath", stripImagZero(round(
                        -handlesa()[i],
                        max(c(
-                         2, countZeroDigitsRightOfDecimalPoint(-handlesa()[i])
+                         2L, countZeroDigitsRightOfDecimalPoint(-handlesa()[i])
                        ))
                      ))),
                 "}\\cdot y_{[n-",
-                i - 1,
+                i - 1L,
                 "]}"
               )
             )
@@ -11683,33 +12465,33 @@ license()
         },
         "&=",
         switch(
-          abs(sign(Re(1))) + 1,
+          abs(sign(Re(1L))) + 1L,
           "(\\underbrace{0}_{b_{[0]}/b_{[0]}}\\cdot x_{[n]})",
           paste0(
             "\\underbrace{",
             gsub("i", "\\\\jmath", if (max(Mod(handlesb(
             ))) >
             1e+06) {
-              0
+              0L
             } else {
-              1
+              1L
             }),
             "}_{b_{[0]}/b_{[0]}}\\cdot x_{[n]}"
           )
         ),
         {
           accumulatorstring <- NULL
-          for (i in 2:length(handlesb())) {
+          for (i in 2L:length(handlesb())) {
             switch(
               abs(sign(Re(
                 handlesb()[i] / handlesb()[1]
-              ))) + 1,
+              ))) + 1L,
               accumulatorstring <-
                 paste0(accumulatorstring, if (Re(handlesb()[i] / handlesb()[1])) {
                   paste0("+(\\underbrace{0}_{b_{[",
-                         i - 1,
+                         i - 1L,
                          "]}/b_{[0]}}\\cdot x_{[n-",
-                         i - 1,
+                         i - 1L,
                          "]})")
                 } else {
                   paste0(
@@ -11718,18 +12500,18 @@ license()
                          stripImagZero(round(
                            if (max(Mod(handlesb())) >
                                1e+06) {
-                             (handlesb()[i] / handlesb()[1]) / (1 / eps) / 1000
+                             (handlesb()[i] / handlesb()[1]) / (1/ eps) / 1000
                            } else {
                              handlesb()[i] / handlesb()[1]
                            }, max(c(
-                             2,
+                             2L,
                              countZeroDigitsRightOfDecimalPoint(handlesb()[i] / handlesb()[1])
                            ))
                          ))),
                     ")}_{b_{[",
-                    i - 1,
+                    i - 1L,
                     "]}/b_{[0]}}\\cdot x_{[n-",
-                    i - 1,
+                    i - 1L,
                     "]}"
                   )
                 }),
@@ -11739,19 +12521,19 @@ license()
                 gsub("i", "\\\\jmath", stripImagZero(round(
                   if (max(Mod(handlesb())) >
                       1e+06) {
-                    (handlesb()[i] / handlesb()[1]) / (1 / eps) / 1000
+                    (handlesb()[i] / handlesb()[1]) / (1/ eps) / 1000
                   } else {
                     handlesb()[i] / handlesb()[1]
                   }, max(c(
-                    2,
+                    2L,
                     countZeroDigitsRightOfDecimalPoint(handlesb()[i] / handlesb()[1])
                   ))
                 ))),
                 ")}_{b_{[",
-                i - 1,
+                i - 1L,
                 "]}/b_{[0]}}\\cdot x_{[n-",
                 i -
-                  1,
+                  1L,
                 "]}"
               )
             )
@@ -11778,23 +12560,23 @@ license()
       b <- n2
     }
     else {
-      a <- Re(n1 + j * n2)
-      b <- Im(n1 + j * n2)
+      a <- Re(n1 + 1i * n2)
+      b <- Im(n1 + 1i * n2)
     }
     Mytheta <- atan2(b, a)
     paste0(
       "radius: ",
-      round(sqrt(a * a + b * b), 3),
+      round(sqrt(a * a + b * b), 3L),
       ", ",
       "theta: ",
-      round(Mytheta, 3),
+      round(Mytheta, 3L),
       if (Mytheta != 0) {
-        paste0("= ", switch(sign(Mytheta) + 2, "-", "", ""), "pi",
-               "/", round(abs(pi / Mytheta), 1))
+        paste0("= ", switch(sign(Mytheta) + 2L, "-", "", ""), "pi",
+               "/", round(abs(pi / Mytheta), 1L))
       },
       " rads",
       " (",
-      round(Mytheta * 180 / pi, 0),
+      round(Mytheta * 180 / pi, 0L),
       " deg)"
     )
   })
@@ -11806,7 +12588,7 @@ license()
     }
     r <- try(eval(parse(text = input$edit_polezerolocRadius)),silent=TRUE)
     theta <- try(eval(parse(text = input$edit_polezerolocAngle)),silent=TRUE)
-    a <- r * exp(j * theta)
+    a <- r * exp(1i * theta)
     aReal <- Re(a)
     if (abs(aReal) <= 2 * eps) {
       aReal <- 0
@@ -11825,18 +12607,18 @@ license()
       n2 <- try(eval(parse(text = input$edit_polezerolocAngle)),silent=TRUE)
       valueToBeAdded <- n1 * exp(n2)
       if (is.infinite(Im(n2))) {
-        valueToBeAdded <- complex(1, n1, switch(sign(n2) + 2,-Inf,
-                                                0, Inf))
+        valueToBeAdded <- complex(1, n1, switch(sign(n2) + 2L,-Inf,
+                                                0L, Inf))
       }
       else if (is.infinite(Re(n2))) {
-        valueToBeAdded <- complex(1, n1, switch(sign(n2) + 2,-Inf,
-                                                0, Inf))
+        valueToBeAdded <- complex(1, n1, switch(sign(n2) + 2L,-Inf,
+                                                0L, Inf))
       }
       else {
         if ((is.null(input$edit_currentSelectionText)) ||
             (is.na(input$edit_currentSelectionText)) ||
             (input$edit_currentSelectionText == "")) {
-          valueToBeAdded <- n1 * exp(j * n2)
+          valueToBeAdded <- n1 * exp(1i * n2)
         }
         else {
           valueToBeAdded <-
@@ -11844,16 +12626,16 @@ license()
         }
       }
       if (Mod(valueToBeAdded) > 1e-06) {
-        if (abs(Im(valueToBeAdded)) == 0) {
+        if (abs(Im(valueToBeAdded)) == 0) { # isTRUE(all.equal( #
           valueToBeAdded <- Re(valueToBeAdded)
         }
         shinyBS::closeAlert(session, alertId = "noMorePoles")
         shinyBS::closeAlert(session, alertId = "noMoreZeros")
         if ((is.null(handles$poleloc)) ||
             (is.na(handles$poleloc)) ||
-            ((length(handles$poleloc) == 1) &&
-             (handles$poleloc[1] ==
-              0))) {
+            ((length(handles$poleloc) == 1L) &&
+             (handles$poleloc[1] == 0)) # isTRUE(all.equal( #
+            ) {
           handles$poleloc <- valueToBeAdded
         }
         else {
@@ -11879,18 +12661,18 @@ license()
       n1 <- try(eval(parse(text = input$edit_polezeroloc)),silent=TRUE)
       n2 <- try(eval(parse(text = input$edit_polezerolocImag)),silent=TRUE)
       if (is.infinite(Im(n2))) {
-        valueToBeAdded <- complex(1, n1, switch(sign(n2) + 2,-Inf,
-                                                0, Inf))
+        valueToBeAdded <- complex(1, n1, switch(sign(n2) + 2L,-Inf,
+                                                0L, Inf))
       }
       else if (is.infinite(Re(n2))) {
-        valueToBeAdded <- complex(1, n1, switch(sign(n2) + 2,-Inf,
-                                                0, Inf))
+        valueToBeAdded <- complex(1, n1, switch(sign(n2) + 2L,-Inf,
+                                                0L, Inf))
       }
       else {
         if ((is.null(input$edit_currentSelectionText)) ||
             (is.na(input$edit_currentSelectionText)) ||
             (input$edit_currentSelectionText == "")) {
-          valueToBeAdded <- n1 + j * n2
+          valueToBeAdded <- n1 + 1i * n2
         }
         else {
           valueToBeAdded <-
@@ -11900,14 +12682,14 @@ license()
       if ((Mod(valueToBeAdded) > 1e-06)) {
         shinyBS::closeAlert(session, alertId = "noMorePoles")
         shinyBS::closeAlert(session, alertId = "noMoreZeros")
-        if (abs(Im(valueToBeAdded)) == 0) {
+        if (abs(Im(valueToBeAdded)) == 0) { # isTRUE(all.equal( #
           valueToBeAdded <- Re(valueToBeAdded)
         }
         if ((is.null(handles$poleloc)) ||
             (is.na(handles$poleloc)) ||
-            ((length(handles$poleloc) == 1) &&
-             (handles$poleloc[1] ==
-              0))) {
+            ((length(handles$poleloc) == 1L) &&
+             (handles$poleloc[1] == 0))
+            ) { # isTRUE(all.equal( #
           handles$poleloc <- valueToBeAdded
         }
         else {
@@ -11945,7 +12727,7 @@ license()
         handles$poleloc <- zpg$pole
         updateNumericInput(session, inputId = "edit_gain", value = zpg$gain)
         b <- zpg$gain
-        length(b) <- 1
+        length(b) <- 1L
         }
       }
       else if (grepl(
@@ -11954,37 +12736,37 @@ license()
       )) {
         handles$poleloc <- c(0)
         b <- try(eval(parse(text = inputFilterCommandString)),silent=TRUE)
-        if (length(b) < 2) {
+        if (length(b) < 2L) {
           handles$zeroloc <- c(0)
         }
         else {
-          handles$zeroloc <- polyroot(rev(b)) # numerical stability may be an issue for all but low-degree polynomials
+          handles$zeroloc <- try(polyroot(rev(b)),silent=TRUE) # numerical stability may be an issue for all but low-degree polynomials
         }
       }
       else if (grepl("FftFilter", inputFilterCommandString)) {
         handles$poleloc <- c(0)
         b <- try(eval(parse(text = inputFilterCommandString)),silent=TRUE)
-        if (length(b) < 2) {
+        if (length(b) < 2L) {
           handles$zeroloc <- c(0)
         }
         else {
-          handles$zeroloc <- polyroot(rev(b)) # numerical stability may be an issue for all but low-degree polynomials
+          handles$zeroloc <- try(polyroot(rev(b)),silent=TRUE) # numerical stability may be an issue for all but low-degree polynomials
         }
       }
       else {
         a <- try(eval(parse(text = paste0(inputFilterCommandString,"$a"))),silent=TRUE)
-        if (length(a) < 2) {
+        if (length(a) < 2L) {
           handles$poleloc <- c(0)
         }
         else {
-          handles$poleloc <- polyroot(rev(a)) # numerical stability may be an issue for all but low-degree polynomials
+          handles$poleloc <- try(polyroot(rev(a)),silent=TRUE) # numerical stability may be an issue for all but low-degree polynomials
         }
         b <- try(eval(parse(text = paste0(inputFilterCommandString,"$b"))),silent=TRUE)
-        if (length(b) < 2) {
+        if (length(b) < 2L) {
           handles$zeroloc <- c(0)
         }
         else {
-          handles$zeroloc <- polyroot(rev(b)) # numerical stability may be an issue for all but low-degree polynomials
+          handles$zeroloc <- try(polyroot(rev(b)),silent=TRUE) # numerical stability may be an issue for all but low-degree polynomials
         }
       }
       updateSelectInput(session,
@@ -11999,11 +12781,11 @@ license()
       if (is.null(inpFile))
         return(NULL)
       if (input$textbinaryformatImport == "csv") {
-        rawList <- readLines(con = inpFile$datapath)
+        rawList <- readLines(con = inpFile$name) # inpFile$datapath) # input$filecoordsImport$datapath)
         Npoles <- match("#zerolocs", rawList) - match("#polelocs",
-                                                      rawList) - 1
+                                                      rawList) - 1L
         importedPoles <- scan(
-          file = inpFile$datapath,
+          file = inpFile$name, # inpFile$datapath, # input$filecoordsImport$datapath,
           n = Npoles,
           quiet = TRUE,
           what = if (input$coordsevaluateImport) {
@@ -12017,7 +12799,7 @@ license()
         )
         if (input$coordsevaluateImport) {
           importedPolesValues <- rep(0, length(importedPoles))
-          for (i in 1:length(importedPoles)) {
+          for (i in 1L:length(importedPoles)) {
             importedPolesValues[i] <- try(eval(parse(text = importedPoles[i])),silent=TRUE)
           }
         }
@@ -12028,7 +12810,7 @@ license()
         updateSelectInput(session, "listbox_pole", choices = handles$poleloc)
         importedZeros <-
           scan(
-            file = inpFile$datapath,
+            file = inpFile$name, # input$filecoordsImport$datapath #,
             skip = match("#zerolocs",
                          rawList),
             quiet = TRUE,
@@ -12043,7 +12825,7 @@ license()
           )
         if (input$coordsevaluateImport) {
           importedZerosValues <- rep(0, length(importedZeros))
-          for (i in 1:length(importedZeros)) {
+          for (i in 1L:length(importedZeros)) {
             importedZerosValues[i] <- try(eval(parse(text = importedZeros[i])),silent=TRUE)
           }
         }
@@ -12054,16 +12836,62 @@ license()
         updateSelectInput(session, "listbox_zero", choices = handles$zeroloc)
       }
       else if (input$textbinaryformatImport == "bin") {
-        
+        # cat(file=stderr(),"L12066 input$filecoordsImport$datapath:",input$filecoordsImport$datapath,".\n")
+        zz <- file(description = inpFile$name, open = "rb") # input$filecoordsImport$datapath, open = "rb") # inpFile$datapath, open = "rb") #
+        handles$poleloc <- readBin(
+          con = zz,
+          what = complex(),
+          n = 5L
+        )
+        dummy <- readBin(con = zz,what = complex(),n = 1L) # zero-value seperator between poles and zeros
+        handles$zeroloc <- readBin(
+          con = zz,
+          what = complex(),
+          n = 5L
+        )
+        print(cbind(Zeros = handles$zeroloc, Poles = handles$poleloc),
+                  na.print = "")
+        # print(readBin(
+        #     con = zz,
+        #     what = complex(),
+        #     n = 20L # (maximal) number of records to be read
+        #   ))
+        close(zz)
+        updateSelectInput(session, "listbox_zero", choices = handles$zeroloc)
+        updateSelectInput(session, "listbox_pole", choices = handles$poleloc)
       }
       else if (input$textbinaryformatImport == "RData") {
-        
+        # cat(file=stderr(),"L12084 input$filecoordsImport$datapath:",input$filecoordsImport$datapath,".\n")
+        load(file = inpFile$name) # input$filecoordsImport$datapath #, verbose = TRUE)
+        handles$poleloc <- mypolescopy
+        handles$zeroloc <- myzeroscopy
+        updateSelectInput(session, "listbox_zero", choices = handles$zeroloc)
+        updateSelectInput(session, "listbox_pole", choices = handles$poleloc)
       }
       else if (input$textbinaryformatImport == "mat") {
-        
+        # cat(file=stderr(),"L12092 input$filecoordsImport$datapath:",input$filecoordsImport$datapath,".\n")
+        data <- R.matlab::readMat(con = inpFile$name) # input$filecoordsImport$datapath) # inpFile$datapath) # Returns a named-list structure containing all variables in the MAT file structure
+        # handlesb <- data$Num
+        # handlesa <- data$Den
+        handles$zeroloc <- try(polyroot(rev(data$Num)),silent=TRUE) # i.e. Numerator
+        handles$poleloc <- try(polyroot(rev(data$Den)),silent=TRUE) # i.e. Denominator
+        updateSelectInput(session, "listbox_zero", choices = handles$zeroloc)
+        updateSelectInput(session, "listbox_pole", choices = handles$poleloc)
       }
       else if (input$textbinaryformatImport == "yml") {
-        
+        # cat(file=stderr(),"L12111 input$filecoordsImport$datapath:",input$filecoordsImport$datapath,".\n")
+        data <- yaml::yaml.load_file(input = inpFile$name) # input$filecoordsImport$datapath) # inpFile$datapath)
+        # cat(file=stderr(),"L12112 length(data$mypolescopy):",length(data$mypolescopy),".\n")
+        # cat(file=stderr(),"L12113 length(data$myzeroscopy):",length(data$myzeroscopy),".\n")
+        for (i in (1L:length(data$mypolescopy))) {
+          handles$poleloc[i] <- try(eval(parse(text = data$mypolescopy[i])),silent=TRUE)
+        }
+        for (i in (1L:length(data$myzeroscopy))) {
+          handles$zeroloc[i] <- try(eval(parse(text = data$myzeroscopy[i])),silent=TRUE)
+        }
+        unlink(input$filecoordsImport$datapath) # inpFile$datapath)
+        updateSelectInput(session, "listbox_zero", choices = handles$zeroloc)
+        updateSelectInput(session, "listbox_pole", choices = handles$poleloc)
       }
     }
   })
@@ -12082,14 +12910,15 @@ license()
       if ((is.null(input$edit_currentSelectionText)) ||
           (is.na(input$edit_currentSelectionText)) ||
           (input$edit_currentSelectionText == "")) {
-        valueToBeAdded <- n1 * exp(j * n2)
+        valueToBeAdded <- n1 * exp(1i * n2)
       }
       else {
         valueToBeAdded <-
           try(eval(parse(text = input$edit_currentSelectionText)),silent=TRUE)
       }
       if ((!is.null(valueToBeAdded)) && (!is.na(valueToBeAdded)) &&
-          (Im(valueToBeAdded) == 0)) {
+          (Im(valueToBeAdded) == 0) # isTRUE(all.equal( #
+          ) {
         valueToBeAdded <- Re(valueToBeAdded)
       }
       if (valueToBeAdded != 0) {
@@ -12097,9 +12926,9 @@ license()
         shinyBS::closeAlert(session, alertId = "noMorePoles")
         if ((is.null(handles$zeroloc)) ||
             (is.na(handles$zeroloc)) ||
-            ((length(handles$zeroloc) == 1) &&
-             (handles$zeroloc[1] ==
-              0))) {
+            ((length(handles$zeroloc) == 1L) &&
+             (handles$zeroloc[1] == 0)) # isTRUE(all.equal( #
+            ) {
           handles$zeroloc <- valueToBeAdded
         }
         else {
@@ -12116,18 +12945,18 @@ license()
       n1 <- try(eval(parse(text = input$edit_polezeroloc)),silent=TRUE)
       n2 <- try(eval(parse(text = input$edit_polezerolocImag)),silent=TRUE)
       if (is.infinite(Im(n2))) {
-        valueToBeAdded <- complex(1, n1, switch(sign(n2) + 2,-Inf,
+        valueToBeAdded <- complex(1, n1, switch(sign(n2) + 2L,-Inf,
                                                 0, Inf))
       }
       else if (is.infinite(Re(n2))) {
-        valueToBeAdded <- complex(1, n1, switch(sign(n2) + 2,-Inf,
+        valueToBeAdded <- complex(1, n1, switch(sign(n2) + 2L,-Inf,
                                                 0, Inf))
       }
       else {
         if ((is.null(input$edit_currentSelectionText)) ||
             (is.na(input$edit_currentSelectionText)) ||
             (input$edit_currentSelectionText == "")) {
-          valueToBeAdded <- n1 + j * n2
+          valueToBeAdded <- n1 + 1i * n2
         }
         else {
           valueToBeAdded <-
@@ -12137,14 +12966,14 @@ license()
       if (Mod(valueToBeAdded) > 1e-06) {
         shinyBS::closeAlert(session, alertId = "noMoreZeros")
         shinyBS::closeAlert(session, alertId = "noMorePoles")
-        if (abs(Im(valueToBeAdded)) == 0) {
+        if (abs(Im(valueToBeAdded)) == 0) { # isTRUE(all.equal( #
           valueToBeAdded <- Re(valueToBeAdded)
         }
         if ((is.null(handles$zeroloc)) ||
             (is.na(handles$zeroloc)) ||
-            ((length(handles$zeroloc) == 1) &&
-             (handles$zeroloc[1] ==
-              0))) {
+            ((length(handles$zeroloc) == 1L) &&
+             (handles$zeroloc[1] == 0)) # isTRUE(all.equal( #
+            ) {
           handles$zeroloc <- valueToBeAdded
         }
         else {
@@ -12182,7 +13011,7 @@ license()
         handles$poleloc <- zpg$pole
         updateNumericInput(session, inputId = "edit_gain", value = zpg$gain)
         b <- zpg$gain
-        length(b) <- 1
+        length(b) <- 1L
         }
       }
       else if (grepl(
@@ -12191,37 +13020,37 @@ license()
       )) {
         handles$poleloc <- c(0)
         b <- try(eval(parse(text = inputFilterCommandString)),silent=TRUE)
-        if (length(b) < 2) {
+        if (length(b) < 2L) {
           handles$zeroloc <- c(0)
         }
         else {
-          handles$zeroloc <- polyroot(rev(b)) # numerical stability may be an issue for all but low-degree polynomials
+          handles$zeroloc <- try(polyroot(rev(b)),silent=TRUE) # numerical stability may be an issue for all but low-degree polynomials
         }
       }
       else if (grepl("FftFilter", inputFilterCommandString)) {
         handles$poleloc <- c(0)
         b <- try(eval(parse(text = inputFilterCommandString)),silent=TRUE)
-        if (length(b) < 2) {
+        if (length(b) < 2L) {
           handles$zeroloc <- c(0)
         }
         else {
-          handles$zeroloc <- polyroot(rev(b)) # numerical stability may be an issue for all but low-degree polynomials
+          handles$zeroloc <- try(polyroot(rev(b)),silent=TRUE) # numerical stability may be an issue for all but low-degree polynomials
         }
       }
       else {
         a <- try(eval(parse(text = paste0(inputFilterCommandString, "$a"))),silent=TRUE)
-        if (length(a) < 2) {
+        if (length(a) < 2L) {
           handles$poleloc <- c(0)
         }
         else {
-          handles$poleloc <- polyroot(rev(a)) # numerical stability may be an issue for all but low-degree polynomials
+          handles$poleloc <- try(polyroot(rev(a)),silent=TRUE) # numerical stability may be an issue for all but low-degree polynomials
         }
         b <- try(eval(parse(text = paste0(inputFilterCommandString, "$b"))),silent=TRUE)
-        if (length(b) < 2) {
+        if (length(b) < 2L) {
           handles$zeroloc <- c(0)
         }
         else {
-          handles$zeroloc <- polyroot(rev(b)) # numerical stability may be an issue for all but low-degree polynomials
+          handles$zeroloc <- try(polyroot(rev(b)),silent=TRUE) # numerical stability may be an issue for all but low-degree polynomials
         }
       }
       updateSelectInput(session,
@@ -12236,11 +13065,14 @@ license()
       if (is.null(inpFile))
         return(NULL)
       if (input$textbinaryformatImport == "csv") {
-        rawList <- readLines(con = inpFile$datapath)
+        # cat(file=stderr(),"L12289 input$filecoordsImport:",".\n")
+        # print(input$filecoordsImport)
+        # cat(file=stderr(),"L12290 input$filecoordsImport$datapath:",input$filecoordsImport$datapath,".\n")
+        rawList <- readLines(con = inpFile$name) # inpFile$datapath) # input$filecoordsImport$datapath)
         Npoles <- match("#zerolocs", rawList) - match("#polelocs",
-                                                      rawList) - 1
+                                                      rawList) - 1L
         importedPoles <- scan(
-          file = inpFile$datapath,
+          file = inpFile$name, # inpFile$datapath, # input$filecoordsImport$datapath, #
           n = Npoles,
           quiet = TRUE,
           what = if (input$coordsevaluateImport) {
@@ -12254,7 +13086,7 @@ license()
         )
         if (input$coordsevaluateImport) {
           importedPolesValues <- rep(0, length(importedPoles))
-          for (i in 1:length(importedPoles)) {
+          for (i in 1L:length(importedPoles)) {
             importedPolesValues[i] <- try(eval(parse(text = importedPoles[i])),silent=TRUE)
           }
         }
@@ -12265,7 +13097,7 @@ license()
         updateSelectInput(session, "listbox_pole", choices = handles$poleloc)
         importedZeros <-
           scan(
-            file = inpFile$datapath,
+            file = inpFile$name, # input$filecoordsImport$datapath,
             skip = match("#zerolocs",
                          rawList),
             quiet = TRUE,
@@ -12280,7 +13112,7 @@ license()
           )
         if (input$coordsevaluateImport) {
           importedZerosValues <- rep(0, length(importedZeros))
-          for (i in 1:length(importedZeros)) {
+          for (i in 1L:length(importedZeros)) {
             importedZerosValues[i] <- try(eval(parse(text = importedZeros[i])),silent=TRUE)
           }
         }
@@ -12291,17 +13123,63 @@ license()
         updateSelectInput(session, "listbox_zero", choices = handles$zeroloc)
       }
       else if (input$textbinaryformatImport == "bin") {
-        
+        # cat(file=stderr(),"L12344 input$filecoordsImport$datapath:",input$filecoordsImport$datapath,".\n") # 
+        zz <- file(description = inpFile$name, open = "rb") # input$filecoordsImport$datapath, open = "rb")
+        handles$poleloc <- readBin(
+          con = zz,
+          what = complex(),
+          n = 5L # assuming exactly 5 poles
+        )
+        dummy <- readBin(con = zz,what = complex(),n = 1L) # zero-value seperator between poles and zeros
+        handles$zeroloc <- readBin(
+          con = zz,
+          what = complex(),
+          n = 5L # assuming exactly 5 zeros
+        )
+        print(cbind(Zeros = handles$zeroloc, Poles = handles$poleloc),
+                  na.print = "")
+        # print(readBin(
+        #     con = zz,
+        #     what = complex(),
+        #     n = 20L # (maximal) number of records to be read
+        #   ))
+        close(zz)
+        updateSelectInput(session, "listbox_zero", choices = handles$zeroloc)
+        updateSelectInput(session, "listbox_pole", choices = handles$poleloc)
       }
       else if (input$textbinaryformatImport == "RData") {
-        
+        # cat(file=stderr(),"L12349 input$filecoordsImport$datapath:",input$filecoordsImport$datapath,".\n") # inpFile$datapath:",inpFile$datapath) # 
+        load(file = inpFile$name) # input$filecoordsImport$datapath #, verbose = TRUE) # inpFile$datapath, verbose = TRUE) #
+        handles$poleloc <- mypolescopy
+        handles$zeroloc <- myzeroscopy
+        updateSelectInput(session, "listbox_zero", choices = handles$zeroloc)
+        updateSelectInput(session, "listbox_pole", choices = handles$poleloc)
       }
       else if (input$textbinaryformatImport == "mat") {
-        
+        # cat(file=stderr(),"L12357 input$filecoordsImport$datapath:",input$filecoordsImport$datapath,".\n") # inpFile$datapath:",inpFile$datapath) # 
+        data <- R.matlab::readMat(con = inpFile$name) # input$filecoordsImport$datapath) # inpFile$datapath) # Returns a named-list structure containing all variables in the MAT file structure
+        handles$zeroloc <- try(polyroot(rev(data$Num)),silent=TRUE) # i.e. Numerator
+        handles$poleloc <- try(polyroot(rev(data$Den)),silent=TRUE) # i.e. Denominator
+        updateSelectInput(session, "listbox_zero", choices = handles$zeroloc)
+        updateSelectInput(session, "listbox_pole", choices = handles$poleloc)
       }
       else if (input$textbinaryformatImport == "yml") {
-        
+        # cat(file=stderr(),"L12387 input$filecoordsImport$datapath:",input$filecoordsImport$datapath,".\n") # "inpFile$datapath",inpFile$datapath) # 
+        data <- yaml::yaml.load_file(input = inpFile$name) # input$filecoordsImport$datapath) # inpFile$datapath)
+        # cat(file=stderr(),"L12389 length(data$mypolescopy):",length(data$mypolescopy),".\n")
+        # cat(file=stderr(),"L12390 length(data$myzeroscopy):",length(data$myzeroscopy),".\n")
+        for (i in (1L:length(data$mypolescopy))) {
+          handles$poleloc[i] <- try(eval(parse(text = data$mypolescopy[i])),silent=TRUE)
+        }
+        length(handles$poleloc) <- length(data$mypolescopy)
+        for (i in (1L:length(data$myzeroscopy))) {
+          handles$zeroloc[i] <- try(eval(parse(text = data$myzeroscopy[i])),silent=TRUE)
+        }
+        length(handles$zeroloc) <- length(data$myzeroscopy)
+        updateSelectInput(session, "listbox_zero", choices = handles$zeroloc)
+        updateSelectInput(session, "listbox_pole", choices = handles$poleloc)
       }
+      unlink(input$filecoordsImport$datapath) # inpFile$datapath)
     }
   })
   observeEvent(
@@ -12318,8 +13196,8 @@ license()
   )
   observeEvent(eventExpr = input$listbox_pole, handlerExpr = {
     if ((input$tabPoleZeroEditing == "RealImag") ||
-        (input$tabPoleZeroEditing ==
-         "rtheta")) {
+        (input$tabPoleZeroEditing == "rtheta")
+        ) {
       shinyjs::enable(id = "pb_editpole")
       shinyjs::enable(id = "pb_editzero")
       shinyjs::enable(id = "pb_delpole")
@@ -12345,9 +13223,9 @@ license()
       )
     }
     else if ((input$tabPoleZeroEditing == "CommonFilters") ||
-             (input$tabPoleZeroEditing ==
-              "Import") ||
-             (input$tabPoleZeroEditing == "Export")) {
+             (input$tabPoleZeroEditing == "Import") ||
+             (input$tabPoleZeroEditing == "Export")
+             ) {
       updateTabsetPanel(session, inputId = "tabPoleZeroEditing",
                         selected = "RealImag")
       updateTextInput(session,
@@ -12357,8 +13235,8 @@ license()
   })
   observeEvent(eventExpr = input$listbox_zero, handlerExpr = {
     if ((input$tabPoleZeroEditing == "RealImag") ||
-        (input$tabPoleZeroEditing ==
-         "rtheta")) {
+        (input$tabPoleZeroEditing == "rtheta")
+        ) {
       shinyjs::enable(id = "pb_editpole")
       shinyjs::enable(id = "pb_editzero")
       shinyjs::enable(id = "pb_delpole")
@@ -12384,8 +13262,7 @@ license()
       )
     }
     else if ((input$tabPoleZeroEditing == "CommonFilters") ||
-             (input$tabPoleZeroEditing ==
-              "Import") ||
+             (input$tabPoleZeroEditing == "Import") ||
              (input$tabPoleZeroEditing == "Export")) {
       updateTabsetPanel(session, inputId = "tabPoleZeroEditing",
                         selected = "RealImag")
@@ -12413,7 +13290,7 @@ license()
               (input$edit_currentSelectionText == "")) {
             valueToReplace <-
               try(eval(parse(text = input$edit_polezerolocRadius)) *
-              exp(j * eval(parse(
+              exp(1i * eval(parse(
                 text = input$edit_polezerolocAngle
               ))),silent=TRUE)
           }
@@ -12430,14 +13307,14 @@ license()
             n2 <- try(eval(parse(text = input$edit_polezerolocImag)),silent=TRUE)
             if (is.infinite(Im(n2))) {
               valueToReplace <- complex(1, n1, switch(sign(n2) +
-                                                        2,-Inf, 0, Inf))
+                                                        2L,-Inf, 0, Inf))
             }
             else if (is.infinite(Re(n2))) {
               valueToReplace <- complex(1, n1, switch(sign(n2) +
-                                                        2,-Inf, 0, Inf))
+                                                        2L,-Inf, 0, Inf))
             }
             else {
-              valueToReplace <- n1 + j * n2
+              valueToReplace <- n1 + 1i * n2
             }
           }
           else {
@@ -12447,7 +13324,7 @@ license()
         }
       }
       if ((Mod(valueToReplace) > 1e-06)) {
-        if (abs(Im(valueToReplace)) == 0) {
+        if (abs(Im(valueToReplace)) == 0) { # isTRUE(all.equal( #
           valueToReplace <- Re(valueToReplace)
         }
         handles$poleloc[matchpoint] <- valueToReplace
@@ -12484,7 +13361,7 @@ license()
               (input$edit_currentSelectionText == "")) {
             valueToReplace <-
               try(eval(parse(text = input$edit_polezerolocRadius)) *
-              exp(j * eval(parse(
+              exp(1i * eval(parse(
                 text = input$edit_polezerolocAngle
               ))),silent=TRUE)
           }
@@ -12501,14 +13378,14 @@ license()
             n2 <- try(eval(parse(text = input$edit_polezerolocImag)),silent=TRUE)
             if (is.infinite(Im(n2))) {
               valueToReplace <- complex(1, n1, switch(sign(n2) +
-                                                        2,-Inf, 0, Inf))
+                                                        2L,-Inf, 0, Inf))
             }
             else if (is.infinite(Re(n2))) {
               valueToReplace <- complex(1, n1, switch(sign(n2) +
-                                                        2,-Inf, 0, Inf))
+                                                        2L,-Inf, 0, Inf))
             }
             else {
-              valueToReplace <- n1 + j * n2
+              valueToReplace <- n1 + 1i * n2
             }
           }
           else {
@@ -12518,7 +13395,7 @@ license()
         }
       }
       if ((Mod(valueToReplace) > 1e-06)) {
-        if (abs(Im(valueToReplace)) == 0) {
+        if (abs(Im(valueToReplace)) == 0) { # isTRUE(all.equal( #
           valueToReplace <- Re(valueToReplace)
         }
         handles$zeroloc[matchpoint] <- valueToReplace
@@ -12540,9 +13417,9 @@ license()
   # observeEvent (button) delpole ----
   observeEvent(eventExpr = input$pb_delpole, handlerExpr = {
     if ((is.null(handles$poleloc)) ||
-        (is.na(handles$poleloc)) || ((length(handles$poleloc) ==
-                                      1) &&
-                                     (handles$poleloc[1] == 0))) {
+        (is.na(handles$poleloc)) || ((length(handles$poleloc) == 1L) &&
+                                     (handles$poleloc[1] == 0)) # isTRUE(all.equal( #
+        ) {
       shinyBS::createAlert(
         session,
         anchorId = "AlertMsgToUser",
@@ -12567,7 +13444,7 @@ license()
       else {
         tgt <- input$listbox_pole
       }
-      if (length(handles$poleloc) == 1) {
+      if (length(handles$poleloc) == 1L) {
         handles$poleloc <- NA
       }
       else {
@@ -12577,10 +13454,10 @@ license()
         if ((matchpoint > 0) &&
             (matchpoint < length(handles$poleloc))) {
           temppoleloc <-
-            c(handles$poleloc[(matchpoint + 1):length(handles$poleloc)])
+            c(handles$poleloc[(matchpoint + 1L):length(handles$poleloc)])
         }
-        if (matchpoint > 1) {
-          temppoleloc <- c(handles$poleloc[1:(matchpoint - 1)],
+        if (matchpoint > 1L) {
+          temppoleloc <- c(handles$poleloc[1L:(matchpoint - 1L)],
                            temppoleloc)
         }
         handles$poleloc <- temppoleloc
@@ -12601,9 +13478,9 @@ license()
   # observeEvent (button) delzero ----
   observeEvent(eventExpr = input$pb_delzero, handlerExpr = {
     if ((is.null(handles$zeroloc)) ||
-        (is.na(handles$zeroloc)) || ((length(handles$zeroloc) ==
-                                      1) &&
-                                     (handles$zeroloc[1] == 0))) {
+        (is.na(handles$zeroloc)) || ((length(handles$zeroloc) == 1L) &&
+                                     (handles$zeroloc[1] == 0)) # isTRUE(all.equal( #
+        ) {
       shinyBS::createAlert(
         session,
         anchorId = "AlertMsgToUser",
@@ -12628,19 +13505,19 @@ license()
       else {
         tgt <- input$listbox_zero
       }
-      if (length(handles$zeroloc) == 1) {
+      if (length(handles$zeroloc) == 1L) { # isTRUE(all.equal( #
         handles$zeroloc <- NA
       }
       else {
         matchpoint <- match(tgt, handles$zeroloc, nomatch = -1)
         tempzeroloc <- NULL
-        if ((matchpoint > 0) &&
+        if ((matchpoint > 0L) &&
             (matchpoint < length(handles$zeroloc))) {
           tempzeroloc <-
-            c(handles$zeroloc[(matchpoint + 1):length(handles$zeroloc)])
+            c(handles$zeroloc[(matchpoint + 1L):length(handles$zeroloc)])
         }
-        if (matchpoint > 1) {
-          tempzeroloc <- c(handles$zeroloc[1:(matchpoint - 1)],
+        if (matchpoint > 1L) {
+          tempzeroloc <- c(handles$zeroloc[1L:(matchpoint - 1L)],
                            tempzeroloc)
         }
         handles$zeroloc <- tempzeroloc
