@@ -1,5 +1,8 @@
+# PeZdemoR
+# (c) &copy; 2016-2017 Peter Squires, `DiYZer Research Group`, ECE Dept, University of Victoria
+#
 options(shiny.sanitize.errors = TRUE) # http://shiny.rstudio.com/articles/sanitize-errors.html
-# options(rgl.useNULL = TRUE)
+#options(rgl.useNULL = TRUE)
 memory.limit(size = 1e+05)
 
 # ADD-ON PACKAGES **************************************************** ----
@@ -14,7 +17,7 @@ library(colourpicker) # colourInput
 #library(RColorBrewer) # brewer.pal
 library(threejs) # scatterplotThreeOutput/ renderScatterplotThree, scatterplot3js
 library(rgl) # rglwidgetOutput, renderRglwidget, persp3d, plot3d, surface3d, rglwidget, playwidget, scene3d, rgl.close, clear3d
-library(knitr) # kable, include_graphics; Note: automatic calculation of the output width requires the png package (for PNG images)
+library(knitr) # kable, include_graphics; Note: auto-calculation of image-output-width requires the `png` package (for PNG images)
 library(R.matlab) # readMat, writeMat
 library(yaml) # yaml.load_file, as.yaml
 library(rmarkdown) # render, pandoc_available
@@ -23,7 +26,8 @@ library(devtools) # session_info
 library(png)
 library(webshot) # appshot
 library(audio) # play
-library(tuneR) # readWave, readMP3
+library(tuneR) # readWave, readMP3, writeWave
+library(tools) # file_ext
 
 # Constant-Symbol Definitions ---------------------------------------- ----
 
@@ -556,6 +560,24 @@ plot_step <-
     )
   }
 
+# https://www.r-bloggers.com/identifying-the-os-from-r/
+# June/2015, by 'Will'
+get_os <- function(){
+  sysinf <- Sys.info()
+  if (!is.null(sysinf)){
+    os <- sysinf['sysname']
+    if (os == 'Darwin')
+      os <- "osx"
+  } else { ## mystery machine
+    os <- .Platform$OS.type
+    if (grepl("^darwin", R.version$os))
+      os <- "osx"
+    if (grepl("linux-gnu", R.version$os))
+      os <- "linux"
+  }
+  tolower(os)
+}
+
 # USER-INTERFACE ***************************************************** ----
 ui <-
   shinyUI(
@@ -629,6 +651,37 @@ z-index: 105;
 animation: blinker 1s linear infinite;
 }"
         )
+      ),
+      modalDialog(title="Welcome",
+                  size = "m", # c("m", "s", "l"), 
+                  easyClose = TRUE, 
+                  fade = TRUE,
+                  # uiOutput(outputId = "SplashPageWidget"),
+                  wellPanel(
+                    style = paste0("background-color: ", AppBackgroundColor, ";",
+                                   "border:4px; border-color:#458cc3;"
+                    ),
+                    helpText("Welcome to PeZdemoR..."),
+                    br(),
+                    HTML(
+                      markdown::markdownToHTML(
+                        fragment.only = TRUE,
+                        text = paste0("This is an sample web-application made with Shiny to demonstrate some basic DSP concepts."
+                        ) # end paste0
+                      ) # end markdownToHTML
+                    ), # end HTML
+                    a(img(
+                      src = "favicon.png",
+                      height = 36L,
+                      width = 36L
+                    ), href = "http://www.rstudio.com/shiny"),
+                    br(),
+                    hr(),
+                    HTML('<script type="text/javascript" src="https://www.brainyquote.com/link/quotebr.js"></script><small><i><a href="https://www.brainyquote.com/quotes_of_the_day.html" target="_blank" rel="nofollow">more Quotes</a></i></small>'),
+                    hr(),
+                    HTML(markdown::markdownToHTML(fragment.only=TRUE,text="&copy; 2016-2017 P. Squires, DiYZer Research Group, ECE Dept, Univ. of Victoria"))
+                  ), # end wellPanel
+                  footer = modalButton("Dismiss")
       ),
       conditionalPanel(
         condition = "$('html').hasClass('shiny-busy')",
@@ -1172,12 +1225,12 @@ $('#loadmessage').fadeOut(500).fadeIn(500, blink);
                               )
                             ))
                           },
-                          rgl::rglwidgetOutput(outputId = "axes_pzplotRG",
+                          rgl::rglwidgetOutput(outputId = "axes_pzplotRGL",
                                                width = "auto")
                         )
                       ),
                       br(),
-                      downloadButton(outputId = "downloadRG",
+                      downloadButton(outputId = "downloadRGL",
                                      label = "Save RGL interactive-plot as WebGL .html file"),
                       tags$hr()
                     )
@@ -2146,7 +2199,7 @@ $('#loadmessage').fadeOut(500).fadeIn(500, blink);
                       tabPanel(
                         style = paste0("background-color: ",
                                        TabPanelBackgroundColor, ";"),
-                        title = "Imp h[n]",
+                        title = HTML("Imp h<sub>[n]</sub>"),
                         icon = shiny::icon("signal", lib = "font-awesome"),
                         tags$span(
                           title = "tooltip: Impulse-Response Tab of Plots Page\n(use browser's right-mouse-click/ context-menu for image download-options)",
@@ -2554,17 +2607,22 @@ $('#loadmessage').fadeOut(500).fadeIn(500, blink);
                   #               ),
                   column(width=3,
                   fileInput(inputId = "filenameAudio",
-                            label = "Filename to play/ filter",
+                            label = HTML("Filename to play/ filter, x<sub>[n]</sub>"),
                             # value = "4ClassStream",
                             # placeholder = "Enter filename here",
                             multiple = FALSE,
                             accept = c(".wav",".mat",".mp3")
                   ),
+                  br(),
+                  # uiOutput(outputId = "HTML5audioWidget"),
+                  # br(),
+                  # uiOutput(outputId = "HTML5audioWidget2"),
+                  # br(),
                   verbatimTextOutput(outputId = "filenameAudioInfo"),
-                  uiOutput(outputId = "HTML5audioWidget"),
+                  hr(),
                   shinyBS::bsButton(
                                   inputId = "pb_playfile",
-                                  label = "Play (un-filtered) file",
+                                  label = HTML("Play (un-filtered) file, x<sub>[n]</sub>"),
                                   # width = "31.5%",
                                   style = "default", # default, primary, success, info, warning, or danger
                                   size = "default", # extra-small, small, default, or large
@@ -2575,7 +2633,7 @@ $('#loadmessage').fadeOut(500).fadeIn(500, blink);
                                 ),
                   shinyBS::bsButton(
                                   inputId = "pb_playFiltered",
-                                  label = "Play Filtered-file",
+                                  label = HTML("Play Filtered-file, y<sub>[n]</sub>"),
                                   # width = "31.5%",
                                   style = "default", # default, primary, success, info, warning, or danger
                                   size = "default", # extra-small, small, default, or large
@@ -2623,8 +2681,65 @@ $('#loadmessage').fadeOut(500).fadeIn(500, blink);
             title = "Background/ Theory",
             icon = shiny::icon("list-alt",
                                lib = "font-awesome"),
-            helpText("Welcome to the Background/ Theory Page...")
-          ),
+            helpText("Welcome to the Background/ Theory Page..."),
+            br(),
+            wellPanel(
+              style = paste("background-color:",
+                            WellPanelBackgroundColor, ";"),
+              HTML(markdown::markdownToHTML(fragment.only=TRUE, text="
+# References:
+
+* J.J. Allaire, J. Cheng, Y. Xie, J. McPherson, W. Chang, J. Allen, H. Wickham, A. Atkins, and R. Hyndman. `rmarkdown`: Dynamic Documents for R, 2016. R package version 1.0.
+* J.J. Allaire, J. Horner, V. Marti, and N. Porte. `markdown`: 'Markdown' Rendering for R, 2015. R package version 0.7.7.
+* C. Beeley. Web Application Development with R Using `shiny`` -- Second Edition. Packt Publishing, Limited, Birmingham, 2nd;2;2; edition, 2016.
+* H. Bengtsson. `R.matlab`: Read and Write .mat-type Files and Call MATLAB from within R, 2016. R package version 3.6.0.
+* H.W. Borchers. `pracma`: Practical Numerical Math Functions, 2016. R package version 1.9.3.
+* J.R. Buck, K.E. Wage, and M.A. Hjalmarson. Item response analysis of the continuous-time signals and systems concept inventory. In 2009 IEEE 13th Digital-Signal Processing Workshop and 5th IEEE Signal Processing Education Workshop, pages 726--730, Jan 2009.
+* W. Chang, J. Cheng, J.J. Allaire, Y. Xie, and J. McPherson. `shiny`: Web Application Framework for R, 2016. R package version 0.13.2.
+* J. Dobes. An accuracy comparison of the digital filter poles-zeros analysis. Radioengineering, 12(4):0--, Dec. 2003.
+* N.D. Fleming and C. Mills. Not another inventory, rather a catalyst for reflection. 1992.
+* A.M. Goncher, D. Jayalath, and W. Boles. Insights into students' conceptual understanding using textual analysis: A case study in signal processing. IEEE Transactions on Education, 59(3):216--223, Aug 2016.
+* J. Gruber. `Markdown`` -- A text-to-HTML conversion-tool for the web, Dec 2004. website: http://daringfireball.net/projects/markdown/.
+* F.J. Harris. On the use of windows for harmonic analysis with the discrete Fourier transform. Proceedings of the IEEE, 66(1):51--83, 1978.
+* D.E. Hiebeler. R and MATLAB. CRC Press [Imprint], Abingdon, 1st edition, 2015.
+* J. Hillebrand and M.H. Nierhoff. Mastering `RStudio`: Develop, Communicate, and Collaborate with R. Packt Publishing, 1 edition, 2015.
+* M. Hopkins. Relating continuous time and discrete time in the classroom. In 2008 Annual Conference and Exposition, Pittsburgh, Pennsylvania, June 2008. ASEE Conferences.
+* B.D. Ictenbas and H. Eryilmaz. Determining learning styles of engineering students to improve the design of a service course. Procedia -- Social and Behavioral Sciences, 28:342--346, 2011.
+* D.H. Johnson, P. Prandoni, P.C. Pinto, and M. Vetterli. Teaching signal processing online: A report from the trenches. pages 8786--8790. IEEE, 2013.
+* D.E. Knuth. Literate programming. The Computer Journal, 27(2):97--111, 1984.
+* U. Ligges, S. Krey, O. Mersmann, and S. Schnackenberg. `tuneR`: Analysis of music, 2014.
+* J. MacFarlane. `pandoc`: A universal document converter, October 2016. website: http://pandoc.org.
+* J.H. McClellan, R. Schafer, and M.A. Yoder. Signal Processing First. Always learning. Prentice Hall Higher Education, 2015.
+* J.H. McClellan, R.W. Schafer, and M.A. Yoder. Experiences in teaching DSP First in the ECE curriculum. In 1997 IEEE International Conference on Acoustics, Speech, and Signal Processing, ICASSP '97, Munich, Germany, April 21-24, 1997 [1], pages 19--22.
+* J.H. McClellen and M.A. Yoder. DSP First: A Multimedia Approach. Prentice Hall PTR, Upper Saddle River, NJ, USA, 1st edition, 1997.
+* O. Mersmann and U. Ligges and S. Krey and more. `signal`: Signal processing, 2014.
+* T. Ogunfunmi. Analysis of assessment using signals and systems concept inventory for systems courses. In 2011 IEEE International Symposium of Circuits and Systems (ISCAS), pages 595--598, May 2011.
+* T. Ogunfunmi, G.L. Herman, and M. Rahman. On the use of concept inventories for circuits and systems courses. IEEE Circuits and Systems Magazine, 14(3):12--26, thirdquarter 2014.
+* A.V. Oppenheim, R.W. Schafer, and J.R. Buck. Discrete-time signal processing. Prentice Hall International, Upper Saddle River, N.J, 2nd edition, 1999.
+* M. Otto, J. Thornton, and more. `Bootstrap`: An HTML, CSS, and JS framework for developing responsive, mobile-first projects on the web, July 2016. website: http://getbootstrap.com.
+* R Core Team. R: A Language and Environment for Statistical Computing. R Foundation for Statistical Computing, Vienna, Austria, 2016.
+* J.O. Ramsay, G. Hooker, and S. Graves. Functional data analysis with R and MATLAB. Springer, Dordrecht;New York;, 1. aufl. edition, 2009.
+* H.G. Resnizky. Learning `shiny`: make the most of R's dynamic capabilities and create web applications with shiny. Packt Publishing, Birmingham, 2015.
+* RStudio. Authoring pandoc markdown, Apr 2016. website: http://rmarkdown.rstudio.com/authoring_pandoc_markdown.html.
+* RStudio Team. `RStudio`: Integrated Development Environment for R. RStudio, Inc., Boston, MA, 2015.
+* R.H. Shumway and D.S. Stoffer. Time series analysis and its applications: with R examples. Springer, New York, 3rd edition, 2011.
+* J.O. Smith. Introduction to Digital Filters with Audio Applications. 2007. online book: http://ccrma.stanford.edu/~jos/filters/.
+* J.O. Smith. Introduction to Digital Filters: with Audio Applications, volume 2. Julius Smith, 2008. website: https://www.dsprelated.com/freebooks/filters/.
+* S.W. Smith. The scientist and engineer's guide to digital signal processing. 1997. website: http://www.DSPguide.com.
+* B.L. Sturm and J.D. Gibson. Signals and systems using MATLAB (SSUM): an integrated suite of applications for exploring and teaching media signal processing. pages F2E–21. IEEE, 2005.
+* S. Urbanek. `audio`: Audio Interface for R, 2013. R package version 0.1-5.
+* S. Urbanek. `png`: Read and write PNG images, 2013. R package version 0.1-7.
+* A.A. Ursani, A.A. Memon, and B.S. Chowdhry. Bloom's taxonomy as a pedagogical model for signals and systems. International Journal of Electrical Engineering Education, 51(2):162--173, 2014.
+* K.E. Wage, J.R. Buck, C.H.G. Wright, and T.B. Welch. The signals and systems concept inventory. IEEE Transactions on Education, 48(3):448--461, Aug 2005.
+* Y. Xie. `knitr`: A comprehensive tool for reproducible research in R. In V. Stodden, F. Leisch, and R.D. Peng, editors, Implementing Reproducible Computational Research. Chapman and Hall/CRC, 2014. ISBN 978-1466561595.
+* Y. Xie. Dynamic Documents with R and `knitr`. Chapman and Hall/CRC, Boca Raton, Florida, 2nd edition, 2015. ISBN 978-1498716963.
+* Y. Xie. `knitr`: A General-Purpose Package for Dynamic Report Generation in R, 2016. R package version 1.14.
+* Udo Zolzer. Digital audio signal processing. Wiley, Chichester, U.K, 2nd edition, 2008.
+* Udo Zolzer and Xavier Amatriain. DAFX: digital audio effects. Wiley, Hoboken, NJ;Chichester, West Sussex;, 2002.
+"
+              )) # end markdownToHTML / HTML
+            ) # end wellPanel
+          ), # end tabPanel
           # . Settings Page ----
           tabPanel(
             style = paste("background-color:", NavBarPageBackgroundColor, ";"),
@@ -2859,11 +2974,13 @@ $('#loadmessage').fadeOut(500).fadeIn(500, blink);
           style = paste("background-color:", NavBarPageBackgroundColor, ";"),
           title = "About",
           icon = shiny::icon("info", lib = "font-awesome"),
+          helpText("Welcome to the ", tags$em("About"), " Page..."),
+          br(),
+          wellPanel(
+            style = paste("background-color:",
+                            WellPanelBackgroundColor, ";"),
           tags$span(
             title = "tooltip: About Page/ Tab",
-            helpText("Welcome to the ",
-                     tags$em("About"), " Page..."),
-            br(),
             p("The source-code listing is available on ",
               a("GitHub", href="https://github.com/popeye00/inSPiRe"),
               ".  Collaborations are welcomed."),
@@ -2910,19 +3027,22 @@ $('#loadmessage').fadeOut(500).fadeIn(500, blink);
                 " are live. Outputs change instantly as users modify inputs, without requiring a reload of the browser."
               )
             ),
-            br(),
-            tags$div(HTML(
-              paste(
-                tags$span(style = "color:red",
-                          "This text"),
-                " is ",
-                tags$span(style = "color:red",
-                          "red"),
-                sep = ""
-              )
-            ))
-          )
-        ),
+            hr(),
+            # tags$div(HTML(
+            #   paste(
+            #     tags$span(style = "color:red",
+            #               "This text"),
+            #     " is ",
+            #     tags$span(style = "color:red",
+            #               "red"),
+            #     sep = ""
+            #   )
+            # )),
+            HTML(markdown::markdownToHTML(fragment.only=TRUE,text="This web-app: &copy; 2016-2017 P. Squires, DiYZer Research Group, ECE Dept, University of Victoria"))
+            ,uiOutput(outputId = "AboutPageWidget")
+          ) # end tooltip span
+          ) # end wellPanel
+        ), # end tabPanel
         # # http://stackoverflow.com/questions/28967949/add-a-twitter-share-button-to-shiny-r-navbar
         # tags$script(HTML("var header = $('.navbar > .container');
         #                header.append('<div style=\"float: right\"><a href=\"https://twitter.com/share\" class=\"twitter-share-button\" aling=\"middle\" data-url=\"www.mywebsite.com\" data-text=\"Visit www.mywebsite.com\" data-size=\"large\">Tweet</a></div>');
@@ -3046,13 +3166,52 @@ server <- shinyServer(function(input, output, session) {
     shinyjs::info("Done.  All input-elements\n are now reset.")
   })
   
+  output$AboutPageWidget <- renderUI({
+    absolutePanel(
+      top = (input$dimension[2]-400)/2, # "25%", # 20, # see pixelratio: input$dimension[1] (width) by input$dimension[2] (height)
+      left = (input$dimension[1]-400)/2, # "25%", # 20,
+      width = 400,
+      draggable = TRUE, # <<< Note!
+      wellPanel(
+        style = paste0("background-color: ", AppBackgroundColor, ";",
+                       "border:4px; border-color:#458cc3;"
+                       ),
+        helpText("Welcome to the ", tags$em("About"), " Page..."),
+        br(),
+        HTML(
+          markdown::markdownToHTML(
+            fragment.only = TRUE,
+            text = paste0(
+"This is a sample web-application made with Shiny to demonstrate some basic DSP concepts.
+
+This panel is an `absolutePanel` that uses `top` and `left` attributes.
+
+It also has `draggable = TRUE`, so you can drag it to move it around the page.
+
+The slight transparency is due to `style = 'opacity: 0.9'`.
+
+You can put anything into `absolutePanel`, including any Shiny inputs and outputs."
+            ) # end paste0
+          ) # end markdownToHTML
+        ), # end HTML
+        a(img(
+              src = "favicon.png",
+              height = 36L,
+              width = 36L
+            ), href = "http://www.rstudio.com/shiny"),
+        HTML(markdown::markdownToHTML(fragment.only=TRUE,text="This web-app: &copy; 2016-2017 P. Squires, DiYZer Research Group, ECE Dept, University of Victoria"))
+      ), # end wellPanel
+      style = "opacity: 0.9" # semi-transparent
+    ) # end absolutePanel
+  })
+  
   # # observeEvent pb_music ----
   # observeEvent(eventExpr = input$pb_music, handlerExpr = {
   #   handel <- R.matlab::readMat("handel.mat") # y= audio-signal, and Fs=8192 samples-per-second
   #   y <- handel$y
   #   Fs <- handel$Fs
   #   updateNumericInput(session, inputId = "samplingfreq", value = Fs)
-  #   y <- y/max(y) # tuneR::normalize(y) #  
+  #   y <- y/max(abs(y)) * 1.0 #  tuneR::normalize(as.vector(y),unit=1) #    
   #   require(audio); try(audio::wait(audio::play(y, rate=Fs)),silent=TRUE)
   # })
   # 
@@ -3066,7 +3225,7 @@ server <- shinyServer(function(input, output, session) {
   #   # yfiltered <- yfiltered / max(yfiltered) # normalization
   #   # plot(yfiltered)
   #   # print(head(yfiltered))
-  #   yfiltered <- yfiltered/max(yfiltered) # tuneR::normalize(yfiltered) #  
+  #   yfiltered <- tuneR::normalize(as.vector(yfiltered), unit=1) # yfiltered/max(yfiltered) #   
   #   require(audio); try(audio::wait(audio::play(yfiltered, rate=Fs)),silent=TRUE)
   # })
   
@@ -3075,11 +3234,13 @@ server <- shinyServer(function(input, output, session) {
     # require(tuneR)
     #tuneR::setWavPlayer('"C:/Program Files/Windows Media Player/wmplayer.exe"')
     #[x,Fs,nBits]= wavread("test");
-    # print(input$filenameAudio$name)
+    # cat(file=stderr(),"input$filenameAudio$name:",input$filenameAudio$name,".\n")
     if (is.null(input$filenameAudio$name) || (!nzchar(input$filenameAudio$name, keepNA = FALSE))) {return()}
     if (tools::file_ext(input$filenameAudio$name) == "wav") {
-      objWav <- try(tuneR::readWave(input$filenameAudio$name),silent=TRUE)
+      # objWav <- try(tuneR::readWave(input$filenameAudio$name),silent=TRUE)
+      objWav <- tuneR::readWave(input$filenameAudio$name)
       if (isS4(objWav)) {
+        # print(objWav)
       # a <- c(rv$samples, rv$channels)
       # numOfSamples= a[1]
       # nChannels= a[2]
@@ -3088,7 +3249,7 @@ server <- shinyServer(function(input, output, session) {
       Fs <- objWav@samp.rate
       # updateNumericInput(session, inputId = "samplingfreq", value = Fs)
       # isPCM <- objWav@pcm
-      # nBits <- objWav@bit
+      nBits <- objWav@bit
       # SIZEwav <- length(y)
       #if (interactive()) tuneR::play(objWav)
       # Sys.sleep(1)
@@ -3104,41 +3265,143 @@ server <- shinyServer(function(input, output, session) {
       Fs <- objMP3@samp.rate
       # updateNumericInput(session, inputId = "samplingfreq", value = Fs)
       # isPCM <- objMP3@pcm
-      # nBits <- objMP3@bit
+      nBits <- objMP3@bit
       # SIZEwav <- length(y)
       }
     } else if (tools::file_ext(input$filenameAudio$name) == "mat") {
       matmusic <- R.matlab::readMat(input$filenameAudio$name) # y= audio-signal, and Fs=8192 samples-per-second
       y <- matmusic$y
-      Fs <- matmusic$Fs
+      Fs <- as.numeric(matmusic$Fs)
+      nBits <- 16 # assumed!?!?
       # updateNumericInput(session, inputId = "samplingfreq", value = Fs)
     } else {return()}
     
-    # yfiltered <- signal::filter(filt=input$edit_gain*handlesb(), a=handlesa(), y)
+    yfiltered <- signal::filter(filt=input$edit_gain*handlesb(), a=handlesa(), y)
     # yfiltered <- yfiltered / max(yfiltered) # normalization
     # plot(yfiltered)
     # print(head(yfiltered))
-    y <- y/max(y) # tuneR::normalize(y) #  
-    require(audio); try(audio::wait(audio::play(y, rate=Fs)),silent=TRUE)
+    # cat(file=stderr(),"L3261 head(yfiltered), before normalization:",head(yfiltered),".\n")
+    # yfiltered <- tuneR::normalize(as.vector(yfiltered), unit=1) # yfiltered/max(yfiltered) # 
+    
+    Wobj <- tuneR::Wave(left=as.matrix(round(32767 * yfiltered/max(abs(yfiltered)))), samp.rate = Fs, bit = 16, pcm = TRUE)
+    # print(Wobj)
+    tdir <- tempdir()
+    tfile <- file.path(tdir, paste0("filtered",input$filenameAudio$name))
+    tuneR::writeWave(Wobj, filename = tfile) # paste0("filtered",input$filenameAudio$name)) # 
+    # close(file.path(tdir, paste0("filtered",input$filenameAudio$name)))
+    Sys.sleep(5) # wait 5 seconds
+
+    # print(list.files(tdir, pattern = "\\.wav$"))
+    newWobjList <- tuneR::readWave(tfile,header = TRUE)
+    # print(newWobjList)
+   
+    # cat(file=stderr(),"L3273 head(yfiltered):",head(yfiltered),".\n")
+    # cat(file=stderr(),"max(yfiltered):",max(yfiltered),".\n")
+    # cat(file=stderr(),"min(yfiltered):",min(yfiltered),".\n")
+    # cat(file=stderr(),"Fs:",Fs,".\n")
+
+    y <- y/max(abs(y)) * 1.0 #  tuneR::normalize(as.vector(y),unit=1) #   
+    # cat(file=stderr(),"head(y):",head(y),".\n")
+    # cat(file=stderr(),"max(y):",max(y),".\n")
+    # cat(file=stderr(),"min(y):",min(y),".\n")
+    # cat(file=stderr(),"Fs:",Fs,".\n")
+    if ("windows" %in% get_os()) {
+      require(audio); try(audio::wait(audio::play(y, rate=Fs)),silent=TRUE)
+    }
   })
   
     # output$filenameAudioInfo Print ----
   output$filenameAudioInfo <- renderText({
     if (is.null(input$filenameAudio$name) || (!nzchar(input$filenameAudio$name, keepNA = FALSE))) {return()}
+    
+    {
     if (tools::file_ext(input$filenameAudio$name) == "wav") {
-      objWav <- try(tuneR::readWave(input$filenameAudio$name, 
+      # objWav <- try(tuneR::readWave(input$filenameAudio$name),silent=TRUE)
+      objWav <- tuneR::readWave(input$filenameAudio$name)
+      if (isS4(objWav)) {
+        # print(objWav)
+      # a <- c(rv$samples, rv$channels)
+      # numOfSamples= a[1]
+      # nChannels= a[2]
+      y <- objWav@left # assumed monophonic, data stored within left-channel only
+      #if (objWav@stereo) {xright <- objWav@right} # if stereo-recording
+      Fs <- objWav@samp.rate
+      # updateNumericInput(session, inputId = "samplingfreq", value = Fs)
+      # isPCM <- objWav@pcm
+      nBits <- objWav@bit
+      # SIZEwav <- length(y)
+      #if (interactive()) tuneR::play(objWav)
+      # Sys.sleep(1)
+      }
+    } else if (tools::file_ext(input$filenameAudio$name) == "mp3") {
+      objMP3 <- try(tuneR::readMP3(input$filenameAudio$name),silent=TRUE)
+      if (isS4(objMP3)) {
+      # a <- c(rv$samples, rv$channels)
+      # numOfSamples= a[1]
+      # nChannels= a[2]
+      y <- objMP3@left # assumed monophonic, data stored within left-channel only
+      #if (objMP3@stereo) {xright <- objMP3@right} # if stereo-recording
+      Fs <- objMP3@samp.rate
+      # updateNumericInput(session, inputId = "samplingfreq", value = Fs)
+      # isPCM <- objMP3@pcm
+      nBits <- objMP3@bit
+      # SIZEwav <- length(y)
+      }
+    } else if (tools::file_ext(input$filenameAudio$name) == "mat") {
+      matmusic <- R.matlab::readMat(input$filenameAudio$name) # y= audio-signal, and Fs=8192 samples-per-second
+      y <- matmusic$y
+      Fs <- as.numeric(matmusic$Fs)
+      nBits <- 16 # assumed!?!?
+
+      # updateNumericInput(session, inputId = "samplingfreq", value = Fs)
+    } else {return()}
+    yfiltered <- signal::filter(filt=input$edit_gain*handlesb(), a=handlesa(), y)
+    # yfiltered <- yfiltered / max(yfiltered) # normalization
+    # plot(yfiltered)
+    # cat(file=stderr(),"L3334 head(yfiltered), before normalization:",head(yfiltered),".\n")
+    # yfiltered <- tuneR::normalize(as.vector(yfiltered), unit=1) # yfiltered/max(yfiltered) # 
+    
+  # cat(file=stderr(),"L3337 head(yfiltered):",head(yfiltered),".\n")
+    # cat(file=stderr(),"max(yfiltered):",max(yfiltered),".\n")
+    # cat(file=stderr(),"min(yfiltered):",min(yfiltered),".\n")
+    # cat(file=stderr(),"Fs:",Fs,".\n")
+    # 
+    # cat(file=stderr(),"L3348 head(yfiltered...), normalized:",head(32767 * yfiltered/max(abs(yfiltered))),".\n")
+    # cat(file=stderr(),"max(yfiltered...):",max(32767 * yfiltered/max(abs(yfiltered))),".\n")
+    # cat(file=stderr(),"min(yfiltered...):",min(32767 * yfiltered/max(abs(yfiltered))),".\n")
+
+    # Wobj <- tuneR::Wave(left=tuneR::normalize(as.vector(trunc(yfiltered)),unit=16), samp.rate = Fs, bit = 16, pcm = TRUE)
+    Wobj <- tuneR::Wave(left=as.matrix(round(32767 * yfiltered/max(abs(yfiltered)))), samp.rate = Fs, bit = 16, pcm = TRUE)
+    # print(Wobj)
+    # Wobj <- tuneR::Wave(left=t(t(yfiltered)), samp.rate = Fs, bit = 16, pcm = TRUE)
+    tdir <- tempdir()
+    tfile <- file.path(tdir, paste0("filtered",input$filenameAudio$name))
+    tuneR::writeWave(Wobj, filename = tfile) # paste0("filtered",input$filenameAudio$name)) # 
+    # close(file.path(tdir, paste0("filtered",input$filenameAudio$name)))
+    Sys.sleep(5) # wait 5 seconds
+    
+    # print(list.files(tdir, pattern = "\\.wav$"))
+    newWobjList <- tuneR::readWave(tfile,header = TRUE)
+    # print(newWobjList)
+    }
+    
+    if (tools::file_ext(input$filenameAudio$name) == "wav") {
+      objWavList <- try(tuneR::readWave(input$filenameAudio$name, 
                                     header = TRUE),silent=TRUE)
+      objWav <- try(tuneR::readWave(input$filenameAudio$name),silent=TRUE)
       # print(objWav)
       # a <- c(, )
-      if (is.list(objWav)) {
+      if (is.list(objWavList)) {
       paste(input$filenameAudio$name, "\n",
-            "number of Samples:", objWav$samples, "\n",
-            "Duration (secs):",round(objWav$samples/objWav$sample.rate,1),"\n",
-            "nBits resolution:", objWav$bits, "\n",
-            "nChannels:", objWav$channels, "\n",
-            "Fs, sample-rate:", objWav$sample.rate, "\n",
-            "Ts, sample-period (msecs):", round(1000/objWav$sample.rate,3), "\n",
-            "(~50msecs delay, for echo-effects):", round(0.050*objWav$sample.rate,1), "\n"
+            "number of Samples:", objWavList$samples, "\n",
+            "Duration (secs):",round(objWavList$samples/objWavList$sample.rate,1),"\n",
+            "nBits resolution:", objWavList$bits, "\n",
+            "nChannels:", objWavList$channels, "\n",
+            "Fs, sample-rate:", objWavList$sample.rate, "\n",
+            "Ts, sample-period (msecs):", round(1000/objWavList$sample.rate,3), "\n",
+            "(~50msecs delay, for echo-effects):", round(0.050*objWavList$sample.rate,1), "\n"
+            ,"maxvalue:",max(objWav@left),"\n",
+            "minvalue:",min(objWav@left)
             )
       }
     } else if (tools::file_ext(input$filenameAudio$name) == "mp3") {
@@ -3153,7 +3416,9 @@ server <- shinyServer(function(input, output, session) {
             "nChannels:", 2, "\n",
             "Fs, sample-rate:", objMP3@samp.rate, "\n",
             "Ts, sample-period (msecs):", round(1000/objMP3@samp.rate,3), "\n",
-            "(~50msecs delay, for echo-effects):", round(0.050*objMP3@samp.rate,1), "\n"
+            "(~50msecs delay, for echo-effects):", round(0.050*objMP3@samp.rate,1), "\n",
+            "maxvalue:",max(objMP3@left),"\n",
+            "minvalue:",min(objMP3@left)
             )
       }
     } else if (tools::file_ext(input$filenameAudio$name) == "mat") {
@@ -3165,22 +3430,63 @@ server <- shinyServer(function(input, output, session) {
               "Duration (secs):",round(length(matmusic$y)/matmusic$Fs,1),"\n",
               "Fs, sample-rate:", matmusic$Fs, "\n",
               "Ts, sample-period (msecs):", round(1000/matmusic$Fs,3), "\n",
-              "(~50msecs delay, for echo-effects):", round(0.050*matmusic$Fs,1), "\n"
+              "(~50msecs delay, for echo-effects):", round(0.050*matmusic$Fs,1), "\n",
+              "maxvalue:",max(matmusic$y),"\n",
+              "minvalue:",min(matmusic$y)
               )
       }
     } else {return()}
   })
   
   output$HTML5audioWidget <- renderUI({
-    if (is.null(input$filenameAudio$name) || (!nzchar(input$filenameAudio$name, keepNA = FALSE))) {return()}
-    if ((tools::file_ext(input$filenameAudio$name) == "wav") # || (tools::file_ext(input$filenameAudio$name) == "mp3")
-        ) {
+    # if (( is.null(input$filenameAudio$name) ) || 
+    #     ( !nzchar(input$filenameAudio$name, keepNA = FALSE) )
+    # ) {
+    #   return()
+    # }
+    # if ((tools::file_ext(input$filenameAudio$name) == "wav") # || (tools::file_ext(input$filenameAudio$name) == "mp3")
+    # ) {
+        # HTML(paste0('<div title="Original1">Original1<audio controls="controls" preload="none"> ',
+        #             '<source src=',input$filenameAudio$name,' type="audio/wav"> ', # input$filenameAudio$datapath,' type="audio/wav"> ',
+        #             '<source src=',input$filenameAudio$name,' type="audio/ogg"> ',
+        #             '<source src=',input$filenameAudio$name,' type="audio/mpeg"> ',
+        #             'Please Note: Your browser does not support HTML5 digital-audio playback. ',
+        #             'Please upgrade to the latest version of your browser or operating system. ',
+        #             '</audio></div>'
+        #   ))
+        # HTML(paste0('<div title="Original2">Original2<audio controls="controls" preload="none"> ',
+        #             '<source src=',input$filenameAudio$datapath,' type="audio/wav"> ', # input$filenameAudio$datapath,' type="audio/wav"> ',
+        #             '<source src=',input$filenameAudio$datapath,' type="audio/ogg"> ',
+        #             '<source src=',input$filenameAudio$datapath,' type="audio/mpeg"> ',
+        #             'Please Note: Your browser does not support HTML5 digital-audio playback. ',
+        #             'Please upgrade to the latest version of your browser or operating system. ',
+        #             '</audio></div>'
+        #   ))
+        # HTML(paste0('<div><audio controls="controls"> ',
+        #             '<source src=',input$filenameAudio$name,' type="audio/wav"> ', # input$filenameAudio$datapath,' type="audio/wav"> ',
+        #             '<source src=',input$filenameAudio$name,' type="audio/ogg"> ',
+        #             '<source src=',input$filenameAudio$name,' type="audio/mpeg"> ',
+        #             'Please Note: Your browser does not support HTML5 digital-audio playback. ',
+        #             'Please upgrade to the latest version of your browser or operating system. ',
+        #             '</audio></div>'
+        #   ))
+        # HTML(paste0('<div><audio controls="controls"> ',
+        #             '<source src=',input$filenameAudio$datapath,' type="audio/wav"> ', # input$filenameAudio$datapath,' type="audio/wav"> ',
+        #             '<source src=',input$filenameAudio$datapath,' type="audio/ogg"> ',
+        #             '<source src=',input$filenameAudio$datapath,' type="audio/mpeg"> ',
+        #             'Please Note: Your browser does not support HTML5 digital-audio playback. ',
+        #             'Please upgrade to the latest version of your browser or operating system. ',
+        #             '</audio></div>'
+        #   ))
       HTML(paste0('<div><audio controls> <source src=',
                   input$filenameAudio$name,
                   ' type="audio/wav"> Please Note: Your browser does not support HTML5 digital-audio playback!  Please upgrade to the latest version of your browser or operating system. </audio></div>'
-      )
-    )
-    }
+          ))
+      # HTML(paste0('<div><audio controls> <source src=',
+      #             input$filenameAudio$datapath,
+      #             ' type="audio/wav"> Please Note: Your browser does not support HTML5 digital-audio playback!  Please upgrade to the latest version of your browser or operating system. </audio></div>'
+      #     ))
+    # }
   })
   
   # observeEvent pb_playFiltered ----
@@ -3188,16 +3494,17 @@ server <- shinyServer(function(input, output, session) {
     # require(tuneR)
     #tuneR::setWavPlayer('"C:/Program Files/Windows Media Player/wmplayer.exe"')
     #[x,Fs,nBits]= wavread("test");
-    # print(input$filenameAudio$name)
+    # cat(file=stderr(),"input$filenameAudio$name:",input$filenameAudio$name,".\n")
     if (is.null(input$filenameAudio$name) || (!nzchar(input$filenameAudio$name, keepNA = FALSE))) {return()}
     if (tools::file_ext(input$filenameAudio$name) == "wav") {
       objWav <- try(tuneR::readWave(input$filenameAudio$name),silent=TRUE)
       if (isS4(objWav)) {
+        # print(objWav)
       y <- objWav@left # assumed monophonic, data stored within left-channel only
       #if (objWav@stereo) {xright <- objWav@right} # if stereo-recording
       Fs <- objWav@samp.rate
       # updateNumericInput(session, inputId = "samplingfreq", value = Fs)
-      # nBits <- objWav@bit
+      nBits <- objWav@bit
       # SIZEwav <- length(y)
       #if (interactive()) tuneR::play(objWav)
       # Sys.sleep(1)
@@ -3209,7 +3516,7 @@ server <- shinyServer(function(input, output, session) {
       #if (objMP3@stereo) {xright <- objMP3@right} # if stereo-recording
       Fs <- objMP3@samp.rate
       # updateNumericInput(session, inputId = "samplingfreq", value = Fs)
-      # nBits <- objMP3@bit
+      nBits <- objMP3@bit
       # SIZEwav <- length(y)
       #if (interactive()) tuneR::play(objMP3)
       # Sys.sleep(1)
@@ -3217,19 +3524,58 @@ server <- shinyServer(function(input, output, session) {
     } else if (tools::file_ext(input$filenameAudio$name) == "mat") {
       matmusic <- R.matlab::readMat(input$filenameAudio$name) # y= audio-signal, and Fs=8192 samples-per-second
       y <- matmusic$y
-      Fs <- matmusic$Fs
+      Fs <- as.numeric(matmusic$Fs)
+      nBits <- 16 # assumed!?!?
+
       # updateNumericInput(session, inputId = "samplingfreq", value = Fs)
     } else {return()}
     
     yfiltered <- signal::filter(filt=input$edit_gain*handlesb(), a=handlesa(), y)
     # yfiltered <- yfiltered / max(yfiltered) # normalization
-    # plot(yfiltered)
-    # print(head(yfiltered))
-    yfiltered <- yfiltered/max(yfiltered) # tuneR::normalize(yfiltered) #  
-    require(audio); try(audio::wait(audio::play(yfiltered, rate=Fs)),silent=TRUE)
+    # plot(t(yfiltered))
+    # cat(file=stderr(),"L3462 head(yfiltered), before normalization:",head(yfiltered),".\n")
+    # yfiltered <- tuneR::normalize(as.vector(yfiltered), unit=1) # yfiltered/max(yfiltered) # 
+    
+    Wobj <- tuneR::Wave(left=as.matrix(round(32767 * yfiltered/max(abs(yfiltered)))), samp.rate = Fs, bit = 16, pcm = TRUE)
+    # print(Wobj)
+    tdir <- tempdir()
+    tfile <- file.path(tdir, paste0("filtered",input$filenameAudio$name))
+    tuneR::writeWave(Wobj, filename = tfile) # paste0("filtered",input$filenameAudio$name)) # 
+    # close(file.path(tdir, paste0("filtered",input$filenameAudio$name)))
+    Sys.sleep(5) # wait 5 seconds
+    
+    # print(list.files(tdir, pattern = "\\.wav$"))
+    newWobjList <- tuneR::readWave(tfile,header = TRUE)
+    # print(newWobjList)
+   
+    # cat(file=stderr(),"head(yfiltered):",head(yfiltered),".\n")
+    # cat(file=stderr(),"max(yfiltered):",max(yfiltered),".\n")
+    # cat(file=stderr(),"min(yfiltered):",min(yfiltered),".\n")
+    # cat(file=stderr(),"Fs:",Fs,".\n")
+    yfiltered <- yfiltered/max(abs(yfiltered)) * 1.0 #  tuneR::normalize(as.vector(yfiltered),unit=1) # 
+    if ("windows" %in% get_os()) {
+      require(audio); try(audio::wait(audio::play(yfiltered, rate=Fs)),silent=TRUE)
+    }
+    # require(audio); try(audio::play(yfiltered, rate=Fs),silent=TRUE)
   })
   
-  # output$specgrams ----
+    output$HTML5audioWidget2 <- renderUI({
+      if (is.null(input$filenameAudio$name) || (!nzchar(input$filenameAudio$name, keepNA = FALSE))) {return()}
+      # if ((tools::file_ext(input$filenameAudio$name) == "wav") # || (tools::file_ext(input$filenameAudio$name) == "mp3")
+      # ) {
+        # HTML(paste0('<div title="Filtered">Filtered<audio controls="controls" preload="none"> ',
+        #             '<source src=',paste0("filtered",input$filenameAudio$name),' type="audio/wav"> ', # input$filenameAudio$datapath),' type="audio/wav"> ',
+        #             '<source src=',paste0("filtered",input$filenameAudio$name),' type="audio/ogg"> ',
+        #             '<source src=',paste0("filtered",input$filenameAudio$name),' type="audio/mpeg"> ',
+        #             'Please Note: Your browser does not support HTML5 digital-audio playback. ',
+        #             'Please upgrade to the latest version of your browser or operating system. ',
+        #             '</audio></div>'
+        #     )
+        # )
+      # }
+    })
+    
+   # output$specgrams ----
   output$specgrams <- renderPlot(width = "auto", height = "auto", {
     req(input$stretchyslider3range)
     par(mfrow = c(2, 2))
@@ -3248,7 +3594,7 @@ server <- shinyServer(function(input, output, session) {
       Fs <- objWav@samp.rate
       # updateNumericInput(session, inputId = "samplingfreq", value = Fs)
       
-      # nBits <- objWav@bit
+      nBits <- objWav@bit
       # SIZEwav <- length(y)
       #if (interactive()) tuneR::play(objWav)
       # Sys.sleep(1)
@@ -3260,7 +3606,7 @@ server <- shinyServer(function(input, output, session) {
       #if (objMP3@stereo) {xright <- objMP3@right} # if stereo-recording
       Fs <- objMP3@samp.rate
       # updateNumericInput(session, inputId = "samplingfreq", value = Fs)
-      # nBits <- objMP3@bit
+      nBits <- objMP3@bit
       # SIZEwav <- length(y)
       #if (interactive()) tuneR::play(objMP3)
       # Sys.sleep(1)
@@ -3269,17 +3615,19 @@ server <- shinyServer(function(input, output, session) {
       matmusic <- try(R.matlab::readMat(input$filenameAudio$name),silent=TRUE) # y= audio-signal, and Fs=8192 samples-per-second
       y <- matmusic$y
       Fs <- matmusic$Fs
+      nBits <- 16 # assumed!?!?
+
       # updateNumericInput(session, inputId = "samplingfreq", value = Fs)
     } else {return()}
     
     # print(y)
     yfiltered <- signal::filter(filt=input$edit_gain*handlesb(), a=handlesa(), y)
     # yfiltered <- yfiltered / max(yfiltered) # normalization
-    # plot(yfiltered)
+    # plot(tyfiltered)
     # print(head(yfiltered))
     # yfiltered <- tuneR::normalize(tuneR::Wave(left=as.vector(yfiltered,mode="numeric"))) # yfiltered/max(yfiltered) # 
 
-    # y <- y/max(y) # tuneR::normalize(y) # 
+    # y <- y/max(abs(y)) * 1.0 #  tuneR::normalize(as.vector(y),unit=1) #   
     
 minSpgFreq <- trunc(input$stretchyslider3range[1] * (Fs/2)) # /(input$samplingfreq/2) # max(c(0.25* 44100/2, 0.01* Fs/2 ) )  # Hz - min-frequency to display
 maxSpgFreq <- trunc(input$stretchyslider3range[2] * (Fs/2)) # /(input$samplingfreq/2) # min(c(Fs/2, 0.75* 44100/2 ) ) # Hz - max-frequency to display
@@ -3298,7 +3646,7 @@ spg <- signal::specgram(y, n=fftn, Fs=Fs, window=windowW, overlap=windowW-step)
 #spg <- signal::specgram(x)
 #S <- abs(spg$S[2:(fftn*4000/Fs),])   # magnitude in range 0<f<=4000 Hz.
 S <- Mod(spg$S[(max(c(2,fftn*minSpgFreq/Fs))):(fftn*maxSpgFreq/Fs),])
-maxS1 <- max(S) # store this, for later usage on the second-plot below
+maxS1 <- max(abs(S)) # store this, for later usage on the second-plot below
 #S <- S/max(S)         # normalize magnitude so that max is 0 dB.
 S <- S/maxS1 # normalize
 #S[S < 10^(-40/10)] <- 10^(-40/10)    # clip below -40 dB.
@@ -3454,7 +3802,7 @@ title('Spectrogram -- Filtered Signal',
 # )
 
 #subplot
-dBFFTfiltered <- try(20*log10(Mod(fft(yfiltered))),silent=TRUE)
+dBFFTfiltered <- try(20*log10(Mod(fft(t(yfiltered)))),silent=TRUE)
 if (is.null(dBFFTfiltered)) return()
 
 dBFFTfiltered[dBFFTfiltered>320] <- 320
@@ -9579,7 +9927,7 @@ license()
   # output$downloadRGL - downloadHandler ----
   output$downloadRGL <-
     downloadHandler(
-      filename = "RG.html",
+      filename = "RGL.html",
       content = function(file) {
                    x <- seq(-1.3, 1.3, length.out = 256)
                    y <- seq(-1.3, 1.3, length.out = 256)
@@ -13572,4 +13920,3 @@ enableBookmarking(store = "url")
 
 Myapp123 <- shinyApp(ui = ui, server = server)
 
-# (c) &copy; 2016-2017 `ProductionMine`, Created by P. Squires, `DiYZed Research Group`, ECE Dept, University of Victoria?
