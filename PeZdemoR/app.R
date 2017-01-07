@@ -28,6 +28,7 @@ library(webshot) # appshot
 library(audio) # play
 library(tuneR) # readWave, readMP3, writeWave
 library(tools) # file_ext
+library(rwt) # makesig
 
 # Constant-Symbol Definitions ---------------------------------------- ----
 
@@ -1520,6 +1521,9 @@ $('#loadmessage').fadeOut(500).fadeIn(500, blink);
                               `Remez, ord. 48, psychoacoustic/ physiological volume-control FIR (Dobes, 2003 Ex2)`="firstHalfZeros=c(-1.27851808211318+0.62684824819101i,-1.36614299238589+0.27717114439577i,-1.07284006705681+0.91235620647926i,-0.77267104757162+1.12541933041583i,-0.44961436355736+1.22363585379352i,-0.20330452525073+1.29600355151311i,0.14750702212683+1.34841369533889i,0.50634734941036+1.25979827310114i,0.83329614995319+1.04982507756824i,1.04560310563666+0.67293837999034i,1.20771535897979+0.24059979456907i,0.95139216401989+0.56315210274529i,0.77837030003487+0.46073626392613i,0.79640192035334+0.15865836018951i,0.67627030631208+0.43523995090672i,0.46384030886663+0.58436750039291i,0.27466939387352+0.68338074343342i,0.08016782642482+0.73284236586261i,-0.11813451163119+0.75307102211071i,-0.26456653442537+0.72002392155667i,-0.41461446573694+0.60389882069075i,-0.70304843505842+0.14263861132902i,-0.63057376627246+0.30916579614562i,-0.54091513103870+0.46000078868751i);Zpg(zero=c(firstHalfZeros,Conj(firstHalfZeros)),pole=c(0),gain=0.00012511398639)",
                               `Irregular IIR by Chained-Fractions (unstable) (J. Dobes, 2003 Ex3)`="Zpg(zero=c(0.9049098+0.1414979i,0.9049098-0.1414979i,1.192327), pole=c(0.9588639+0.7240575i,0.9588639-0.7240575i,1.511628), gain=1)",
                               `Savitzky-Golay smoothing-filter, order 3 (cubic), length 5` = "p=3;n=2;sgolay(p,(2*n+1)) %*% c(1,rep(0,times=(2*n+1)-1))", # https://en.wikipedia.org/wiki/Savitzky%E2%80%93Golay_filter
+                              `Pink-noise filter, 1/f power-law, 3rd-order IIR, (J. Smith, 2011)`="Arma(b=c(0.049922035,-0.095993537,0.050612699,-0.004408786),a=c(1,-2.494956002,2.017265875,-0.522189400))",
+                              `Pink-noise filter, 1/f power-law, 3rd-order IIR, (RBJ, 1998)`="Zpg(pole=c(0.99572754,0.94790649,0.53567505),zero=c(0.98443604,0.83392334,0.07568359),gain=1)",
+                              `Wiener FIR-filter example, transversal, two-taps, noisy channel, Haykin 1998`="Arma(b=c(1,-0.939137),a=c(1,-0.1,-0.8))",
                               `Dolph-Chebyshev window, 50-point, 100dB attenuation` = "chebwin(n=50, at=100)",
                               `Kaiser-window, 101-point, beta 0 (very-wide=Rectangle)` = "kaiser(n=101, beta=0)",
                               `Kaiser-window, 101-point, beta 50 (narrower)` = "kaiser(n=101, beta=50)",
@@ -1618,6 +1622,9 @@ $('#loadmessage').fadeOut(500).fadeIn(500, blink);
                                   "firstHalfZeros=c(-1.27851808211318+0.62684824819101i,-1.36614299238589+0.27717114439577i,-1.07284006705681+0.91235620647926i,-0.77267104757162+1.12541933041583i,-0.44961436355736+1.22363585379352i,-0.20330452525073+1.29600355151311i,0.14750702212683+1.34841369533889i,0.50634734941036+1.25979827310114i,0.83329614995319+1.04982507756824i,1.04560310563666+0.67293837999034i,1.20771535897979+0.24059979456907i,0.95139216401989+0.56315210274529i,0.77837030003487+0.46073626392613i,0.79640192035334+0.15865836018951i,0.67627030631208+0.43523995090672i,0.46384030886663+0.58436750039291i,0.27466939387352+0.68338074343342i,0.08016782642482+0.73284236586261i,-0.11813451163119+0.75307102211071i,-0.26456653442537+0.72002392155667i,-0.41461446573694+0.60389882069075i,-0.70304843505842+0.14263861132902i,-0.63057376627246+0.30916579614562i,-0.54091513103870+0.46000078868751i);Zpg(zero=c(firstHalfZeros,Conj(firstHalfZeros)),pole=c(0),gain=0.00012511398639)",
                                   "Zpg(zero=c(0.9049098+0.1414979i,0.9049098-0.1414979i,1.192327), pole=c(0.9588639+0.7240575i,0.9588639-0.7240575i,1.511628), gain=1)",
                                   "p=3;n=2;sgolay(p,(2*n+1)) %*% c(1,rep(0,times=(2*n+1)-1))",
+                                  "Arma(b=c(0.049922035,-0.095993537,0.050612699,-0.004408786),a=c(1,-2.494956002,2.017265875,-0.522189400))",
+                                  "Zpg(pole=c(0.99572754,0.94790649,0.53567505),zero=c(0.98443604,0.83392334,0.07568359),gain=1)",
+                                  "Arma(b=c(1,-0.939137),a=c(1,-0.1,-0.8))",
                                   "chebwin(n=50, at=100)",
                                   "kaiser(n=101, beta=0)",
                                   "kaiser(n=101, beta=50)",
@@ -1720,6 +1727,9 @@ $('#loadmessage').fadeOut(500).fadeIn(500, blink);
                                 "firstHalfZeros=c(-1.27851808211318+0.62684824819101i,-1.36614299238589+0.27717114439577i,-1.07284006705681+0.91235620647926i,-0.77267104757162+1.12541933041583i,-0.44961436355736+1.22363585379352i,-0.20330452525073+1.29600355151311i,0.14750702212683+1.34841369533889i,0.50634734941036+1.25979827310114i,0.83329614995319+1.04982507756824i,1.04560310563666+0.67293837999034i,1.20771535897979+0.24059979456907i,0.95139216401989+0.56315210274529i,0.77837030003487+0.46073626392613i,0.79640192035334+0.15865836018951i,0.67627030631208+0.43523995090672i,0.46384030886663+0.58436750039291i,0.27466939387352+0.68338074343342i,0.08016782642482+0.73284236586261i,-0.11813451163119+0.75307102211071i,-0.26456653442537+0.72002392155667i,-0.41461446573694+0.60389882069075i,-0.70304843505842+0.14263861132902i,-0.63057376627246+0.30916579614562i,-0.54091513103870+0.46000078868751i);Zpg(zero=c(firstHalfZeros,Conj(firstHalfZeros)),pole=c(0),gain=0.00012511398639)",
                                 "Zpg(zero=c(0.9049098+0.1414979i,0.9049098-0.1414979i,1.192327), pole=c(0.9588639+0.7240575i,0.9588639-0.7240575i,1.511628), gain=1)",
                                 "p=3;n=2;sgolay(p,(2*n+1)) %*% c(1,rep(0,times=(2*n+1)-1))",
+                                "Arma(b=c(0.049922035,-0.095993537,0.050612699,-0.004408786),a=c(1,-2.494956002,2.017265875,-0.522189400))",
+                                "Zpg(pole=c(0.99572754,0.94790649,0.53567505),zero=c(0.98443604,0.83392334,0.07568359),gain=1)",
+                                "Arma(b=c(1,-0.939137),a=c(1,-0.1,-0.8))",
                                 "chebwin(n=50, at=100)",
                                 "kaiser(n=101, beta=0)",
                                 "kaiser(n=101, beta=50)",
@@ -2606,18 +2616,116 @@ $('#loadmessage').fadeOut(500).fadeIn(500, blink);
                   #                 icon = shiny::icon("file-audio-o", lib = "font-awesome") # "play" # "music" #
                   #               ),
                   column(width=3,
-                  fileInput(inputId = "filenameAudio",
-                            label = HTML("Filename to play/ filter, x<sub>[n]</sub>"),
-                            # value = "4ClassStream",
-                            # placeholder = "Enter filename here",
-                            multiple = FALSE,
-                            accept = c(".wav",".mat",".mp3")
-                  ),
-                  br(),
                   # uiOutput(outputId = "HTML5audioWidget"),
                   # br(),
                   # uiOutput(outputId = "HTML5audioWidget2"),
                   # br(),
+                  radioButtons(
+                    inputId = "inputsignalsource",
+                    label = "Choose audio input",
+                    choices = c(
+                      `From file` = "file",
+                      `Use generator` = "generator"
+                    ),
+                    selected = "file",
+                    inline = TRUE
+                  ),
+                  conditionalPanel(
+                    condition = "input.inputsignalsource=='file'",
+                    fileInput(inputId = "filenameAudio",
+                              label = HTML("Filename to play/ filter, x<sub>[n]</sub>"),
+                              # value = "4ClassStream",
+                              # placeholder = "Enter filename here",
+                              multiple = FALSE,
+                              accept = c(".wav",".mat",".mp3")
+                    )
+                  ),
+                  conditionalPanel(
+                    condition = "input.inputsignalsource=='generator'",
+                    radioButtons(
+                      inputId = "audiogeneratorsignal",
+                      label = "Generate signal",
+                      choices = c(
+                        `white-noise (mean=0, sd=1)`="whitenoise",
+                        `pink-noise, 1/f`="pinknoise",
+                        `pulsed, parameter1 [cycles-per-sec], width=0.2, plateau=0.95, interval=1`="pulsed",
+                        `saw-tooth, parameter1 [cycles]`="sawtooth",
+                        # `silence`="silence",
+                        `sine-wave, frq=parameter1 [Hz]`="sinewave",
+                        `square-wave, parameter1 [cycles], 50% duty`="squarewave",
+                        `Heavi-Sine (0.3t,0.72t)`="heavisine",
+                        `Bumps (.1t,.13t,.15t, ...)`="bumps",
+                        `Blocks (.1t,.13t,.15t, ...)`="blocks",
+                        `Doppler`="doppler",
+                        `Ramp (0.37t)`="ramp",
+                        `Cusp (0.37t)`="cusp",
+                        `Sing (0.37t)`="sing",
+                        `Hi-Sine, 0.6902(Fs/2)`="hisine",
+                        `Lo-Sine, 0.3333(Fs/2)`="losine",
+                        `Linear-Chirp`="linchirp",
+                        `Two-Chirp`="twochirp",
+                        `Quadratic-chirp`="quadchirp",
+                        `Mish-Mash`="mishmash",
+                        `Werner-sorrows (Heisenburg)`="wernersorrows",
+                        `Leopold (Kronecker, 0.37t)`="leopold"
+                      ),
+                      selected = "whitenoise",
+                      inline = TRUE
+                    ),
+                    conditionalPanel(
+                      condition = paste0("input.audiogeneratorsignal=='pulsed' || ",
+                                         "input.audiogeneratorsignal=='sawtooth' || ",
+                                         "input.audiogeneratorsignal=='sinewave' || ",
+                                         "input.audiogeneratorsignal=='squarewave'"),
+                      numericInput(
+                        inputId = "parameter1",
+                        label = "Parameter1 (cycles, or Hz=cycles-per-sec)",
+                        value = 3,
+                        min = 0.001,
+                        max = 22050.0
+                        ,step = 0.5
+                      )
+                    ),
+                    conditionalPanel(
+                      condition = "input.audiogeneratorsignal=='pulsed'",
+                      numericInput(
+                        inputId = "parameter2",
+                        label = "width (% of interval)=PW",
+                        value = 0.2,
+                        min = 0.0,
+                        max = 1.0
+                        ,step = 0.01
+                      ),
+                      numericInput(
+                        inputId = "parameter3",
+                        label = "plateau (% of width)",
+                        value = 0.95,
+                        min = 0.0,
+                        max = 1.0
+                        ,step = 0.01
+                      ),
+                      numericInput(
+                        inputId = "parameter4",
+                        label = "positive/negative interval (% of PRI/2)",
+                        value = 1.0,
+                        min = 0.0,
+                        max = 1.0
+                        ,step = 0.01
+                      )
+                    )
+                    # ,shinyBS::bsButton(
+                    #   inputId = "pb_generateaudio",
+                    #   label = "Generate the Signal",
+                    #   # width = "31.5%",
+                    #   style = "default", # default, primary, success, info, warning, or danger
+                    #   size = "default", # extra-small, small, default, or large
+                    #   type = "action", # action, toggle
+                    #   block = FALSE,
+                    #   disabled = FALSE,
+                    #   icon = shiny::icon("barcode", lib = "font-awesome") # http://fontawesome.io/icons/
+                    # )
+                  ),
+                  br(),
                   verbatimTextOutput(outputId = "filenameAudioInfo"),
                   hr(),
                   shinyBS::bsButton(
@@ -2661,6 +2769,19 @@ $('#loadmessage').fadeOut(500).fadeIn(500, blink);
                           },
                          plotOutput(
                            outputId = "specgrams",
+                           width = "100%",
+                           height = "600px",
+                           inline = FALSE
+                         ),
+                       tags$head(tags$style(
+                              paste0(
+                                "#signaltimeplots{height:",
+                                verticalHeightOfPlots,
+                                " !important;}"
+                              )
+                            )),
+                         plotOutput(
+                           outputId = "signaltimeplots",
                            width = "100%",
                            height = "600px",
                            inline = FALSE
@@ -3229,52 +3350,355 @@ You can put anything into `absolutePanel`, including any Shiny inputs and output
   #   require(audio); try(audio::wait(audio::play(yfiltered, rate=Fs)),silent=TRUE)
   # })
   
+  # observeEvent audiogeneratorsignal/ pb_generateaudio ----
+  observeEvent(eventExpr = c(input$audiogeneratorsignal,
+                             input$parameter1,
+                             input$parameter2,
+                             input$parameter3,
+                             input$parameter4), 
+               handlerExpr = {
+    if (input$audiogeneratorsignal=="whitenoise") {
+      Fs <- 16000
+      nSecsDuration <- 6
+      nBits <- 16
+      # stdv <- 0.196 # 10^(-1/sqrt(2)) # 10^(-7/10) # 0.2
+      # handles$generatorWave <- (2^(nBits-1)-1) * rnorm(nSecsDuration*Fs, mean=0, sd=stdv)
+      Fs <- 16000
+      nSecsDuration <- 6
+      nBits <- 16
+      handles$generatorWave <- (2^(nBits-1)-1) * 
+        tuneR::noise(
+          kind="white", # c("white", "pink", "power", "red"), 
+          duration=nSecsDuration*Fs, 
+          samp.rate=Fs,
+          bit=1, # numeric-values within the span of [-1,1] # 1 | 8 |  16 |  32 |  64 | 0 # 
+          xunit="samples" # c("samples", "time")
+        )
+    } else if (input$audiogeneratorsignal=="pinknoise") {
+      Fs <- 16000
+      nSecsDuration <- 6
+      nBits <- 16
+      handles$generatorWave <- (2^(nBits-1)-1) * 
+        tuneR::noise(
+          kind="pink", # c("white", "pink", "power", "red"), 
+          duration=nSecsDuration*Fs, 
+          samp.rate=Fs,
+          bit=1, # numeric-values within the span of [-1,1] # 1 | 8 |  16 |  32 |  64 | 0 # 
+          xunit="samples" # c("samples", "time")
+        )
+    } else if (input$audiogeneratorsignal=="pulsed") {
+      Fs <- 16000
+      nSecsDuration <- 6
+      nBits <- 16
+      frq <- input$parameter1 # 2.5 # cycles-per-second, or Hz # 220 # Hertz
+      
+      if (input$parameter1 < 0) {updateNumericInput(session,inputId="parameter1",value=0.5);return()}
+      if (input$parameter2 < 0) {updateNumericInput(session,inputId="parameter2",value=0);return()}
+      if (input$parameter3 < 0) {updateNumericInput(session,inputId="parameter3",value=0);return()}
+      if (input$parameter4 < 0) {updateNumericInput(session,inputId="parameter4",value=0);return()}
+      if (input$parameter2 > 1) {updateNumericInput(session,inputId="parameter2",value=1);return()}
+      if (input$parameter3 > 1) {updateNumericInput(session,inputId="parameter3",value=1);return()}
+      if (input$parameter4 > 1) {updateNumericInput(session,inputId="parameter4",value=1);return()}
+      
+      handles$generatorWave <- (2^(nBits-1)-1) * 
+        tuneR::pulse(
+          freq=input$parameter1, # frq, 
+          duration=nSecsDuration*Fs, 
+          from=0, 
+          samp.rate=Fs,
+          bit=1, # numeric-values within the span of [-1,1] # 1 | 8 |  16 |  32 |  64 | 0 # 
+          xunit="samples", # c("samples", "time"),
+          width=input$parameter2, # 0.1, 
+          plateau=input$parameter3, # 0.2, 
+          interval=input$parameter4  # 0.5
+        )
+    } else if (input$audiogeneratorsignal=="sawtooth") {
+      Fs <- 16000
+      nSecsDuration <- 6
+      nBits <- 16
+      frq <- input$parameter1 # 2.5 # full-cycles over the entire signal-duration # 220 # Hertz
+      handles$generatorWave <- (2^(nBits-1)-1) * 
+        tuneR::sawtooth(
+          freq=input$parameter1, # frq, 
+          duration=nSecsDuration*Fs, 
+          from=0, 
+          samp.rate=Fs, 
+          bit=1, # numeric-values within the span of [-1,1] # 1 | 8 |  16 |  32 |  64 | 0 # 
+          xunit="samples", # c("samples", "time"), 
+          reverse=FALSE
+        )
+    } else if (input$audiogeneratorsignal=="silence") {
+      Fs <- 16000
+      nSecsDuration <- 6
+      nBits <- 16
+      handles$generatorWave <- (2^(nBits-1)-1) * 
+        tuneR::silence(
+          duration=nSecsDuration*Fs,
+          from=0, 
+          samp.rate=Fs, 
+          bit=1, # numeric-values within the span of [-1,1] # 1 | 8 |  16 |  32 |  64 | 0 # 
+          xunit="samples" # c("samples", "time")
+        )
+    } else if (input$audiogeneratorsignal=="sinewave") {
+      Fs <- 16000
+      nSecsDuration <- 6
+      nBits <- 16
+      # fcutoff <- 0.01 # (about 220.5Hz, assuming Fs=44100)
+      frq <- input$parameter1 # 2.5 # fcutoff*(Fs/2) # 220 # Hertz
+      handles$generatorWave <- (2^(nBits-1)-1) * 
+        tuneR::sine(
+          freq=input$parameter1, # frq, 
+          duration=nSecsDuration*Fs, 
+          from=0, 
+          samp.rate=Fs, 
+          bit=1, # numeric-values within the span of [-1,1] # 1 | 8 |  16 |  32 |  64 | 0 #
+          xunit="samples" # c("samples", "time")
+        )
+    } else if (input$audiogeneratorsignal=="squarewave") {
+      Fs <- 16000
+      nSecsDuration <- 6
+      nBits <- 16
+      frq <- input$parameter1 # 2.5 # full-cycles over the entire signal-duration # 220 # Hertz
+      handles$generatorWave <- (2^(nBits-1)-1) * 
+        tuneR::square(
+          freq=input$parameter1, # frq, 
+          duration=nSecsDuration*Fs, 
+          from=0, 
+          samp.rate=Fs, 
+          bit=1, # numeric-values within the span of [-1,1] # 1 | 8 |  16 |  32 |  64 | 0 # 
+          xunit="samples", # c("samples", "time"), 
+          up=0.5
+        )
+    # } else if (input$audiogeneratorsignal=="heavisine") {
+    } else if (input$audiogeneratorsignal %in% c("heavisine",
+                              "bumps",
+                              "blocks",
+                              "doppler",
+                              "ramp",
+                              "cusp",
+                              "sing",
+                              "hisine",
+                              "losine",
+                              "linchirp",
+                              "twochirp",
+                              "quadchirp",
+                              "mishmash",
+                              "wernersorrows",
+                              "leopold"
+                              )
+               ) {
+      Fs <- 16000
+      nSecsDuration <- 6
+      sigsmtx <- rwt::makesig(SIGNAL.ALL, N=nSecsDuration*Fs)$x
+      row.names(sigsmtx) <- c("heavisine",
+                              "bumps",
+                              "blocks",
+                              "doppler",
+                              "ramp",
+                              "cusp",
+                              "sing",
+                              "hisine",
+                              "losine",
+                              "linchirp",
+                              "twochirp",
+                              "quadchirp",
+                              "mishmash",
+                              "wernersorrows",
+                              "leopold"
+                              )
+      # rwtsgnl <- rwt::makesig(SIGNAL.HEAVI.SINE,N=nSecsDuration*Fs)$x
+      rwtsgnl <- sigsmtx[input$audiogeneratorsignal,]
+      # print(round(32767 * rwtsgnl/max(abs(rwtsgnl)))[1:100])
+      handles$generatorWave <- tuneR::Wave(left=as.matrix(round(32767 * rwtsgnl/max(abs(rwtsgnl)))),
+                                           samp.rate=Fs,
+                                           bit=16,
+                                           pcm=TRUE
+                                           )
+    # } else if (input$audiogeneratorsignal=="bumps") {
+    #   Fs <- 16000
+    #   nSecsDuration <- 6
+    #   rwtsgnl <- rwt::makesig(SIGNAL.BUMPS,N=nSecsDuration*Fs)$x
+    #   handles$generatorWave <- tuneR::Wave(left=as.matrix(round(32767 * rwtsgnl/max(abs(rwtsgnl)))),
+    #                                        samp.rate=Fs,
+    #                                        bit=16,
+    #                                        pcm=TRUE
+    #                                        )
+    # } else if (input$audiogeneratorsignal=="blocks") {
+    #   Fs <- 16000
+    #   nSecsDuration <- 6
+    #   rwtsgnl <- rwt::makesig(SIGNAL.BLOCKS,N=nSecsDuration*Fs)$x
+    #   handles$generatorWave <- tuneR::Wave(left=as.matrix(round(32767 * rwtsgnl/max(abs(rwtsgnl)))),
+    #                                        samp.rate=Fs,
+    #                                        bit=16,
+    #                                        pcm=TRUE
+    #                                        )
+    # } else if (input$audiogeneratorsignal=="doppler") {
+    #   Fs <- 16000
+    #   nSecsDuration <- 6
+    #   rwtsgnl <- rwt::makesig(SIGNAL.DOPPLER,N=nSecsDuration*Fs)$x
+    #   handles$generatorWave <- tuneR::Wave(left=as.matrix(round(32767 * rwtsgnl/max(abs(rwtsgnl)))),
+    #                                        samp.rate=Fs,
+    #                                        bit=16,
+    #                                        pcm=TRUE
+    #                                        )
+    # } else if (input$audiogeneratorsignal=="ramp") {
+    #   Fs <- 16000
+    #   nSecsDuration <- 6
+    #   rwtsgnl <- rwt::makesig(SIGNAL.RAMP,N=nSecsDuration*Fs)$x
+    #   handles$generatorWave <- tuneR::Wave(left=as.matrix(round(32767 * rwtsgnl/max(abs(rwtsgnl)))),
+    #                                        samp.rate=Fs,
+    #                                        bit=16,
+    #                                        pcm=TRUE
+    #                                        )
+    # } else if (input$audiogeneratorsignal=="cusp") {
+    #   Fs <- 16000
+    #   nSecsDuration <- 6
+    #   rwtsgnl <- rwt::makesig(SIGNAL.CUSP,N=nSecsDuration*Fs)$x
+    #   handles$generatorWave <- tuneR::Wave(left=as.matrix(round(32767 * rwtsgnl/max(abs(rwtsgnl)))),
+    #                                        samp.rate=Fs,
+    #                                        bit=16,
+    #                                        pcm=TRUE
+    #                                        )
+    # } else if (input$audiogeneratorsignal=="sing") {
+    #   Fs <- 16000
+    #   nSecsDuration <- 6
+    #   rwtsgnl <- rwt::makesig(SIGNAL.SING,N=nSecsDuration*Fs)$x
+    #   handles$generatorWave <- tuneR::Wave(left=as.matrix(round(32767 * rwtsgnl/max(abs(rwtsgnl)))),
+    #                                        samp.rate=Fs,
+    #                                        bit=16,
+    #                                        pcm=TRUE
+    #                                        )
+    # } else if (input$audiogeneratorsignal=="hisine") {
+    #   Fs <- 16000
+    #   nSecsDuration <- 6
+    #   rwtsgnl <- rwt::makesig(SIGNAL.HI.SINE,N=nSecsDuration*Fs)$x
+    #   handles$generatorWave <- tuneR::Wave(left=as.matrix(round(32767 * rwtsgnl/max(abs(rwtsgnl)))),
+    #                                        samp.rate=Fs,
+    #                                        bit=16,
+    #                                        pcm=TRUE
+    #                                        )
+    # } else if (input$audiogeneratorsignal=="losine") {
+    #   Fs <- 16000
+    #   nSecsDuration <- 6
+    #   rwtsgnl <- rwt::makesig(SIGNAL.LO.SINE,N=nSecsDuration*Fs)$x
+    #   handles$generatorWave <- tuneR::Wave(left=as.matrix(round(32767 * rwtsgnl/max(abs(rwtsgnl)))),
+    #                                        samp.rate=Fs,
+    #                                        bit=16,
+    #                                        pcm=TRUE
+    #                                        )
+    # } else if (input$audiogeneratorsignal=="linchirp") {
+    #   Fs <- 16000
+    #   nSecsDuration <- 6
+    #   rwtsgnl <- rwt::makesig(SIGNAL.LIN.CHIRP,N=nSecsDuration*Fs)$x
+    #   handles$generatorWave <- tuneR::Wave(left=as.matrix(round(32767 * rwtsgnl/max(abs(rwtsgnl)))),
+    #                                        samp.rate=Fs,
+    #                                        bit=16,
+    #                                        pcm=TRUE
+    #                                        )
+    # } else if (input$audiogeneratorsignal=="twochirp") {
+    #   Fs <- 16000
+    #   nSecsDuration <- 6
+    #   rwtsgnl <- rwt::makesig(SIGNAL.TWO.CHIRP,N=nSecsDuration*Fs)$x
+    #   handles$generatorWave <- tuneR::Wave(left=as.matrix(round(32767 * rwtsgnl/max(abs(rwtsgnl)))),
+    #                                        samp.rate=Fs,
+    #                                        bit=16,
+    #                                        pcm=TRUE
+    #                                        )
+    # } else if (input$audiogeneratorsignal=="quadchirp") {
+    #   Fs <- 16000
+    #   nSecsDuration <- 6
+    #   rwtsgnl <- rwt::makesig(SIGNAL.QUAD.CHIRP,N=nSecsDuration*Fs)$x
+    #   handles$generatorWave <- tuneR::Wave(left=as.matrix(round(32767 * rwtsgnl/max(abs(rwtsgnl)))),
+    #                                        samp.rate=Fs,
+    #                                        bit=16,
+    #                                        pcm=TRUE
+    #                                        )
+    # } else if (input$audiogeneratorsignal=="mishmash") {
+    #   Fs <- 16000
+    #   nSecsDuration <- 6
+    #   rwtsgnl <- rwt::makesig(SIGNAL.MISH.MASH,N=nSecsDuration*Fs)$x
+    #   handles$generatorWave <- tuneR::Wave(left=as.matrix(round(32767 * rwtsgnl/max(abs(rwtsgnl)))),
+    #                                        samp.rate=Fs,
+    #                                        bit=16,
+    #                                        pcm=TRUE
+    #                                        )
+    # } else if (input$audiogeneratorsignal=="wernersorrows") {
+    #   Fs <- 16000
+    #   nSecsDuration <- 6
+    #   rwtsgnl <- rwt::makesig(SIGNAL.WERNER.SORROWS,N=nSecsDuration*Fs)$x
+    #   handles$generatorWave <- tuneR::Wave(left=as.matrix(round(32767 * rwtsgnl/max(abs(rwtsgnl)))),
+    #                                        samp.rate=Fs,
+    #                                        bit=16,
+    #                                        pcm=TRUE
+    #                                        )
+    # } else if (input$audiogeneratorsignal=="leopold") {
+    #   Fs <- 16000
+    #   nSecsDuration <- 6
+    #   rwtsgnl <- rwt::makesig(SIGNAL.LEOPOLD,N=nSecsDuration*Fs)$x
+    #   handles$generatorWave <- tuneR::Wave(left=as.matrix(round(32767 * rwtsgnl/max(abs(rwtsgnl)))),
+    #                                        samp.rate=Fs,
+    #                                        bit=16,
+    #                                        pcm=TRUE
+    #                                        )
+    }
+  })
+  
   # observeEvent pb_playfile ----
   observeEvent(eventExpr = input$pb_playfile, handlerExpr = {
-    # require(tuneR)
-    #tuneR::setWavPlayer('"C:/Program Files/Windows Media Player/wmplayer.exe"')
-    #[x,Fs,nBits]= wavread("test");
-    # cat(file=stderr(),"input$filenameAudio$name:",input$filenameAudio$name,".\n")
-    if (is.null(input$filenameAudio$name) || (!nzchar(input$filenameAudio$name, keepNA = FALSE))) {return()}
-    if (tools::file_ext(input$filenameAudio$name) == "wav") {
-      # objWav <- try(tuneR::readWave(input$filenameAudio$name),silent=TRUE)
-      objWav <- tuneR::readWave(input$filenameAudio$name)
-      if (isS4(objWav)) {
-        # print(objWav)
-      # a <- c(rv$samples, rv$channels)
-      # numOfSamples= a[1]
-      # nChannels= a[2]
-      y <- objWav@left # assumed monophonic, data stored within left-channel only
-      #if (objWav@stereo) {xright <- objWav@right} # if stereo-recording
-      Fs <- objWav@samp.rate
-      # updateNumericInput(session, inputId = "samplingfreq", value = Fs)
-      # isPCM <- objWav@pcm
-      nBits <- objWav@bit
-      # SIZEwav <- length(y)
-      #if (interactive()) tuneR::play(objWav)
-      # Sys.sleep(1)
-      }
-    } else if (tools::file_ext(input$filenameAudio$name) == "mp3") {
-      objMP3 <- try(tuneR::readMP3(input$filenameAudio$name),silent=TRUE)
-      if (isS4(objMP3)) {
-      # a <- c(rv$samples, rv$channels)
-      # numOfSamples= a[1]
-      # nChannels= a[2]
-      y <- objMP3@left # assumed monophonic, data stored within left-channel only
-      #if (objMP3@stereo) {xright <- objMP3@right} # if stereo-recording
-      Fs <- objMP3@samp.rate
-      # updateNumericInput(session, inputId = "samplingfreq", value = Fs)
-      # isPCM <- objMP3@pcm
-      nBits <- objMP3@bit
-      # SIZEwav <- length(y)
-      }
-    } else if (tools::file_ext(input$filenameAudio$name) == "mat") {
-      matmusic <- R.matlab::readMat(input$filenameAudio$name) # y= audio-signal, and Fs=8192 samples-per-second
-      y <- matmusic$y
-      Fs <- as.numeric(matmusic$Fs)
-      nBits <- 16 # assumed!?!?
-      # updateNumericInput(session, inputId = "samplingfreq", value = Fs)
-    } else {return()}
+    if (input$inputsignalsource=="file") {
+      # require(tuneR)
+      #tuneR::setWavPlayer('"C:/Program Files/Windows Media Player/wmplayer.exe"')
+      #[x,Fs,nBits]= wavread("test");
+      # cat(file=stderr(),"input$filenameAudio$name:",input$filenameAudio$name,".\n")
+      if (is.null(input$filenameAudio$name) || (!nzchar(input$filenameAudio$name, keepNA = FALSE))) {return()}
+      if (tools::file_ext(input$filenameAudio$name) == "wav") {
+        # objWav <- try(tuneR::readWave(input$filenameAudio$name),silent=TRUE)
+        objWav <- tuneR::readWave(input$filenameAudio$name)
+        if (isS4(objWav)) {
+          # print(objWav)
+        # a <- c(rv$samples, rv$channels)
+        # numOfSamples= a[1]
+        # nChannels= a[2]
+        y <- objWav@left # assumed monophonic, data stored within left-channel only
+        #if (objWav@stereo) {xright <- objWav@right} # if stereo-recording
+        Fs <- objWav@samp.rate
+        # updateNumericInput(session, inputId = "samplingfreq", value = Fs)
+        # isPCM <- objWav@pcm
+        nBits <- objWav@bit
+        # SIZEwav <- length(y)
+        #if (interactive()) tuneR::play(objWav)
+        # Sys.sleep(1)
+        }
+      } else if (tools::file_ext(input$filenameAudio$name) == "mp3") {
+        objMP3 <- try(tuneR::readMP3(input$filenameAudio$name),silent=TRUE)
+        if (isS4(objMP3)) {
+        # a <- c(rv$samples, rv$channels)
+        # numOfSamples= a[1]
+        # nChannels= a[2]
+        y <- objMP3@left # assumed monophonic, data stored within left-channel only
+        #if (objMP3@stereo) {xright <- objMP3@right} # if stereo-recording
+        Fs <- objMP3@samp.rate
+        # updateNumericInput(session, inputId = "samplingfreq", value = Fs)
+        # isPCM <- objMP3@pcm
+        nBits <- objMP3@bit
+        # SIZEwav <- length(y)
+        }
+      } else if (tools::file_ext(input$filenameAudio$name) == "mat") {
+        matmusic <- R.matlab::readMat(input$filenameAudio$name) # y= audio-signal, and Fs=8192 samples-per-second
+        y <- matmusic$y
+        Fs <- as.numeric(matmusic$Fs)
+        nBits <- 16 # assumed!?!?
+        # updateNumericInput(session, inputId = "samplingfreq", value = Fs)
+      } else {return()}
+    } else { # use generator
+        objWav <- handles$generatorWave
+        y <- objWav@left # assumed monophonic, data stored within left-channel only
+        #if (objWav@stereo) {xright <- objWav@right} # if stereo-recording
+        Fs <- objWav@samp.rate
+        # updateNumericInput(session, inputId = "samplingfreq", value = Fs)
+        # isPCM <- objWav@pcm
+        nBits <- objWav@bit
+    }
     
     yfiltered <- signal::filter(filt=input$edit_gain*handlesb(), a=handlesa(), y)
     # yfiltered <- yfiltered / max(yfiltered) # normalization
@@ -3312,6 +3736,7 @@ You can put anything into `absolutePanel`, including any Shiny inputs and output
   
     # output$filenameAudioInfo Print ----
   output$filenameAudioInfo <- renderText({
+    if (input$inputsignalsource=="file") {
     if (is.null(input$filenameAudio$name) || (!nzchar(input$filenameAudio$name, keepNA = FALSE))) {return()}
     
     {
@@ -3355,6 +3780,7 @@ You can put anything into `absolutePanel`, including any Shiny inputs and output
 
       # updateNumericInput(session, inputId = "samplingfreq", value = Fs)
     } else {return()}
+
     yfiltered <- signal::filter(filt=input$edit_gain*handlesb(), a=handlesa(), y)
     # yfiltered <- yfiltered / max(yfiltered) # normalization
     # plot(yfiltered)
@@ -3436,6 +3862,71 @@ You can put anything into `absolutePanel`, including any Shiny inputs and output
               )
       }
     } else {return()}
+    } else { # using generator
+      if (input$audiogeneratorsignal %in% c("whitenoise",
+                                            "pinknoise",
+                                            "pulsed",
+                                            "sawtooth",
+                                            # "silence",
+                                            "sinewave",
+                                            "squarewave",
+                                            "heavisine",
+                                            "bumps",
+                                            "blocks",
+                                            "doppler",
+                                            "ramp",
+                                            "cusp",
+                                            "sing",
+                                            "hisine",
+                                            "losine",
+                                            "linchirp",
+                                            "twochirp",
+                                            "quadchirp",
+                                            "mishmash",
+                                            "wernersorrows",
+                                            "leopold"
+                                            )
+          ) {
+        # Fs <- 16000
+        frq <- input$parameter1 # 2.5 # 220
+        # nSecsDuration <- 6
+        # nBits <- 16
+        # stdv <- 0.196 # 10^(-1/sqrt(2)) # 10^(-7/10) # 0.2
+        # y <- handles$generatorWave # (2^(nBits-1)-1) * rnorm(nSecsDuration*Fs, mean=0, sd=stdv)
+        objWav <- handles$generatorWave
+        y <- objWav@left # assumed monophonic, data stored within left-channel only
+        #if (objWav@stereo) {xright <- objWav@right} # if stereo-recording
+        Fs <- objWav@samp.rate
+        # updateNumericInput(session, inputId = "samplingfreq", value = Fs)
+        # isPCM <- objWav@pcm
+        nBits <- objWav@bit
+        
+      # } else if (input$audiogeneratorsignal %in% c(
+      #                                       )
+      #     ) {
+      }
+              paste("(generator):",input$audiogeneratorsignal, "\n",
+              "length:", length(y), "\n",
+              "Duration (secs):",round(length(y)/Fs,1),"\n",
+              "Fs, sample-rate:", Fs, "\n",
+              "Ts, sample-period (msecs):", round(1000/Fs,3), "\n",
+              "(~50msecs delay, for echo-effects):", round(0.050*Fs,1), "\n",
+              "maxvalue:",max(y),"\n",
+              "minvalue:",min(y)
+              ,if (input$audiogeneratorsignal %in% c("sinewave","pulsed") 
+                   ) {paste0("\n","freq (Hz):",input$parameter1)} # 220)}
+              ,if (input$audiogeneratorsignal %in% c("sawtooth","squarewave") 
+                   ) {paste0("\n","freq (cycles):",input$parameter1)} # 220)}
+              ,if (input$audiogeneratorsignal %in% c("pulsed") ) {
+                paste0("\n","pulse-width (%):",input$parameter2 *100, 
+                       "\n","plateau (%):",input$parameter3 *100, 
+                       "\n","interval (%):",input$parameter4 *100)
+              }
+              ,if (input$audiogeneratorsignal %in% c("squarewave") ) {
+                paste0("\n","duty-cycle (%):",0.5 *100)
+              }
+              )
+    }
   })
   
   output$HTML5audioWidget <- renderUI({
@@ -3495,6 +3986,7 @@ You can put anything into `absolutePanel`, including any Shiny inputs and output
     #tuneR::setWavPlayer('"C:/Program Files/Windows Media Player/wmplayer.exe"')
     #[x,Fs,nBits]= wavread("test");
     # cat(file=stderr(),"input$filenameAudio$name:",input$filenameAudio$name,".\n")
+    if (input$inputsignalsource=="file") { 
     if (is.null(input$filenameAudio$name) || (!nzchar(input$filenameAudio$name, keepNA = FALSE))) {return()}
     if (tools::file_ext(input$filenameAudio$name) == "wav") {
       objWav <- try(tuneR::readWave(input$filenameAudio$name),silent=TRUE)
@@ -3529,6 +4021,45 @@ You can put anything into `absolutePanel`, including any Shiny inputs and output
 
       # updateNumericInput(session, inputId = "samplingfreq", value = Fs)
     } else {return()}
+    } else { # using generator
+      if (input$audiogeneratorsignal %in% c("whitenoise",
+                                            "pinknoise",
+                                            "pulsed",
+                                            "sawtooth",
+                                            # "silence",
+                                            "sinewave",
+                                            "squarewave",
+                                            "heavisine",
+                                            "bumps",
+                                            "blocks",
+                                            "doppler",
+                                            "ramp",
+                                            "cusp",
+                                            "sing",
+                                            "hisine",
+                                            "losine",
+                                            "linchirp",
+                                            "twochirp",
+                                            "quadchirp",
+                                            "mishmash",
+                                            "wernersorrows",
+                                            "leopold"
+                                            )
+          ) {
+        # Fs <- 16000
+        # nSecsDuration <- 6
+        # nBits <- 16
+        # stdv <- 0.196 # 10^(-1/sqrt(2)) # 10^(-7/10) # 0.2
+        # y <- handles$generatorWave # (2^(nBits-1)-1) * rnorm(nSecsDuration*Fs, mean=0, sd=stdv)
+        objWav <- handles$generatorWave
+        y <- objWav@left # assumed monophonic, data stored within left-channel only
+        #if (objWav@stereo) {xright <- objWav@right} # if stereo-recording
+        Fs <- objWav@samp.rate
+        # updateNumericInput(session, inputId = "samplingfreq", value = Fs)
+        # isPCM <- objWav@pcm
+        nBits <- objWav@bit
+      }
+    }
     
     yfiltered <- signal::filter(filt=input$edit_gain*handlesb(), a=handlesa(), y)
     # yfiltered <- yfiltered / max(yfiltered) # normalization
@@ -3575,16 +4106,12 @@ You can put anything into `absolutePanel`, including any Shiny inputs and output
       # }
     })
     
-   # output$specgrams ----
-  output$specgrams <- renderPlot(width = "auto", height = "auto", {
-    req(input$stretchyslider3range)
+   # output$signaltimeplots ----
+  output$signaltimeplots <- renderPlot(width = "auto", height = "auto", {
     par(mfrow = c(2, 2))
     # par(mgp = c(2.5, 1, 0)) # line for axis-title, axis-labels and axis-line
     # par(mar=c(1, 1, 1, 1)) # c(bottom, left, top, right)
-    # require(tuneR)
-    #tuneR::setWavPlayer('"C:/Program Files/Windows Media Player/wmplayer.exe"')
-    #[x,Fs,nBits]= wavread("test");
-    # print(input$filenameAudio$name)
+        if (input$inputsignalsource=="file") { 
     if (is.null(input$filenameAudio$name) || (!nzchar(input$filenameAudio$name, keepNA = FALSE))) {return()}
     if (tools::file_ext(input$filenameAudio$name) == "wav") {
       objWav <- try(tuneR::readWave(input$filenameAudio$name),silent=TRUE)
@@ -3619,6 +4146,171 @@ You can put anything into `absolutePanel`, including any Shiny inputs and output
 
       # updateNumericInput(session, inputId = "samplingfreq", value = Fs)
     } else {return()}
+    } else { # using generator
+            if (input$audiogeneratorsignal %in% c("whitenoise",
+                                            "pinknoise",
+                                            "pulsed",
+                                            "sawtooth",
+                                            # "silence",
+                                            "sinewave",
+                                            "squarewave",
+                                            "heavisine",
+                                            "bumps",
+                                            "blocks",
+                                            "doppler",
+                                            "ramp",
+                                            "cusp",
+                                            "sing",
+                                            "hisine",
+                                            "losine",
+                                            "linchirp",
+                                            "twochirp",
+                                            "quadchirp",
+                                            "mishmash",
+                                            "wernersorrows",
+                                            "leopold"
+                                            )
+          ) {
+
+        # Fs <- 16000
+        # nSecsDuration <- 6
+        # nBits <- 16
+        # stdv <- 0.196 # 10^(-1/sqrt(2)) # 10^(-7/10) # 0.2
+        # y <- handles$generatorWave # (2^(nBits-1)-1) * rnorm(nSecsDuration*Fs, mean=0, sd=stdv)
+        objWav <- handles$generatorWave
+        y <- objWav@left # assumed monophonic, data stored within left-channel only
+        #if (objWav@stereo) {xright <- objWav@right} # if stereo-recording
+        Fs <- objWav@samp.rate
+        # updateNumericInput(session, inputId = "samplingfreq", value = Fs)
+        # isPCM <- objWav@pcm
+        nBits <- objWav@bit
+      }
+    }
+    
+    # print(y)
+    yfiltered <- signal::filter(filt=input$edit_gain*handlesb(), a=handlesa(), y)
+    # yfiltered <- yfiltered / max(yfiltered) # normalization
+    # plot(tyfiltered)
+    # print(head(yfiltered))
+    # yfiltered <- tuneR::normalize(tuneR::Wave(left=as.vector(yfiltered,mode="numeric"))) # yfiltered/max(yfiltered) # 
+
+    # y <- y/max(abs(y)) * 1.0 #  tuneR::normalize(as.vector(y),unit=1) # 
+    plot(
+      (0:(length(y)-1))/Fs, # length(y)/Fs*(0:length(y))/Fs,
+      y,
+      type="l",
+      col="blue",
+      main='Time-Domain Plot -- Original Signal',
+      xlab='Time (s)',
+      ylab="Amplitude"
+    )
+    grid(); abline(h=0); abline(v=0)
+    
+    # plot(0, 0, type='n')
+    
+    par(mfg=c(2,1))
+
+    plot(
+      (0:(length(yfiltered)-1))/Fs, # length(y)/Fs*(0:length(y))/Fs,
+      yfiltered, # /45, # huh!??!? -- must normalize the amplitudes somehow?
+      type="l",
+      col="red",
+      main='Time-Domain Plot -- Filtered Signal',
+      xlab='Time (s)',
+      ylab="Amplitude"
+    )
+    grid(); abline(h=0); abline(v=0)
+
+    par(mfrow = c(1, 1))
+    par(mgp = c(3, 1, 0))
+    par(mar=c(5, 4, 4, 2))
+  })
+    
+   # output$specgrams ----
+  output$specgrams <- renderPlot(width = "auto", height = "auto", {
+    req(input$stretchyslider3range)
+    par(mfrow = c(2, 2))
+    # par(mgp = c(2.5, 1, 0)) # line for axis-title, axis-labels and axis-line
+    # par(mar=c(1, 1, 1, 1)) # c(bottom, left, top, right)
+    # require(tuneR)
+    #tuneR::setWavPlayer('"C:/Program Files/Windows Media Player/wmplayer.exe"')
+    #[x,Fs,nBits]= wavread("test");
+    # print(input$filenameAudio$name)
+    if (input$inputsignalsource=="file") { 
+    if (is.null(input$filenameAudio$name) || (!nzchar(input$filenameAudio$name, keepNA = FALSE))) {return()}
+    if (tools::file_ext(input$filenameAudio$name) == "wav") {
+      objWav <- try(tuneR::readWave(input$filenameAudio$name),silent=TRUE)
+      if (isS4(objWav)) {
+      y <- objWav@left # assumed monophonic, data stored within left-channel only
+      #if (objWav@stereo) {xright <- objWav@right} # if stereo-recording
+      Fs <- objWav@samp.rate
+      # updateNumericInput(session, inputId = "samplingfreq", value = Fs)
+      
+      nBits <- objWav@bit
+      # SIZEwav <- length(y)
+      #if (interactive()) tuneR::play(objWav)
+      # Sys.sleep(1)
+      }
+    } else if (tools::file_ext(input$filenameAudio$name) == "mp3") {
+      objMP3 <- try(tuneR::readMP3(input$filenameAudio$name),silent=TRUE)
+      if (isS4(objMP3)) {
+      y <- objMP3@left # assumed monophonic, data stored within left-channel only
+      #if (objMP3@stereo) {xright <- objMP3@right} # if stereo-recording
+      Fs <- objMP3@samp.rate
+      # updateNumericInput(session, inputId = "samplingfreq", value = Fs)
+      nBits <- objMP3@bit
+      # SIZEwav <- length(y)
+      #if (interactive()) tuneR::play(objMP3)
+      # Sys.sleep(1)
+      }
+    } else if (tools::file_ext(input$filenameAudio$name) == "mat") {
+      matmusic <- try(R.matlab::readMat(input$filenameAudio$name),silent=TRUE) # y= audio-signal, and Fs=8192 samples-per-second
+      y <- matmusic$y
+      Fs <- matmusic$Fs
+      nBits <- 16 # assumed!?!?
+
+      # updateNumericInput(session, inputId = "samplingfreq", value = Fs)
+    } else {return()}
+    } else { # using generator
+            if (input$audiogeneratorsignal %in% c("whitenoise",
+                                            "pinknoise",
+                                            "pulsed",
+                                            "sawtooth",
+                                            # "silence",
+                                            "sinewave",
+                                            "squarewave",
+                                            "heavisine",
+                                            "bumps",
+                                            "blocks",
+                                            "doppler",
+                                            "ramp",
+                                            "cusp",
+                                            "sing",
+                                            "hisine",
+                                            "losine",
+                                            "linchirp",
+                                            "twochirp",
+                                            "quadchirp",
+                                            "mishmash",
+                                            "wernersorrows",
+                                            "leopold"
+                                            )
+          ) {
+
+        # Fs <- 16000
+        # nSecsDuration <- 6
+        # nBits <- 16
+        # stdv <- 0.196 # 10^(-1/sqrt(2)) # 10^(-7/10) # 0.2
+        # y <- handles$generatorWave # (2^(nBits-1)-1) * rnorm(nSecsDuration*Fs, mean=0, sd=stdv)
+        objWav <- handles$generatorWave
+        y <- objWav@left # assumed monophonic, data stored within left-channel only
+        #if (objWav@stereo) {xright <- objWav@right} # if stereo-recording
+        Fs <- objWav@samp.rate
+        # updateNumericInput(session, inputId = "samplingfreq", value = Fs)
+        # isPCM <- objWav@pcm
+        nBits <- objWav@bit
+      }
+    }
     
     # print(y)
     yfiltered <- signal::filter(filt=input$edit_gain*handlesb(), a=handlesa(), y)
@@ -3746,8 +4438,8 @@ spg <- signal::specgram(yfiltered, n=fftn, Fs=Fs, window=windowW, overlap=window
 #spg <- signal::specgram(x)
 #S <- abs(spg$S[2:(fftn*4000/Fs),])   # magnitude in range 0<f<=4000 Hz.
 S <- Mod(spg$S[(max(c(2,fftn*minSpgFreq/Fs))):(fftn*maxSpgFreq/Fs),])
-#S <- S/max(S)         # normalize magnitude so that max is 0 dB.
-S <- S/maxS1 #* 1.1 # / (10^(80/10)) # normalize by same amount as first plot, minus some corrective-amount (e.g. -80dB?), in order to approximately match colours
+S <- S/max(S)         # normalize magnitude so that max is 0 dB.
+# S <- S/maxS1 #* 1.1 # / (10^(80/10)) # normalize by same amount as first plot, minus some corrective-amount (e.g. -80dB?), in order to approximately match colours
 #S[S < 10^(-40/10)] <- 10^(-40/10)    # clip below -40 dB.
 #S[S > 10^(-3/10)] <- 10^(-3/10)      # clip above -3 dB.
 #image(x=list(x=0:1,y=0:4000,z=t(20*log10(S))), col=heat.colors(12))  #, col= gray(0:255 / 255))
@@ -3872,7 +4564,6 @@ abline(h=input$slider1, # (maxSpgFreq-minSpgFreq)*(input$slider1-minSpgFreq/ (Fs
     par(mfrow = c(1, 1))
     par(mgp = c(3, 1, 0))
     par(mar=c(5, 4, 4, 2))
-
   })
 
   #   output$slider3Widget <- renderUI({
@@ -10294,7 +10985,7 @@ license()
         axis(
           side = 3L,
           at = pi * c(-6L,-5.5,-5L,-4.5,-4L,-3.5,-3L,-2.5,-2L,-1.5,-1L,-1/2,-1/3,-1/5,1/5,1/3,1/2,1L,1.5,2L,2.5,3L,3.5,4L,4.5,5L,5.5,6L),
-          labels = expression(-6*pi,-11*pi/2,            -5 * pi,            -9 * pi / 2,            -4 * pi,            -7 * pi / 2,-3 * pi,            -5 * pi / 2,            -2 * pi,            -3 * pi / 2,            -pi,            -pi / 2,            -pi / 3,-pi / 5,            pi / 5,            pi / 3,            pi / 2,            pi,            3 * pi / 2,            2 * pi,            5 * pi / 2,            3 * pi,            7 * pi / 2,            4 * pi,            9 * pi / 2,            5 * pi,            11 * pi / 2,            6 * pi          ),
+          labels = expression(-6*pi,-11*pi/2,-5*pi,-9*pi/2,-4*pi,-7*pi/2,-3*pi,-5*pi/2,-2*pi,-3*pi/2,-pi,-pi/2,-pi/3,-pi/5,pi/5,pi/3,pi/2,pi,3*pi/2,2*pi,5*pi/2,3*pi,7*pi/2,4*pi,9*pi/2,5*pi,11*pi/2,6*pi),
           tick = TRUE,
           pos = par("usr")[4],
           outer = FALSE,
@@ -10310,7 +11001,7 @@ license()
         axis(
           side = 3L,
           at = c(-6L,-5.5,-5L,-4.5,-4L,-3.5,-3L,-2.5,-2L,-1.5,-1L,-1/2,-1/3,-1/5,1/5,1/3,1/2,1L,1.5,2L,2.5,3L,3.5,4L,4.5,5L,5.5,6L),
-          labels = expression(-6*pi,-11*pi/2,            -5 * pi,            -9 * pi / 2,            -4 * pi,            -7 * pi / 2,-3 * pi,            -5 * pi / 2,            -2 * pi,            -3 * pi / 2,            -pi,            -pi / 2,            -pi / 3,-pi / 5,            pi / 5,            pi / 3,            pi / 2,            pi,            3 * pi / 2,            2 * pi,            5 * pi / 2,            3 * pi,            7 * pi / 2,            4 * pi,            9 * pi / 2,            5 * pi,            11 * pi / 2,            6 * pi          ),
+          labels=expression(-6*pi,-11*pi/2,-5*pi,-9*pi/2,-4*pi,-7*pi/2,-3*pi,-5*pi/2,-2*pi,-3*pi/2,-pi,-pi/2,-pi/3,-pi/5,pi/5,pi/3,pi/2,pi,3*pi/2,2*pi,5*pi/2,3*pi,7*pi/2,4*pi,9*pi/2,5*pi,11*pi/2,6*pi),
           tick = TRUE,
           pos = par("usr")[4],
           outer = FALSE,
@@ -10327,7 +11018,7 @@ license()
           side = 3L,
           at = c(-6L,-5.5,-5L,-4.5,-4L,-3.5,-3L,-2.5,-2L,-1.5,-1L,-1/2,-1/3,-1/5,1/5,1/3,1/2,1L,1.5,2L,2.5,3L,3.5,4L,4.5,5L,5.5,6L
           ) * input$samplingfreq / 2,
-          labels = expression(-6*pi,-11*pi/2,            -5 * pi,            -9L *              pi / 2,            -4 * pi,            -7 * pi / 2,            -3 * pi,            -5 * pi / 2,            -2L *              pi,            -3 * pi / 2,            -pi,            -pi / 2,            -pi / 3,            -pi / 5,            pi / 5,            pi / 3,            pi / 2,            pi,            3 * pi / 2,            2 * pi,            5 * pi / 2,            3 * pi,            7 * pi / 2,            4 * pi,            9 * pi / 2,            5 * pi,            11 * pi / 2,            6 * pi          ),
+labels=expression(-6*pi,-11*pi/2,-5*pi,-9L*pi/2,-4*pi,-7*pi/2,-3*pi,-5*pi/2,-2L*pi,-3*pi/2,-pi,-pi/2,-pi/3,-pi/5,pi/5,pi/3,pi/2,pi,3*pi/2,2*pi,5*pi/2,3*pi,7*pi/2,4*pi,9*pi/2,5*pi,11*pi/2,6*pi),
           tick = TRUE,
           line = -0.4,
           pos = par("usr")[4],
