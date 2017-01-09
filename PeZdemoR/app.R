@@ -27,7 +27,7 @@ library(png)
 library(webshot) # appshot
 library(audio) # play
 library(tuneR) # readWave, readMP3, writeWave
-library(tools) # file_ext
+library(tools) # file_ext, file_path_sans_ext
 library(rwt) # makesig
 
 # Constant-Symbol Definitions ---------------------------------------- ----
@@ -680,7 +680,7 @@ animation: blinker 1s linear infinite;
                     hr(),
                     HTML('<script type="text/javascript" src="https://www.brainyquote.com/link/quotebr.js"></script><small><i><a href="https://www.brainyquote.com/quotes_of_the_day.html" target="_blank" rel="nofollow">more Quotes</a></i></small>'),
                     hr(),
-                    HTML(markdown::markdownToHTML(fragment.only=TRUE,text="&copy; 2016-2017 P. Squires, DiYZer Research Group, ECE Dept, Univ. of Victoria"))
+                    HTML(markdown::markdownToHTML(fragment.only=TRUE,text="&copy; 2016-2017 P. Squires, DiYZeR Research Group, ECE Dept, Univ. of Victoria"))
                   ), # end wellPanel
                   footer = modalButton("Dismiss")
       ),
@@ -1527,7 +1527,7 @@ $('#loadmessage').fadeOut(500).fadeIn(500, blink);
                               `Dolph-Chebyshev window, 50-point, 100dB attenuation` = "chebwin(n=50, at=100)",
                               `Kaiser-window, 101-point, beta 0 (very-wide=Rectangle)` = "kaiser(n=101, beta=0)",
                               `Kaiser-window, 101-point, beta 50 (narrower)` = "kaiser(n=101, beta=50)",
-                              `LPF, 0.3, Kaiser-window` = "with(kaiserord(f=c(0.275,0.325), m=c(1,0), dev=c(0.1,0.1)),fir1(n=n,w=Wc,type=type,window=kaiser(n+1,beta),scale=FALSE))",
+                              `Kaiser-windowed FIR, LPF, 0.3, minimum-order` = "with(kaiserord(f=c(0.275,0.325), m=c(1,0), dev=c(0.1,0.1)),fir1(n=n,w=Wc,type=type,window=kaiser(n+1,beta),scale=FALSE))",
                               `Rectangle, 101-point, given b` = "Ma(b=rep(1,times=101))",
                               `Bartlett-window, 41-point` = "bartlett(41)",
                               `Blackman-window, 41-point` = "blackman(41)",
@@ -1845,7 +1845,7 @@ $('#loadmessage').fadeOut(500).fadeIn(500, blink);
                               value = TRUE
                             ),
                             conditionalPanel(
-                              condition = "input.coordsheaderExport",
+                              condition = "input.coordsheaderExport", # Boolean TRUE/FALSE
                               textInput(
                                 inputId = "headerlineExport",
                                 label = "Header-Line:",
@@ -2105,7 +2105,7 @@ $('#loadmessage').fadeOut(500).fadeIn(500, blink);
                               delayType = "throttle"
                             )
                           ),
-                          uiOutput("hover_info2"),
+                          uiOutput(outputId = "hover_info2"),
                           plotOutput(
                             outputId = "axes_magpassbandstopband",
                             width = "100%",
@@ -2447,11 +2447,48 @@ $('#loadmessage').fadeOut(500).fadeIn(500, blink);
                   ),
                   tabPanel(
                     title = "Form",
-                    tags$div(
-                      title = "tooltip: IIR digital-filter, Direct-Form I\n(use browser's right-mouse-click/ context-menu for image download-options)",
-                      img(src = "DirectFormI.png", align = "right", width = "100%"
-                        , alt = "IIR digital-filter, Direct-Form I"
+                    radioButtons(inputId = "filterForm",
+                                         label = "Choose Filter Form",
+                                         choices = c(
+                                           `Direct Form I`="df1",
+                                           `Direct Form II (canonical)`="df2",
+                                           `DF I, transposed`="df1t",
+                                           `DF II, transposed`="df2t",
+                                           `Cascaded Second-Order Sections`="sos"
+                                         ),
+                                         selected = "df1",
+                                         inline=TRUE
+                                         ),
+                    # uiOutput(outputId = "filterFormWidget"),
+                    conditionalPanel(
+                      condition = "input.filterForm=='df1'",
+                      tags$div(
+                        title = "tooltip: IIR digital-filter, Direct-Form I\n(use browser's right-mouse-click/ context-menu for image download-options)",
+                        img(src = "DirectFormI.png", align = "right", width = "100%"
+                          , alt = "IIR digital-filter, Direct-Form I"
+                        )
                       )
+                    ),
+                    conditionalPanel(
+                      condition = "input.filterForm=='df2'",
+                      tags$div(
+                        title = "tooltip: IIR digital-filter, (Canonical) Direct-Form II\n(use browser's right-mouse-click/ context-menu for image download-options)",
+                        img(src = "DirectFormII.png", align = "right", width = "100%"
+                          , alt = "IIR digital-filter, Direct-Form II"
+                        )
+                      )
+                    ),
+                    conditionalPanel(
+                      condition = "input.filterForm=='df1t'",
+                      helpText("(not implemented yet)")
+                    ),
+                    conditionalPanel(
+                      condition = "input.filterForm=='df2t'",
+                      helpText("(not implemented yet)")
+                    ),
+                    conditionalPanel(
+                      condition = "input.filterForm=='sos'",
+                      helpText("(not implemented yet)")
                     ),
                     hr()
                   )
@@ -2616,10 +2653,6 @@ $('#loadmessage').fadeOut(500).fadeIn(500, blink);
                   #                 icon = shiny::icon("file-audio-o", lib = "font-awesome") # "play" # "music" #
                   #               ),
                   column(width=3,
-                  # uiOutput(outputId = "HTML5audioWidget"),
-                  # br(),
-                  # uiOutput(outputId = "HTML5audioWidget2"),
-                  # br(),
                   radioButtons(
                     inputId = "inputsignalsource",
                     label = "Choose audio input",
@@ -2750,6 +2783,12 @@ $('#loadmessage').fadeOut(500).fadeIn(500, blink);
                                   disabled = FALSE,
                                   icon = shiny::icon("filter", lib = "font-awesome") # "file-audio-o"  # "play" # "music" #
                                 ),
+                  br(),
+                  br(),
+                  uiOutput(outputId = "HTML5audioWidget"),
+                  br(),
+                  uiOutput(outputId = "HTML5audioWidget2"),
+                  br(),
                   checkboxInput(
                     inputId = "includeContoursInSpectrograms",
                     label = "Include Contours in Spectrograms",
@@ -2773,6 +2812,12 @@ $('#loadmessage').fadeOut(500).fadeIn(500, blink);
                            height = "600px",
                            inline = FALSE
                          ),
+                       shinyBS::bsCollapse(
+                          id = "audioPanelCollapse",
+                          shinyBS::bsCollapsePanel(
+                            value = "audioTimePanelCollapse1",
+                            title = "Audio Time-Domain Panel (click to expand/ collapse):",
+                            style = "info",
                        tags$head(tags$style(
                               paste0(
                                 "#signaltimeplots{height:",
@@ -2786,6 +2831,7 @@ $('#loadmessage').fadeOut(500).fadeIn(500, blink);
                            height = "600px",
                            inline = FALSE
                          )
+                          ))
                 ) # end column
               ) # end tags$span
             ) # end fluidRow
@@ -3159,7 +3205,7 @@ $('#loadmessage').fadeOut(500).fadeIn(500, blink);
             #     sep = ""
             #   )
             # )),
-            HTML(markdown::markdownToHTML(fragment.only=TRUE,text="This web-app: &copy; 2016-2017 P. Squires, DiYZer Research Group, ECE Dept, University of Victoria"))
+            HTML(markdown::markdownToHTML(fragment.only=TRUE,text="This web-app: &copy; 2016-2017 P. Squires, DiYZeR Research Group, ECE Dept, University of Victoria"))
             ,uiOutput(outputId = "AboutPageWidget")
           ) # end tooltip span
           ) # end wellPanel
@@ -3320,7 +3366,7 @@ You can put anything into `absolutePanel`, including any Shiny inputs and output
               height = 36L,
               width = 36L
             ), href = "http://www.rstudio.com/shiny"),
-        HTML(markdown::markdownToHTML(fragment.only=TRUE,text="This web-app: &copy; 2016-2017 P. Squires, DiYZer Research Group, ECE Dept, University of Victoria"))
+        HTML(markdown::markdownToHTML(fragment.only=TRUE,text="This web-app: &copy; 2016-2017 P. Squires, DiYZeR Research Group, ECE Dept, University of Victoria"))
       ), # end wellPanel
       style = "opacity: 0.9" # semi-transparent
     ) # end absolutePanel
@@ -3357,6 +3403,7 @@ You can put anything into `absolutePanel`, including any Shiny inputs and output
                              input$parameter3,
                              input$parameter4), 
                handlerExpr = {
+    req(input$parameter1,input$parameter2,input$parameter3,input$parameter4)
     if (input$audiogeneratorsignal=="whitenoise") {
       Fs <- 16000
       nSecsDuration <- 6
@@ -3509,7 +3556,7 @@ You can put anything into `absolutePanel`, including any Shiny inputs and output
       # rwtsgnl <- rwt::makesig(SIGNAL.HEAVI.SINE,N=nSecsDuration*Fs)$x
       rwtsgnl <- sigsmtx[input$audiogeneratorsignal,]
       # print(round(32767 * rwtsgnl/max(abs(rwtsgnl)))[1:100])
-      handles$generatorWave <- tuneR::Wave(left=as.matrix(round(32767 * rwtsgnl/max(abs(rwtsgnl)))),
+      handles$generatorWave <- tuneR::Wave(left=as.matrix(round(32767 * rwtsgnl/max(abs(rwtsgnl))),nrow=length(rwtsgnl)),
                                            samp.rate=Fs,
                                            bit=16,
                                            pcm=TRUE
@@ -3643,8 +3690,15 @@ You can put anything into `absolutePanel`, including any Shiny inputs and output
     }
   })
   
+  # observeEvent(eventExpr = input$filenameAudio, handlerExpr = {
+  #   tuneR::writeWave
+  # })
+  
   # observeEvent pb_playfile ----
-  observeEvent(eventExpr = input$pb_playfile, handlerExpr = {
+  observeEvent(eventExpr = input$pb_playfile, # c(input$pb_playfile,
+  #                            input$filenameAudio
+  #                            ), 
+  handlerExpr = {
     if (input$inputsignalsource=="file") {
       # require(tuneR)
       #tuneR::setWavPlayer('"C:/Program Files/Windows Media Player/wmplayer.exe"')
@@ -3682,13 +3736,53 @@ You can put anything into `absolutePanel`, including any Shiny inputs and output
         # isPCM <- objMP3@pcm
         nBits <- objMP3@bit
         # SIZEwav <- length(y)
+        
+        Wobj <- tuneR::Wave(left=as.matrix(round(32767 * y/max(abs(y))),nrow=length(y)), samp.rate = as.numeric(Fs), bit = 16, pcm = TRUE)
+        # print(Wobj)
+        # tdir <- tempdir()
+        tdir <- "www"
+        tfile <- file.path(tdir, paste0(tools::file_path_sans_ext(input$filenameAudio$name),".wav"))
+        # tfile <- paste0(tools::file_path_sans_ext(input$filenameAudio$name),".wav")
+        # tfile <- input$filenameAudio$name
+        cat(file=stderr(),"L3746 tfile:",tfile,".\n")
+        handles$tempfilteredfilelocation <- tfile
+        
+        if (!file.exists(tfile))
+          tuneR::writeWave(Wobj, filename = tfile) # input$filenameAudio$name) # 
+        # close(file.path(tdir, paste0(tools::file_path_sans_ext(input$filenameAudio$name),".wav")))
+        Sys.sleep(5) # wait 5 seconds
+    
+        # print(list.files(tdir, pattern = "\\.wav$"))
+        newWobjList <- try(tuneR::readWave(tfile,header = TRUE),silent=TRUE)
+
         }
       } else if (tools::file_ext(input$filenameAudio$name) == "mat") {
         matmusic <- R.matlab::readMat(input$filenameAudio$name) # y= audio-signal, and Fs=8192 samples-per-second
+        if (!is.list(matmusic)) return()
         y <- matmusic$y
+        print(str(y))
         Fs <- as.numeric(matmusic$Fs)
         nBits <- 16 # assumed!?!?
         # updateNumericInput(session, inputId = "samplingfreq", value = Fs)
+        
+        Wobj <- tuneR::Wave(left=as.matrix(round(32767 * y/max(abs(y))),nrow=length(y)), samp.rate = as.numeric(Fs), bit = 16, pcm = TRUE)
+        # print(Wobj)
+        # tdir <- tempdir()
+        tdir <- "www"
+        tfile <- file.path(tdir, paste0(tools::file_path_sans_ext(input$filenameAudio$name),".wav"))
+        # tfile <- paste0(tools::file_path_sans_ext(input$filenameAudio$name),".wav")
+        # tfile <- input$filenameAudio$name
+        cat(file=stderr(),"L3771 tfile:",tfile,".\n")
+        handles$tempfilteredfilelocation <- tfile
+        
+        if (!file.exists(tfile)) 
+          tuneR::writeWave(Wobj, filename = tfile) # input$filenameAudio$name) # 
+        # close(file.path(tdir, paste0(tools::file_path_sans_ext(input$filenameAudio$name),".wav")))
+        Sys.sleep(5) # wait 5 seconds
+    
+        # print(list.files(tdir, pattern = "\\.wav$"))
+        newWobjList <- try(tuneR::readWave(tfile,header = TRUE),silent=TRUE)
+
       } else {return()}
     } else { # use generator
         objWav <- handles$generatorWave
@@ -3707,18 +3801,46 @@ You can put anything into `absolutePanel`, including any Shiny inputs and output
     # cat(file=stderr(),"L3261 head(yfiltered), before normalization:",head(yfiltered),".\n")
     # yfiltered <- tuneR::normalize(as.vector(yfiltered), unit=1) # yfiltered/max(yfiltered) # 
     
-    Wobj <- tuneR::Wave(left=as.matrix(round(32767 * yfiltered/max(abs(yfiltered)))), samp.rate = Fs, bit = 16, pcm = TRUE)
-    # print(Wobj)
-    tdir <- tempdir()
-    tfile <- file.path(tdir, paste0("filtered",input$filenameAudio$name))
-    tuneR::writeWave(Wobj, filename = tfile) # paste0("filtered",input$filenameAudio$name)) # 
-    # close(file.path(tdir, paste0("filtered",input$filenameAudio$name)))
-    Sys.sleep(5) # wait 5 seconds
+    # Wobj <- tuneR::Wave(left=as.matrix(round(32767 * yfiltered/max(abs(yfiltered)))), samp.rate = as.numeric(Fs), bit = 16, pcm = TRUE)
+    # # print(Wobj)
+    # # tdir <- tempdir()
+    # tdir <- "www"
+    # tfile <- file.path(tdir, paste0(tools::file_path_sans_ext(input$filenameAudio$name),"filtered.wav")) # tools::file_path_sans_ext(input$filenameAudio$name),"filtered.wav") # input$filenameAudio$name))
+    # cat(file=stderr(),"tfile:",tfile,".\n")
+    # # tfile <- paste0("filtered",input$filenameAudio$name)
+    # cat(file=stderr(),"L3809 tfile:",tfile,".\n")
+    # handles$tempfilteredfilelocation <- tfile
+    # 
+    # # if (!file.exists(tfile)) 
+    #   tuneR::writeWave(Wobj, filename = tfile) # paste0("filtered",input$filenameAudio$name)) # 
+    # # close(file.path(tdir, paste0("filtered",input$filenameAudio$name)))
+    # Sys.sleep(5) # wait 5 seconds
+    # 
+    # # print(list.files(tdir, pattern = "\\.wav$"))
+    # newWobjList <- try(tuneR::readWave(tfile,header = TRUE),silent=TRUE)
+    # # print(newWobjList)
+    # 
+    # output$HTML5audioWidget2 <- renderUI({
+    #   # if (is.null(input$filenameAudio$name) || (!nzchar(input$filenameAudio$name, keepNA = FALSE))) {return()}
+    #   # if ((tools::file_ext(input$filenameAudio$name) == "wav") # || (tools::file_ext(input$filenameAudio$name) == "mp3")
+    #   # ) {
+    #   # https://groups.google.com/forum/#!topic/shiny-discuss/zO8hEFCxa0c; Andrew Caines, 19/09/2014
+    #   p("Filtered: ",
+    #   tags$audio(src = handles$tempfilteredfilelocation, type = "audio/wav", controls = TRUE, preload="metadata")
+    #   )
+    #     # HTML(paste0('Filtered: <audio controls="controls" preload="metadata"> ',
+    #     #             '<source src="',paste0("filtered",input$filenameAudio$name),'" type="audio/wav"> ', # input$filenameAudio$datapath),' type="audio/wav"> ',
+    #     #             # '<source src="',paste0("filtered",input$filenameAudio$name),'" type="audio/wave"> ',
+    #     #             # '<source src="',paste0("filtered",input$filenameAudio$name),'" type="audio/ogg"> ',
+    #     #             # '<source src="',paste0("filtered",input$filenameAudio$name),'" type="audio/mpeg"> ',
+    #     #             'Please Note: Your browser does not support HTML5 digital-audio playback. ',
+    #     #             'Please upgrade to the latest version of your browser or operating system. ',
+    #     #             '</audio>'
+    #     #     )
+    #     # )
+    #   # }
+    # })
 
-    # print(list.files(tdir, pattern = "\\.wav$"))
-    newWobjList <- tuneR::readWave(tfile,header = TRUE)
-    # print(newWobjList)
-   
     # cat(file=stderr(),"L3273 head(yfiltered):",head(yfiltered),".\n")
     # cat(file=stderr(),"max(yfiltered):",max(yfiltered),".\n")
     # cat(file=stderr(),"min(yfiltered):",min(yfiltered),".\n")
@@ -3730,6 +3852,12 @@ You can put anything into `absolutePanel`, including any Shiny inputs and output
     # cat(file=stderr(),"min(y):",min(y),".\n")
     # cat(file=stderr(),"Fs:",Fs,".\n")
     if ("windows" %in% get_os()) {
+      showNotification(
+        ui = paste0("Now playing the y signal, '",input$filenameAudio$name,,"' (",Fs," Samples/s) ..."),
+        duration = 3,
+        closeButton = TRUE,
+        type = "message"
+      )
       require(audio); try(audio::wait(audio::play(y, rate=Fs)),silent=TRUE)
     }
   })
@@ -3771,14 +3899,53 @@ You can put anything into `absolutePanel`, including any Shiny inputs and output
       # isPCM <- objMP3@pcm
       nBits <- objMP3@bit
       # SIZEwav <- length(y)
+      
+      Wobj <- tuneR::Wave(left=as.matrix(round(32767 * y/max(abs(y))),nrow=length(y)), samp.rate = as.numeric(Fs), bit = 16, pcm = TRUE)
+      # print(Wobj)
+      # tdir <- tempdir()
+      tdir <- "www"
+      tfile <- file.path(tdir, paste0(tools::file_path_sans_ext(input$filenameAudio$name),".wav"))
+      # tfile <- paste0(tools::file_path_sans_ext(input$filenameAudio$name),".wav")
+      # tfile <- input$filenameAudio$name
+      cat(file=stderr(),"L3899 tfile:",tfile,".\n")
+      handles$tempfilteredfilelocation <- tfile
+      
+      if (!file.exists(tfile)) 
+        tuneR::writeWave(Wobj, filename = tfile) # input$filenameAudio$name) # 
+      # close(file.path(tdir, paste0(tools::file_path_sans_ext(input$filenameAudio$name),".wav")))
+      Sys.sleep(5) # wait 5 seconds
+  
+      # print(list.files(tdir, pattern = "\\.wav$"))
+      newWobjList <- try(tuneR::readWave(tfile,header = TRUE),silent=TRUE)
       }
     } else if (tools::file_ext(input$filenameAudio$name) == "mat") {
       matmusic <- R.matlab::readMat(input$filenameAudio$name) # y= audio-signal, and Fs=8192 samples-per-second
+      if (!is.list(matmusic)) return()
       y <- matmusic$y
+      print(str(y))
       Fs <- as.numeric(matmusic$Fs)
       nBits <- 16 # assumed!?!?
 
       # updateNumericInput(session, inputId = "samplingfreq", value = Fs)
+      
+      Wobj <- tuneR::Wave(left=as.matrix(round(32767 * y/max(abs(y))),nrow=length(y)), samp.rate = as.numeric(Fs), bit = 16, pcm = TRUE)
+      # print(Wobj)
+      # tdir <- tempdir()
+      tdir <- "www"
+      tfile <- file.path(tdir, paste0(tools::file_path_sans_ext(input$filenameAudio$name),".wav"))
+      # tfile <- paste0(tools::file_path_sans_ext(input$filenameAudio$name),".wav")
+      # tfile <- input$filenameAudio$name
+      cat(file=stderr(),"L3924 tfile:",tfile,".\n")
+      handles$tempfilteredfilelocation <- tfile
+      
+      if (!file.exists(tfile)) 
+        tuneR::writeWave(Wobj, filename = tfile) # input$filenameAudio$name) # 
+      # close(file.path(tdir, paste0(tools::file_path_sans_ext(input$filenameAudio$name),".wav")))
+      Sys.sleep(5) # wait 5 seconds
+  
+      # print(list.files(tdir, pattern = "\\.wav$"))
+      newWobjList <- try(tuneR::readWave(tfile,header = TRUE),silent=TRUE)
+
     } else {return()}
 
     yfiltered <- signal::filter(filt=input$edit_gain*handlesb(), a=handlesa(), y)
@@ -3796,18 +3963,62 @@ You can put anything into `absolutePanel`, including any Shiny inputs and output
     # cat(file=stderr(),"max(yfiltered...):",max(32767 * yfiltered/max(abs(yfiltered))),".\n")
     # cat(file=stderr(),"min(yfiltered...):",min(32767 * yfiltered/max(abs(yfiltered))),".\n")
 
-    # Wobj <- tuneR::Wave(left=tuneR::normalize(as.vector(trunc(yfiltered)),unit=16), samp.rate = Fs, bit = 16, pcm = TRUE)
-    Wobj <- tuneR::Wave(left=as.matrix(round(32767 * yfiltered/max(abs(yfiltered)))), samp.rate = Fs, bit = 16, pcm = TRUE)
+    Wobj <- tuneR::Wave(left=as.matrix(round(32767 * yfiltered/max(abs(yfiltered))),nrow=length(yfiltered)), samp.rate = as.numeric(Fs), bit = 16, pcm = TRUE)
     # print(Wobj)
-    # Wobj <- tuneR::Wave(left=t(t(yfiltered)), samp.rate = Fs, bit = 16, pcm = TRUE)
-    tdir <- tempdir()
-    tfile <- file.path(tdir, paste0("filtered",input$filenameAudio$name))
-    tuneR::writeWave(Wobj, filename = tfile) # paste0("filtered",input$filenameAudio$name)) # 
+    # tdir <- tempdir()
+    tdir <- "www"
+    tfile <- file.path(tdir, paste0(tools::file_path_sans_ext(input$filenameAudio$name),"filtered.wav")) # tools::file_path_sans_ext(input$filenameAudio$name),"filtered.wav") # input$filenameAudio$name))
+    # tfile <- file.path(paste0(tools::file_path_sans_ext(input$filenameAudio$name),"filtered.wav"))
+    # tfile <- paste0("filtered",input$filenameAudio$name)
+    cat(file=stderr(),"L3963 tfile:",tfile,".\n")
+    handles$tempfilteredfilelocation <- paste0(tools::file_path_sans_ext(input$filenameAudio$name),"filtered.wav")
+    
+    # if (!file.exists(tfile)) 
+      tuneR::writeWave(Wobj, filename = tfile) # paste0("filtered",input$filenameAudio$name)) # 
     # close(file.path(tdir, paste0("filtered",input$filenameAudio$name)))
     Sys.sleep(5) # wait 5 seconds
+
+    # print(list.files(tdir, pattern = "\\.wav$"))
+    newWobjList <- try(tuneR::readWave(tfile,header = TRUE),silent=TRUE)
+    # print(newWobjList)
+   
+    output$HTML5audioWidget2 <- renderUI({
+      # if (is.null(input$filenameAudio$name) || (!nzchar(input$filenameAudio$name, keepNA = FALSE))) {return()}
+      # if ((tools::file_ext(input$filenameAudio$name) == "wav") # || (tools::file_ext(input$filenameAudio$name) == "mp3")
+      # ) {
+      # https://groups.google.com/forum/#!topic/shiny-discuss/zO8hEFCxa0c; Andrew Caines, 19/09/2014
+      p("Filtered: ",
+      tags$audio(src = paste0(tools::file_path_sans_ext(input$filenameAudio$name),"filtered.wav"), type = "audio/wav", controls = TRUE, preload="metadata")
+      )
+        # HTML(paste0('Filtered: <audio controls="controls" preload="metadata"> ',
+        #             '<source src="',paste0("filtered",input$filenameAudio$name),'" type="audio/wav"> ', # input$filenameAudio$datapath),' type="audio/wav"> ',
+        #             # '<source src="',paste0("filtered",input$filenameAudio$name),'" type="audio/wave"> ',
+        #             # '<source src="',paste0("filtered",input$filenameAudio$name),'" type="audio/ogg"> ',
+        #             # '<source src="',paste0("filtered",input$filenameAudio$name),'" type="audio/mpeg"> ',
+        #             'Please Note: Your browser does not support HTML5 digital-audio playback. ',
+        #             'Please upgrade to the latest version of your browser or operating system. ',
+        #             '</audio>'
+        #     )
+        # )
+      # }
+    })
+    # # Wobj <- tuneR::Wave(left=tuneR::normalize(as.vector(trunc(yfiltered)),unit=16), samp.rate = Fs, bit = 16, pcm = TRUE)
+    # Wobj <- tuneR::Wave(left=as.matrix(round(32767 * yfiltered/max(abs(yfiltered)))), samp.rate = Fs, bit = 16, pcm = TRUE)
+    # # print(Wobj)
+    # # Wobj <- tuneR::Wave(left=t(t(yfiltered)), samp.rate = Fs, bit = 16, pcm = TRUE)
+    # tdir <- tempdir()
+    # tdir <- "www"
+    # tfile <- file.path(tdir, paste0("filtered",input$filenameAudio$name))
+    # # tfile <- paste0("filtered",input$filenameAudio$name)
+    # handles$tempfilteredfilelocation <- tfile
+
+    # if (!file.exists(tfile)) 
+    #    tuneR::writeWave(Wobj, filename = tfile) # paste0("filtered",input$filenameAudio$name)) # 
+    # close(file.path(tdir, paste0("filtered",input$filenameAudio$name)))
+    # Sys.sleep(5) # wait 5 seconds
     
     # print(list.files(tdir, pattern = "\\.wav$"))
-    newWobjList <- tuneR::readWave(tfile,header = TRUE)
+    # newWobjList <- try(tuneR::readWave(tfile,header = TRUE),silent=TRUE)
     # print(newWobjList)
     }
     
@@ -3937,14 +4148,25 @@ You can put anything into `absolutePanel`, including any Shiny inputs and output
     # }
     # if ((tools::file_ext(input$filenameAudio$name) == "wav") # || (tools::file_ext(input$filenameAudio$name) == "mp3")
     # ) {
-        # HTML(paste0('<div title="Original1">Original1<audio controls="controls" preload="none"> ',
-        #             '<source src=',input$filenameAudio$name,' type="audio/wav"> ', # input$filenameAudio$datapath,' type="audio/wav"> ',
-        #             '<source src=',input$filenameAudio$name,' type="audio/ogg"> ',
-        #             '<source src=',input$filenameAudio$name,' type="audio/mpeg"> ',
-        #             'Please Note: Your browser does not support HTML5 digital-audio playback. ',
-        #             'Please upgrade to the latest version of your browser or operating system. ',
-        #             '</audio></div>'
-        #   ))
+#         HTML(paste0('Original:',
+# '<audio controls="controls" preload="metadata"> 
+#    <source src="', input$filenameAudio$name, '" type="audio/wav">
+# Please Note: Your browser does not support HTML5 digital-audio playback.  Please upgrade to the latest version of your browser or operating system.
+# </audio>'
+#          ))
+    p("Original: ",
+    tags$audio(src = paste0(tools::file_path_sans_ext(input$filenameAudio$name),".wav"), type = "audio/wav", controls = TRUE, preload="metadata")
+    )
+#         p('Original:',
+# '<audio controls="controls" preload="metadata"> 
+#    <source src="', input$filenameAudio$name, '" type="audio/wav">
+# Please Note: Your browser does not support HTML5 digital-audio playback.  Please upgrade to the latest version of your browser or operating system.
+# </audio>'
+#           )
+        # HTML('<audio src="', input$filenameAudio$name, '" controls>')
+                    # '<source src="',input$filenameAudio$name,'" type="audio/wave"> ',
+                    # '<source src="',input$filenameAudio$name,'" type="audio/ogg"> ',
+                    # '<source src="',input$filenameAudio$name,'" type="audio/mpeg"> ',
         # HTML(paste0('<div title="Original2">Original2<audio controls="controls" preload="none"> ',
         #             '<source src=',input$filenameAudio$datapath,' type="audio/wav"> ', # input$filenameAudio$datapath,' type="audio/wav"> ',
         #             '<source src=',input$filenameAudio$datapath,' type="audio/ogg"> ',
@@ -3969,19 +4191,27 @@ You can put anything into `absolutePanel`, including any Shiny inputs and output
         #             'Please upgrade to the latest version of your browser or operating system. ',
         #             '</audio></div>'
         #   ))
-      HTML(paste0('<div><audio controls> <source src=',
-                  input$filenameAudio$name,
-                  ' type="audio/wav"> Please Note: Your browser does not support HTML5 digital-audio playback!  Please upgrade to the latest version of your browser or operating system. </audio></div>'
-          ))
       # HTML(paste0('<div><audio controls> <source src=',
+      #             input$filenameAudio$name,
+      #             ' type="audio/wave"> Please Note: Your browser does not support HTML5 digital-audio playback!  Please upgrade to the latest version of your browser or operating system. </audio></div>'
+      #     ))
+      # HTML(paste0('<audio src="',
       #             input$filenameAudio$datapath,
-      #             ' type="audio/wav"> Please Note: Your browser does not support HTML5 digital-audio playback!  Please upgrade to the latest version of your browser or operating system. </audio></div>'
+      #             '" controls>'
+      #     ))
+      # HTML(paste0('<audio src="',
+      #             input$filenameAudio$name,
+      #             '" controls>'
       #     ))
     # }
   })
   
   # observeEvent pb_playFiltered ----
-  observeEvent(eventExpr = input$pb_playFiltered, handlerExpr = {
+  observeEvent(eventExpr = c(input$pb_playFiltered,
+                             input$filenameAudio
+                             # input$commonFilters
+                             ,handles$poleloc,handles$zeroloc
+                             ), handlerExpr = {
     # require(tuneR)
     #tuneR::setWavPlayer('"C:/Program Files/Windows Media Player/wmplayer.exe"')
     #[x,Fs,nBits]= wavread("test");
@@ -4012,14 +4242,54 @@ You can put anything into `absolutePanel`, including any Shiny inputs and output
       # SIZEwav <- length(y)
       #if (interactive()) tuneR::play(objMP3)
       # Sys.sleep(1)
+      
+      Wobj <- tuneR::Wave(left=as.matrix(round(32767 * y/max(abs(y))),nrow=length(y)), samp.rate = as.numeric(Fs), bit = 16, pcm = TRUE)
+      # print(Wobj)
+      # tdir <- tempdir()
+      tdir <- "www"
+      tfile <- file.path(tdir, paste0(tools::file_path_sans_ext(input$filenameAudio$name),".wav"))
+      # tfile <- paste0(tools::file_path_sans_ext(input$filenameAudio$name),".wav")
+      # tfile <- input$filenameAudio$name
+      cat(file=stderr(),"L4199 tfile:",tfile,".\n")
+      handles$tempfilteredfilelocation <- tfile
+      
+      if (!file.exists(tfile)) 
+        tuneR::writeWave(Wobj, filename = tfile) # input$filenameAudio$name) # 
+      # close(file.path(tdir, paste0(tools::file_path_sans_ext(input$filenameAudio$name),".wav")))
+      Sys.sleep(5) # wait 5 seconds
+  
+      # print(list.files(tdir, pattern = "\\.wav$"))
+      newWobjList <- try(tuneR::readWave(tfile,header = TRUE),silent=TRUE)
+
       }
     } else if (tools::file_ext(input$filenameAudio$name) == "mat") {
       matmusic <- R.matlab::readMat(input$filenameAudio$name) # y= audio-signal, and Fs=8192 samples-per-second
+      if (!is.list(matmusic)) return()
       y <- matmusic$y
+      print(str(y))
       Fs <- as.numeric(matmusic$Fs)
       nBits <- 16 # assumed!?!?
 
       # updateNumericInput(session, inputId = "samplingfreq", value = Fs)
+      
+      Wobj <- tuneR::Wave(left=as.matrix(round(32767 * y/max(abs(y))),nrow=length(y)), samp.rate = as.numeric(Fs), bit = 16, pcm = TRUE)
+      # print(Wobj)
+      # tdir <- tempdir()
+      tdir <- "www"
+      tfile <- file.path(tdir, paste0(tools::file_path_sans_ext(input$filenameAudio$name),".wav"))
+      # tfile <- paste0(tools::file_path_sans_ext(input$filenameAudio$name),".wav")
+      # tfile <- input$filenameAudio$name
+      cat(file=stderr(),"L4225 tfile:",tfile,".\n")
+      handles$tempfilteredfilelocation <- tfile
+      
+      if (!file.exists(tfile)) 
+        tuneR::writeWave(Wobj, filename = tfile) # input$filenameAudio$name) # 
+      # close(file.path(tdir, paste0(tools::file_path_sans_ext(input$filenameAudio$name),".wav")))
+      Sys.sleep(5) # wait 5 seconds
+  
+      # print(list.files(tdir, pattern = "\\.wav$"))
+      newWobjList <- try(tuneR::readWave(tfile,header = TRUE),silent=TRUE)
+
     } else {return()}
     } else { # using generator
       if (input$audiogeneratorsignal %in% c("whitenoise",
@@ -4067,16 +4337,21 @@ You can put anything into `absolutePanel`, including any Shiny inputs and output
     # cat(file=stderr(),"L3462 head(yfiltered), before normalization:",head(yfiltered),".\n")
     # yfiltered <- tuneR::normalize(as.vector(yfiltered), unit=1) # yfiltered/max(yfiltered) # 
     
-    Wobj <- tuneR::Wave(left=as.matrix(round(32767 * yfiltered/max(abs(yfiltered)))), samp.rate = Fs, bit = 16, pcm = TRUE)
-    # print(Wobj)
-    tdir <- tempdir()
-    tfile <- file.path(tdir, paste0("filtered",input$filenameAudio$name))
-    tuneR::writeWave(Wobj, filename = tfile) # paste0("filtered",input$filenameAudio$name)) # 
-    # close(file.path(tdir, paste0("filtered",input$filenameAudio$name)))
-    Sys.sleep(5) # wait 5 seconds
+    # Wobj <- tuneR::Wave(left=as.matrix(round(32767 * yfiltered/max(abs(yfiltered)))), samp.rate = Fs, bit = 16, pcm = TRUE)
+    # # print(Wobj)
+    # tdir <- tempdir()
+    # tdir <- "www"
+    # tfile <- file.path(tdir, paste0("filtered",input$filenameAudio$name))
+    # # tfile <- paste0("filtered",input$filenameAudio$name)
+    # handles$tempfilteredfilelocation <- tfile
     
-    # print(list.files(tdir, pattern = "\\.wav$"))
-    newWobjList <- tuneR::readWave(tfile,header = TRUE)
+    # if (!file.exists(tfile)) 
+    #    tuneR::writeWave(Wobj, filename = tfile) # paste0("filtered",input$filenameAudio$name)) # 
+    # # close(file.path(tdir, paste0("filtered",input$filenameAudio$name)))
+    # Sys.sleep(5) # wait 5 seconds
+    # 
+    # # print(list.files(tdir, pattern = "\\.wav$"))
+    # newWobjList <- try(tuneR::readWave(tfile,header = TRUE),silent=TRUE)
     # print(newWobjList)
    
     # cat(file=stderr(),"head(yfiltered):",head(yfiltered),".\n")
@@ -4085,26 +4360,36 @@ You can put anything into `absolutePanel`, including any Shiny inputs and output
     # cat(file=stderr(),"Fs:",Fs,".\n")
     yfiltered <- yfiltered/max(abs(yfiltered)) * 1.0 #  tuneR::normalize(as.vector(yfiltered),unit=1) # 
     if ("windows" %in% get_os()) {
+      showNotification(
+        ui = paste0("Now playing the filtered y signal, '",input$filenameAudio$name,"' (",Fs," Samples/s) ..."),
+        duration = 3,
+        closeButton = TRUE,
+        type = "message"
+      )
       require(audio); try(audio::wait(audio::play(yfiltered, rate=Fs)),silent=TRUE)
     }
     # require(audio); try(audio::play(yfiltered, rate=Fs),silent=TRUE)
   })
   
-    output$HTML5audioWidget2 <- renderUI({
-      if (is.null(input$filenameAudio$name) || (!nzchar(input$filenameAudio$name, keepNA = FALSE))) {return()}
-      # if ((tools::file_ext(input$filenameAudio$name) == "wav") # || (tools::file_ext(input$filenameAudio$name) == "mp3")
-      # ) {
-        # HTML(paste0('<div title="Filtered">Filtered<audio controls="controls" preload="none"> ',
-        #             '<source src=',paste0("filtered",input$filenameAudio$name),' type="audio/wav"> ', # input$filenameAudio$datapath),' type="audio/wav"> ',
-        #             '<source src=',paste0("filtered",input$filenameAudio$name),' type="audio/ogg"> ',
-        #             '<source src=',paste0("filtered",input$filenameAudio$name),' type="audio/mpeg"> ',
-        #             'Please Note: Your browser does not support HTML5 digital-audio playback. ',
-        #             'Please upgrade to the latest version of your browser or operating system. ',
-        #             '</audio></div>'
-        #     )
-        # )
-      # }
-    })
+    # output$HTML5audioWidget2 <- renderUI({
+    #   # if (is.null(input$filenameAudio$name) || (!nzchar(input$filenameAudio$name, keepNA = FALSE))) {return()}
+    #   # if ((tools::file_ext(input$filenameAudio$name) == "wav") # || (tools::file_ext(input$filenameAudio$name) == "mp3")
+    #   # ) {
+    #   p("Filtered: ",
+    #   tags$audio(src = handles$tempfilteredfilelocation, type = "audio/wav", controls = TRUE, preload="metadata")
+    #   )
+    #     # HTML(paste0('Filtered: <audio controls="controls" preload="metadata"> ',
+    #     #             '<source src="',paste0("filtered",input$filenameAudio$name),'" type="audio/wav"> ', # input$filenameAudio$datapath),' type="audio/wav"> ',
+    #     #             # '<source src="',paste0("filtered",input$filenameAudio$name),'" type="audio/wave"> ',
+    #     #             # '<source src="',paste0("filtered",input$filenameAudio$name),'" type="audio/ogg"> ',
+    #     #             # '<source src="',paste0("filtered",input$filenameAudio$name),'" type="audio/mpeg"> ',
+    #     #             'Please Note: Your browser does not support HTML5 digital-audio playback. ',
+    #     #             'Please upgrade to the latest version of your browser or operating system. ',
+    #     #             '</audio>'
+    #     #     )
+    #     # )
+    #   # }
+    # })
     
    # output$signaltimeplots ----
   output$signaltimeplots <- renderPlot(width = "auto", height = "auto", {
@@ -4137,14 +4422,54 @@ You can put anything into `absolutePanel`, including any Shiny inputs and output
       # SIZEwav <- length(y)
       #if (interactive()) tuneR::play(objMP3)
       # Sys.sleep(1)
+      
+      Wobj <- tuneR::Wave(left=as.matrix(round(32767 * y/max(abs(y))),nrow=length(y)), samp.rate = as.numeric(Fs), bit = 16, pcm = TRUE)
+      # print(Wobj)
+      # tdir <- tempdir()
+      tdir <- "www"
+      tfile <- file.path(tdir, paste0(tools::file_path_sans_ext(input$filenameAudio$name),".wav"))
+      # tfile <- paste0(tools::file_path_sans_ext(input$filenameAudio$name),".wav")
+      # tfile <- input$filenameAudio$name
+      cat(file=stderr(),"L4369 tfile:",tfile,".\n")
+      handles$tempfilteredfilelocation <- tfile
+      
+      if (!file.exists(tfile)) 
+        tuneR::writeWave(Wobj, filename = tfile) # input$filenameAudio$name) # 
+      # close(file.path(tdir, paste0(tools::file_path_sans_ext(input$filenameAudio$name),".wav")))
+      Sys.sleep(5) # wait 5 seconds
+  
+      # print(list.files(tdir, pattern = "\\.wav$"))
+      newWobjList <- try(tuneR::readWave(tfile,header = TRUE),silent=TRUE)
+
       }
     } else if (tools::file_ext(input$filenameAudio$name) == "mat") {
       matmusic <- try(R.matlab::readMat(input$filenameAudio$name),silent=TRUE) # y= audio-signal, and Fs=8192 samples-per-second
+      if (!is.list(matmusic)) return()
       y <- matmusic$y
-      Fs <- matmusic$Fs
+      print(str(y))
+      Fs <- as.numeric(matmusic$Fs)
       nBits <- 16 # assumed!?!?
 
       # updateNumericInput(session, inputId = "samplingfreq", value = Fs)
+      
+      Wobj <- tuneR::Wave(left=as.matrix(round(32767 * y/max(abs(y))),nrow=length(y)), samp.rate = as.numeric(Fs), bit = 16, pcm = TRUE)
+      # print(Wobj)
+      # tdir <- tempdir()
+      tdir <- "www"
+      tfile <- file.path(tdir, paste0(tools::file_path_sans_ext(input$filenameAudio$name),".wav"))
+      # tfile <- paste0(tools::file_path_sans_ext(input$filenameAudio$name),".wav")
+      # tfile <- input$filenameAudio$name
+      cat(file=stderr(),"L4395 tfile:",tfile,".\n")
+      handles$tempfilteredfilelocation <- tfile
+      
+      if (!file.exists(tfile)) 
+        tuneR::writeWave(Wobj, filename = tfile) # input$filenameAudio$name) # 
+      # close(file.path(tdir, paste0(tools::file_path_sans_ext(input$filenameAudio$name),".wav")))
+      Sys.sleep(5) # wait 5 seconds
+  
+      # print(list.files(tdir, pattern = "\\.wav$"))
+      newWobjList <- try(tuneR::readWave(tfile,header = TRUE),silent=TRUE)
+
     } else {return()}
     } else { # using generator
             if (input$audiogeneratorsignal %in% c("whitenoise",
@@ -4232,6 +4557,7 @@ You can put anything into `absolutePanel`, including any Shiny inputs and output
     par(mfrow = c(2, 2))
     # par(mgp = c(2.5, 1, 0)) # line for axis-title, axis-labels and axis-line
     # par(mar=c(1, 1, 1, 1)) # c(bottom, left, top, right)
+    
     # require(tuneR)
     #tuneR::setWavPlayer('"C:/Program Files/Windows Media Player/wmplayer.exe"')
     #[x,Fs,nBits]= wavread("test");
@@ -4262,14 +4588,54 @@ You can put anything into `absolutePanel`, including any Shiny inputs and output
       # SIZEwav <- length(y)
       #if (interactive()) tuneR::play(objMP3)
       # Sys.sleep(1)
+      
+      Wobj <- tuneR::Wave(left=as.matrix(round(32767 * y/max(abs(y))),nrow=length(y)), samp.rate = as.numeric(Fs), bit = 16, pcm = TRUE)
+      # print(Wobj)
+      # tdir <- tempdir()
+      tdir <- "www"
+      tfile <- file.path(tdir, paste0(tools::file_path_sans_ext(input$filenameAudio$name),".wav"))
+      # tfile <- paste0(tools::file_path_sans_ext(input$filenameAudio$name),".wav")
+      # tfile <- input$filenameAudio$name
+      cat(file=stderr(),"L4531 tfile:",tfile,".\n")
+      handles$tempfilteredfilelocation <- tfile
+      
+      if (!file.exists(tfile)) 
+        tuneR::writeWave(Wobj, filename = tfile) # input$filenameAudio$name) # 
+      # close(file.path(tdir, paste0(tools::file_path_sans_ext(input$filenameAudio$name),".wav")))
+      Sys.sleep(5) # wait 5 seconds
+  
+      # print(list.files(tdir, pattern = "\\.wav$"))
+      newWobjList <- try(tuneR::readWave(tfile,header = TRUE),silent=TRUE)
+
       }
     } else if (tools::file_ext(input$filenameAudio$name) == "mat") {
       matmusic <- try(R.matlab::readMat(input$filenameAudio$name),silent=TRUE) # y= audio-signal, and Fs=8192 samples-per-second
+      if (!is.list(matmusic)) return()
       y <- matmusic$y
-      Fs <- matmusic$Fs
+      print(str(y))
+      Fs <- as.numeric(matmusic$Fs)
       nBits <- 16 # assumed!?!?
 
       # updateNumericInput(session, inputId = "samplingfreq", value = Fs)
+      
+      Wobj <- tuneR::Wave(left=as.matrix(round(32767 * y/max(abs(y))),nrow=length(y)), samp.rate = as.numeric(Fs), bit = 16, pcm = TRUE)
+      # print(Wobj)
+      # tdir <- tempdir()
+      tdir <- "www"
+      tfile <- file.path(tdir, paste0(tools::file_path_sans_ext(input$filenameAudio$name),".wav"))
+      # tfile <- paste0(tools::file_path_sans_ext(input$filenameAudio$name),".wav")
+      # tfile <- input$filenameAudio$name
+      cat(file=stderr(),"L4557 tfile:",tfile,".\n")
+      handles$tempfilteredfilelocation <- tfile
+      
+      if (!file.exists(tfile)) 
+        tuneR::writeWave(Wobj, filename = tfile) # input$filenameAudio$name) # 
+      # close(file.path(tdir, paste0(tools::file_path_sans_ext(input$filenameAudio$name),".wav")))
+      Sys.sleep(5) # wait 5 seconds
+  
+      # print(list.files(tdir, pattern = "\\.wav$"))
+      newWobjList <- try(tuneR::readWave(tfile,header = TRUE),silent=TRUE)
+
     } else {return()}
     } else { # using generator
             if (input$audiogeneratorsignal %in% c("whitenoise",
@@ -4374,6 +4740,13 @@ title('Spectrogram -- Original Signal',
 #  ylab=expression(paste('Norm. Freq. ', omega, '; i.e. from ', 0, ' to ', pi, ' rads/sec', phantom(.)==(F[s]/2))),
   )
 
+if (input$secondaryaxis) {
+  axis(4,
+     at=seq(0, 1, by=1/5),
+     labels=round(seq(minSpgFreq,maxSpgFreq, by=(maxSpgFreq-minSpgFreq)/5), 0) # * input$samplingfreq,2)
+  )
+}
+
 dBFFT <- try(20*log10(Mod(fft(y))),silent=TRUE)
 if (is.null(dBFFT)) return()
 # print(head(dBFFT))
@@ -4471,7 +4844,14 @@ title('Spectrogram -- Filtered Signal',
   xlab='Time (s)',
   ylab=paste0('Freq',if (input$freqaxisunits == "zero2one") {" (normalized)"} else {" (Hz)"})
 #  ylab=expression(paste('Norm. Freq. ', omega, '; i.e. from ', 0, ' to ', pi, ' rads/sec', phantom(.)==(F[s]/2))),
+)
+
+if (input$secondaryaxis) {
+  axis(4,
+     at=seq(0, 1, by=1/5),
+     labels=round(seq(minSpgFreq,maxSpgFreq, by=(maxSpgFreq-minSpgFreq)/5), 0) # * input$samplingfreq,2)
   )
+}
 
 # mtext(
 #   paste0(
@@ -4718,8 +5098,31 @@ abline(h=input$slider1, # (maxSpgFreq-minSpgFreq)*(input$slider1-minSpgFreq/ (Fs
                  }
                  handles$slider3value <- input$slider3
                })
+        
+        output$filterFormWidget <- renderUI({
+                      # conditionalPanel(
+                      # condition = "input.filterForm=='df1'",
+                  if (input$filterForm=='df1') {
+                    tags$div(
+                      title = "tooltip: IIR digital-filter, Direct-Form I\n(use browser's right-mouse-click/ context-menu for image download-options)",
+                      img(src = "DirectFormI.png", align = "right", width = "100%"
+                        , alt = "IIR digital-filter, Direct-Form I"
+                      )
+                    )
+                    # )
+                  } else if (input$filterForm=='df2') {
+                    # conditionalPanel(
+                    #   condition = "input.filterForm=='df2'",
+                    tags$div(
+                      title = "tooltip: IIR digital-filter, Direct-Form II\n(use browser's right-mouse-click/ context-menu for image download-options)",
+                      img(src = "DirectFormII.png", align = "right", width = "100%"
+                        , alt = "IIR digital-filter, Direct-Form II"
+                      )
+                    )
+                    # )
+                  }
+        })
 
-  
   # observeEvent (button) pb_mp ----
   observeEvent(eventExpr = input$pb_mp, handlerExpr = {
     updateSelectInput(session, inputId = "listbox_pole", choices = c(0L))
@@ -12480,7 +12883,7 @@ labels=expression(-6*pi,-11*pi/2,-5*pi,-9L*pi/2,-4*pi,-7*pi/2,-3*pi,-5*pi/2,-2L*
         if ((length(handles$zeroloc) + length(handles$poleloc) >
              8L) &&
             (length(handles$poleloc) > 2L)) {
-          "}\\\\&="
+          "}\\\\&=" # new-line
         }
         else {
           "}="
@@ -12750,7 +13153,7 @@ labels=expression(-6*pi,-11*pi/2,-5*pi,-9L*pi/2,-4*pi,-7*pi/2,-3*pi,-5*pi/2,-2L*
           }
           accumulatorstring
         },
-        "}\\\\",
+        "}\\\\", # new-line
         "H(z) &=",
         if ((length(handles$zeroloc) <= 2L) &&
             (length(handles$poleloc) <= 2L)) {
@@ -13089,8 +13492,11 @@ labels=expression(-6*pi,-11*pi/2,-5*pi,-9L*pi/2,-4*pi,-7*pi/2,-3*pi,-5*pi/2,-2L*
           if (length(polyproduct) > 1L) {
             for (i in 2L:length(polyproduct)) {
               switch(
-                sign(Re(polyproduct[i])) + 2L,
-                numeratorstring <- paste0(numeratorstring,
+                sign(
+                  round(Re(polyproduct[i]),3) # rounds "very-small" numbers down to be zero-values
+                )
+                + 2L,
+                numeratorstring <- paste0(numeratorstring, # for negative-values
                                           switch((i %% 2L) + 1L, "+", "-"), 
                                           if (polyproduct[i] == 1) { # isTRUE(all.equal( #
                                                       ""
@@ -13133,8 +13539,8 @@ labels=expression(-6*pi,-11*pi/2,-5*pi,-9L*pi/2,-4*pi,-7*pi/2,-3*pi,-5*pi/2,-2L*
                                                       },
                                                       "\\cdot ")
                                                     }, "z^{-", i - 1L, "}"),
-                "",
-                numeratorstring <- paste0(numeratorstring,
+                "", # for (exactly) Real-zero values
+                numeratorstring <- paste0(numeratorstring, # for positive-values
                                           switch((i %% 2L) + 1L, "-", "+"), 
                                           if (polyproduct[i] == -1) { # isTRUE(all.equal( #
                                                       ""
@@ -13199,11 +13605,16 @@ labels=expression(-6*pi,-11*pi/2,-5*pi,-9L*pi/2,-4*pi,-7*pi/2,-3*pi,-5*pi/2,-2L*
           if (length(polyproduct) > 1L) {
             for (i in 2L:length(polyproduct)) {
               switch(
-                sign(Re(polyproduct[i])) + 2L,
-                denominatorstring <- paste0(
+                sign(
+                  round(Re(polyproduct[i]),3) # rounds "very-small" numbers down to be zero-values
+                )
+                + 2L,
+                denominatorstring <- paste0( # for negative-values
                   denominatorstring,
-                  switch((i %%
-                            2L) + 1L, "+", "-"),
+                  switch((i %% 2L) + 1L, 
+                         "+", 
+                         "-"
+                         ),
                   if (polyproduct[i] == 1) { # isTRUE(all.equal( #
                     ""
                   } else {
@@ -13249,8 +13660,8 @@ labels=expression(-6*pi,-11*pi/2,-5*pi,-9L*pi/2,-4*pi,-7*pi/2,-3*pi,-5*pi/2,-2L*
                   i - 1L,
                   "}"
                 ),
-                "",
-                denominatorstring <- paste0(
+                "", # for (exactly) Real-zero values
+                denominatorstring <- paste0( # for positive-values
                   denominatorstring,
                   switch((i %%
                             2L) + 1L, "-", "+"),
@@ -13321,7 +13732,7 @@ labels=expression(-6*pi,-11*pi/2,-5*pi,-9L*pi/2,-4*pi,-7*pi/2,-3*pi,-5*pi/2,-2L*
         "&+\\left(",
         "\\sum_{k=0}^{N}{b_{[k]} \\cdot x_{[n-k]}}",
         "\\right)",
-        "\\\\",
+        "\\\\", # new-line
         "y_{[n]} =",
         {
           accumulatorstring <- NULL
@@ -13334,7 +13745,7 @@ labels=expression(-6*pi,-11*pi/2,-5*pi,-9L*pi/2,-4*pi,-7*pi/2,-3*pi,-5*pi/2,-2L*
                 handlesa()[i]
               ))) + 1L,
               accumulatorstring <- paste0(accumulatorstring,
-                                          if (Im(handlesa()[i])) {
+                                          if (Im(handlesa()[i]) <= 1e-06) {
                                             paste0("(0\\cdot y_{[n-", i - 1L, "]})")
                                           } else {
                                             paste0(
@@ -13384,9 +13795,13 @@ labels=expression(-6*pi,-11*pi/2,-5*pi,-9L*pi/2,-4*pi,-7*pi/2,-3*pi,-5*pi/2,-2L*
           accumulatorstring <- NULL
           for (i in 2L:length(handlesb())) {
             switch(
-              abs(sign(Re(
-                handlesb()[i] / handlesb()[1]
-              ))) + 1L,
+              abs(sign(
+                # round(
+                Re(
+                  handlesb()[i] / handlesb()[1]
+                )
+                # ,3) # rounds "very-small" numbers down to be zero-values
+              )) + 1L,
               accumulatorstring <-
                 paste0(accumulatorstring, if (abs(Im(
                   handlesb()[i] / handlesb()[1]
@@ -13435,22 +13850,25 @@ labels=expression(-6*pi,-11*pi/2,-5*pi,-9L*pi/2,-4*pi,-7*pi/2,-3*pi,-5*pi/2,-2L*
           }
           accumulatorstring
         },
-        "\\\\",
-        "\\underbrace{}_{a_{[0]}\\equiv1}y_{[n]}",
+        "\\\\", # new-line
+        "\\underbrace{}_{a_{[0]}\\equiv 1}y_{[n]}",
         {
           accumulatorstring <- NULL
           for (i in 2L:length(handlesa())) {
             switch(
-              abs(sign(Re(
-                handlesa()[i]
-              ))) + 1L,
-              accumulatorstring <- paste0(accumulatorstring,
-                                          if (Im(handlesa()[i])) {
-                                            paste0("+(\\underbrace{0}_{a_{[",
-                                                   i - 1L,
-                                                   "]}}\\cdot y_{[n-",
-                                                   i - 1L,
-                                                   "]})")
+              abs(sign(
+                round(Re(
+                  handlesa()[i]
+                  ),3) # rounds "very-small" numbers down to be zero-values
+              )) + 1L,
+              accumulatorstring <- paste0(accumulatorstring, # for (exactly) Real-zero values
+                                          if (Im(handlesa()[i]) <= 1e-06) {
+                                            ""
+                                            # paste0("+(\\underbrace{0}_{a_{[",
+                                            #        i - 1L,
+                                            #        "]}}\\cdot y_{[n-",
+                                            #        i - 1L,
+                                            #        "]})")
                                           } else {
                                             paste0(
                                               "\\underbrace{-",
@@ -13479,7 +13897,7 @@ labels=expression(-6*pi,-11*pi/2,-5*pi,-9L*pi/2,-4*pi,-7*pi/2,-3*pi,-5*pi/2,-2L*
                                               "]}"
                                             )
                                           }),
-              accumulatorstring <- paste0(
+              accumulatorstring <- paste0( # for positive/ negative values
                 accumulatorstring,
                 "\\underbrace{-",
                 "\\underbrace{(",
@@ -13511,9 +13929,12 @@ labels=expression(-6*pi,-11*pi/2,-5*pi,-9L*pi/2,-4*pi,-7*pi/2,-3*pi,-5*pi/2,-2L*
         },
         "&=",
         switch(
-          abs(sign(Re(1L))) + 1L,
-          "(\\underbrace{0}_{b_{[0]}/b_{[0]}}\\cdot x_{[n]})",
-          paste0(
+          abs(sign(
+            round(Re(1L),3) # rounds "very-small" numbers down to be zero-values
+          ))
+          + 1L,
+          "(\\underbrace{0}_{b_{[0]}/b_{[0]}}\\cdot x_{[n]})", # for (exactly) Real-zero values
+          paste0( # for positive/ negative values
             "\\underbrace{",
             gsub("i", "\\\\jmath", if (max(Mod(handlesb(
             ))) >
@@ -13529,16 +13950,25 @@ labels=expression(-6*pi,-11*pi/2,-5*pi,-9L*pi/2,-4*pi,-7*pi/2,-3*pi,-5*pi/2,-2L*
           accumulatorstring <- NULL
           for (i in 2L:length(handlesb())) {
             switch(
-              abs(sign(Re(
-                handlesb()[i] / handlesb()[1]
-              ))) + 1L,
-              accumulatorstring <-
-                paste0(accumulatorstring, if (Re(handlesb()[i] / handlesb()[1])) {
-                  paste0("+(\\underbrace{0}_{b_{[",
-                         i - 1L,
-                         "]}/b_{[0]}}\\cdot x_{[n-",
-                         i - 1L,
-                         "]})")
+              abs(sign(
+                round(Re(
+                  handlesb()[i] / handlesb()[1]
+                ),3) # rounds "very-small" numbers down to be zero-values
+              ))
+              + 1L,
+              accumulatorstring <- # for (exactly) Real-zero values
+                paste0(accumulatorstring, 
+                       if (
+                         round(
+                           Re(handlesb()[i] / handlesb()[1])
+                         ,3) # rounds "very-small" numbers down to be zero-values
+                         ==0) {
+                         ""
+                  # paste0("+(\\underbrace{0}_{b_{[",
+                  #        i - 1L,
+                  #        "]}/b_{[0]}}\\cdot x_{[n-",
+                  #        i - 1L,
+                  #        "]})")
                 } else {
                   paste0(
                     "+ \\underbrace{(",
@@ -13561,7 +13991,7 @@ labels=expression(-6*pi,-11*pi/2,-5*pi,-9L*pi/2,-4*pi,-7*pi/2,-3*pi,-5*pi/2,-2L*
                     "]}"
                   )
                 }),
-              accumulatorstring <- paste0(
+              accumulatorstring <- paste0( # for positive/ negative values
                 accumulatorstring,
                 "+ \\underbrace{(",
                 gsub("i", "\\\\jmath", stripImagZero(round(
@@ -14610,4 +15040,3 @@ labels=expression(-6*pi,-11*pi/2,-5*pi,-9L*pi/2,-4*pi,-7*pi/2,-3*pi,-5*pi/2,-2L*
 enableBookmarking(store = "url")
 
 Myapp123 <- shinyApp(ui = ui, server = server)
-
