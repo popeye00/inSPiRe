@@ -26,9 +26,11 @@ library(devtools) # session_info
 library(png)
 library(webshot) # appshot
 library(audio) # play
-library(tuneR) # readWave, readMP3, writeWave
+library(tuneR) # readWave, readMP3, writeWave, noise, pulse, sawtooth, silence, sine, square
 library(tools) # file_ext, file_path_sans_ext
 library(rwt) # makesig
+# library(matlab) # meshgrid (3D)
+# library(Matrix) # sparseMatrix
 
 # Constant-Symbol Definitions ---------------------------------------- ----
 
@@ -43,7 +45,7 @@ assign("twoeps", .Machine$double.eps) # small positive floating-point number x, 
 assign("fpmaxx", .Machine$double.xmax) # largest normalized floating-point number; typically, 1.797693e+308
 
 # CUSTOMIZATION ****************************************************** ----
-scalePlotsToVerticalHeight <- TRUE
+scalePlotsToVerticalHeight <- FALSE # TRUE # recommended `FALSE` for typical tablet-usage (i.e. rotated)
 verticalHeightOfPlots <- "80vh" # =80% of browser's full vertical-height
 AppBackgroundColor <- "#D4D0C8" # http://www.w3schools.com/cssref/css_colors.asp
 AppBackgroundImage <- "cubes_light_texture_background_hd-wallpaper-48413.jpg" # http://hd-walls.com/wp-content/uploads/2016/02/10/22/gray_cubes_light_texture_background_hd-wallpaper-48413.jpg
@@ -982,7 +984,7 @@ $('#loadmessage').fadeOut(500).fadeIn(500, blink);
                                   plotOutput(
                                     outputId = "axes_pzplot",
                                     width = "100%",
-                                    height = "600px",
+                                    height = "650px",
                                     inline = FALSE,
                                     click = clickOpts(id = "pzplot_click",
                                                       clip = TRUE),
@@ -1102,7 +1104,7 @@ $('#loadmessage').fadeOut(500).fadeIn(500, blink);
                             plotOutput(
                               outputId = "axes_pzplotPolar",
                               width = "100%",
-                              height = "600px",
+                              height = "650px",
                               inline = FALSE
                             )
                           )
@@ -1447,10 +1449,10 @@ $('#loadmessage').fadeOut(500).fadeIn(500, blink);
                               `FIR Window, order 10, BPF, 0.3 to 0.65, Hamming window` = "N=10;fir1(n=N,w=c(0.3,0.65),type=\"pass\",window=hamming(N+1),scale=TRUE)",
                               `FIR Window, order 10, BSF, 0.3 to 0.65, Hamming window` = "N=10;fir1(n=N,w=c(0.3,0.65),type=\"stop\",window=hamming(N+1),scale=TRUE)",
                               `FIR, arbitrary piecewise-linear (type II), order 100, BPF, 0.3 to 0.65, Hamming` = "fir2(n=100, f=c(0, 0.3, 0.3, 0.65, 0.65, 1), m=c(0, 0, 1, 0.5, 0, 0), grid_n=512, ramp_n=5, window=hamming(101))",
-                              `Arbitrary MA, given b` = "Ma(b=c(1/3,2/3,1/3))",
-                              `Arbitrary ARMA, given b,a` = "Arma(b=c(1/3,2/3,1/3), a=c(1,1-eps))",
-                              `Arbitrary ARMA, given poles,zeros` = "Zpg(zero=c(-1,-1), pole=c(-(1-eps)), gain=1/3)",
-                              `Zero located at infinity, given b` = "Ma(b=c(1,-fpmaxx))",
+                              `Arbitrary MA FIR, given b` = "Ma(b=c(1/3,2/3,1/3))",
+                              `Arbitrary ARMA IIR, given b,a` = "Arma(b=c(1/3,2/3,1/3), a=c(1,1-eps))",
+                              `Arbitrary ARMA IIR, given poles,zeros` = "Zpg(zero=c(-1,-1), pole=c(-(1-eps)), gain=1/3)",
+                              `FIR, Zero located at infinity, given b` = "Ma(b=c(1,-fpmaxx))",
                               `Over-damped: real Poles` = "Zpg(zero=c(0), pole=c(-0.92345,0.92345), gain=1)",
                               `Under-damped (damped-sinusoid, exponential envelope): complex-conjugate Poles` = "Zpg(zero=c(0), pole=c(-0.5+0.52345i,-0.5-0.52345i), gain=1)",
                               `Un-damped (oscillating, natural-frequency, resonates): imaginary Poles` = "Zpg(zero=c(0), pole=c(0.92345i,-0.92345i), gain=1)",
@@ -1464,27 +1466,29 @@ $('#loadmessage').fadeOut(500).fadeIn(500, blink);
                               `Chebyshev I, order 5, 3dB ripple, BSF, 0.3 to 0.65` = "cheby1(n=5,Rp=3,W=c(0.3,0.65),type=\"stop\")",
                               `Sinusoidal/ Oscillator/ Resonator, 2 poles on imag-axis, near unit-circle, frq=0.5` = "Arma(b=c(1), a=c(1,0,(1-eps)))",
                               `Sinusoidal/ Oscillator/ Resonator, 2 conjugate-poles, frq=ray-slider` = "theta=input$slider1;Zpg(zero=c(0), pole=0.99999999999999*c(exp(theta*pi*1i),exp(-theta*pi*1i)), gain=1)",
-                              `L-point Moving-Average, L=5, FIR` = "FftFilter(rep(1/5,times=5),n=512)$b",
-                              `Delay-Line (three-terms) 'IIR-equivalent' Mov-Avg filter, N=5` = "N=5;Arma(b=c(1/N,rep(0,times=N-1),-1/N),a=c(1,-(1-eps)))",
-                              `Echo/Slapback-effects (Delay-Line), N=450 Samples (at Fs; needs ~10-50msecs)` = "N=450;Arma(b=c(1/N,rep(0,times=N-1),-1/N),a=c(1))",
-                              `Cascaded Integrator-Comb CIC/ Hogenauer (MovAvg filter), ratio R=5 (b,a)` = "R=5;M=1;Arma(b=c(1,rep(0,times=R*M-1),-1), a=c(1,-(1-eps)))",
-                              `Cascaded Integrator-Comb CIC/ Hogenauer (MovAvg filter), ratio R=8 (Zpg)` = "N=8;Zpg(zero=c(1,-1,1i,-1i,1/sqrt(2)+1/sqrt(2)*1i,1/sqrt(2)-1/sqrt(2)*1i,-1/sqrt(2)+1/sqrt(2)*1i,-1/sqrt(2)-1/sqrt(2)*1i), pole=c(1-eps), gain=1/N)",
-                              `IIR Comb-Filter, 5 poles w/3 zeros` = "Arma(b=c(1,0,0, 0.5^3), a=c(1,0,0,0,0, 0.9^5))",
-                              `Integrator 1/s, given b,a; pole at +1, zero at -1` = "Arma(b=c(1,1), a=c(1,-(1-eps)))",
+                              `L-point Moving-Average FIR, L=5` = "FftFilter(rep(1/5,times=5),n=512)$b",
+                              `Delay-Line (three-terms) 'IIR-equivalent' CIC Mov-Avg filter, N=5` = "N=5;Arma(b=c(1/N,rep(0,times=N-1),-1/N),a=c(1,-(1-eps)))",
+                              `Echo/Slapback-effects (delay-line comb), N=450 Samples (at Fs; needs ~10-50msecs)` = "N=450;Arma(b=c(1/N,rep(0,times=N-1),-1/N),a=c(1))",
+                              `Cascaded Integrator-Comb CIC (MovAvg FIR), delay R=5 (b,a)` = "R=5;M=1;Arma(b=c(1,rep(0,times=R*M-1),-1), a=c(1,-(1-eps)))",
+                              `Cascaded Integrator-Comb CIC (MovAvg FIR), delay R=8 (Zpg)` = "N=8;Zpg(zero=c(1,-1,1i,-1i,1/sqrt(2)+1/sqrt(2)*1i,1/sqrt(2)-1/sqrt(2)*1i,-1/sqrt(2)+1/sqrt(2)*1i,-1/sqrt(2)-1/sqrt(2)*1i), pole=c(1-eps), gain=1/N)",
+                              `IIR Comb-Filter, delay-line, 5 poles w/3 zeros` = "Arma(b=c(1,0,0, 0.5^3), a=c(1,0,0,0,0, 0.9^5))",
+                              `Feedback Comb-filter (peaks), delay-line, poles only, delay=8, positive alpha`="K=8;alpha=0.9;Arma(b=c(1), a=c(1,rep(0,times=K-1),alpha))",
+                              `Feed-forward Comb-filter (humps), delay-line, zeros only, delay=8, negative alpha`="K=8;alpha=-1;Arma(b=c(1,rep(0,times=K-1),alpha), a=c(1))",
+                              `Integrator/ Accumulator, 1/s, given b,a; pole at +1, zero at -1` = "Arma(b=c(1,1), a=c(1,-(1-eps)))",
                               `pole at -1, zero at +1`= "Zpg(zero=c(1), pole=c(-(1-eps)), gain=1)",
-                              `Notch-Filter, Fractional-Sample Delay-line, D=2pi/omega0, (Pei Tseng '98 Fig 2)` = "omega0=0.22*pi;D=2*pi/omega0;rho=0.99;Arma(b=c(1,rep(0,times=floor(D-1)),-1), a=c(1,rep(0,times=floor(D-1)),-(rho)^D))",
-                              `Peaking-Filter/ Resonance, fc=ray-slider` = "theta=input$slider1;rp=0.999;rz=0.997;Zpg(zero=c(rz*exp(theta*pi*1i),rz*exp(-theta*pi*1i)), pole=c(rp*exp(theta*pi*1i),rp*exp(-theta*pi*1i)), gain=1)",
+                              `Notch-filter comb, Fractional-Sample Delay-line, D=2pi/omega0 (Pei Tseng '98 Fig 2)` = "omega0=2/9*pi;D=2*pi/omega0;rho=0.99;Arma(b=c(1,rep(0,times=floor(D-1)),-1), a=c(1,rep(0,times=floor(D-1)),-(rho)^D))",
+                              `Peaking-filter/ Resonance, fc=ray-slider` = "theta=input$slider1;rp=0.999;rz=0.997;Zpg(zero=c(rz*exp(theta*pi*1i),rz*exp(-theta*pi*1i)), pole=c(rp*exp(theta*pi*1i),rp*exp(-theta*pi*1i)), gain=1)",
                               `Notch-Out Filter, fc=ray-slider` = "theta=input$slider1;rp=0.997;rz=0.999;Zpg(zero=c(rz*exp(theta*pi*1i),rz*exp(-theta*pi*1i)), pole=c(rp*exp(theta*pi*1i),rp*exp(-theta*pi*1i)), gain=1)",
-                              `Freq-Sampling IIR algorithm (unstable), ord. 12, fc=0.65, delay=7` = "N=12;D=7;fc=0.65;L=2*N;FF=matrix(data=0,nrow=N,ncol=1);for (k in seq(1,N,by=1)){f=2*k/(L+1);if (f <= fc) {FF[k]=exp(-1i*D*f*pi)}};Fb=Conj(FF);FF=c(1,FF,pracma::flipud(Fb));h=Re(pracma::ifft(FF));r1=t(h);r=c(r1[1],pracma::fliplr(as.matrix(t(r1[2:length(r1)]))));H=pracma::Toeplitz(h,r);H0=H[,1:(N+1)];H1=H0[1:(N+1),];h1=H0[seq((N+2),(L+1)),1];H2=H0[seq((N+2),(L+1)),seq(2,(N+1))];ah=-pracma::inv(H2) %*% h1;a=c(1,ah);b=H1 %*% a;list(a=a,b=b)",
-                              `Least-Squares IIR algorithm (unstable), ord. 12, fc=0.65, delay=7, 120 Samples` = "N=12;D=7;L=120;fc=0.65;L1=0.5*L;FF=matrix(data=0,nrow=L1,ncol=1);for (k in seq(1,L1)){f=2*k/(L+1);if (f <= fc) {FF[k]=exp(-1i*D*f*pi)}};Fb=Conj(FF);FF=c(1,FF,pracma::flipud(Fb));h=Re(pracma::ifft(FF));r1=t(h);r=c(r1[1],pracma::fliplr(as.matrix(t(r1[2:length(r1)]))));H=pracma::Toeplitz(h,r);H0=H[,1:(N+1)];H1=H0[1:(N+1),];h1=H0[seq((N+2),(L+1)),1];H2=H0[seq((N+2),(L+1)),seq(2,(N+1))];ah=-pracma::inv(t(H2) %*% H2) %*% t(H2) %*% h1;a=c(1,ah);b=H1 %*% a;list(a=a,b=b)",
+                              `Freq-Sampling IIR algorithm (unstable), ord. 12, fc=0.65, delay=7 (WSL)` = "N=12;D=7;fc=0.65;L=2*N;FF=matrix(data=0,nrow=N,ncol=1);for (k in seq(1,N,by=1)){f=2*k/(L+1);if (f <= fc) {FF[k]=exp(-1i*D*f*pi)}};Fb=Conj(FF);FF=c(1,FF,pracma::flipud(Fb));h=Re(pracma::ifft(FF));r1=t(h);r=c(r1[1],pracma::fliplr(as.matrix(t(r1[2:length(r1)]))));H=pracma::Toeplitz(h,r);H0=H[,1:(N+1)];H1=H0[1:(N+1),];h1=H0[seq((N+2),(L+1)),1];H2=H0[seq((N+2),(L+1)),seq(2,(N+1))];ah=-pracma::inv(H2) %*% h1;a=c(1,ah);b=H1 %*% a;list(a=a,b=b)",
+                              `Least-Squares IIR algorithm (unstable), ord. 12, fc=0.65, delay=7, 120 Samples (WSL)` = "N=12;D=7;L=120;fc=0.65;L1=0.5*L;FF=matrix(data=0,nrow=L1,ncol=1);for (k in seq(1,L1)){f=2*k/(L+1);if (f <= fc) {FF[k]=exp(-1i*D*f*pi)}};Fb=Conj(FF);FF=c(1,FF,pracma::flipud(Fb));h=Re(pracma::ifft(FF));r1=t(h);r=c(r1[1],pracma::fliplr(as.matrix(t(r1[2:length(r1)]))));H=pracma::Toeplitz(h,r);H0=H[,1:(N+1)];H1=H0[1:(N+1),];h1=H0[seq((N+2),(L+1)),1];H2=H0[seq((N+2),(L+1)),seq(2,(N+1))];ah=-pracma::inv(t(H2) %*% H2) %*% t(H2) %*% h1;a=c(1,ah);b=H1 %*% a;list(a=a,b=b)",
                               `All-Pass, poles within circle, zeros outside at conjugate-reciprocal, random-angle` = "r1=1.3;theta=runif(1,min=-1,max=1);Zpg(zero=c(r1*exp(theta*pi*1i),r1*exp(-theta*pi*1i)), pole=c((1/r1)*exp(theta*pi*1i),(1/r1)*exp(-theta*pi*1i)), gain=1)",
                               `All-Pass, pole at 0, zero at infinity` = "Arma(b=c(1,-fpmaxx), a=c(1))",
                               `All-Pass, reversed-ordering of (real) filter-coefficients` = "myb=c(1,2,3,4,5,6);Arma(b=myb, a=rev(myb))",
                               `Min. Phase, GrpDelay < 2 (Oppenheim Schafer Buck, 1989, Fig 5.30a)` = "Zpg(zero=c(0.9*exp(0.6*pi*1i),0.9*exp(-0.6*pi*1i),0.8*exp(0.8*pi*1i),0.8*exp(-0.8*pi*1i)), pole=c(0), gain=1)",
                               `Max. Phase, GrpDelay < 12 (Oppenheim Schafer Buck, 1989, Fig 5.30b)` = "Zpg(zero=c(1/0.9*exp(0.6*pi*1i),1/0.9*exp(-0.6*pi*1i),1/0.8*exp(0.8*pi*1i),1/0.8*exp(-0.8*pi*1i)), pole=c(0), gain=1)",
-                              `Hilbert (absolute values), order 40, Hamming window` = "N=41;M=20;hz=matrix(data=0,nrow=1,ncol=M);zw=seq(1,(M-1),by=2);hz[seq(1,(M-1),by=2)]=2/ (pi*zw);hd=c(-pracma::fliplr(as.matrix(hz)),0,hz);w=signal::hamming(N);hd*w",
-                              `Ideal Differentiator (noiseless inputs only; else, corruption), 23pt Hamming,fs=512,fc=0.3` = "t=seq(0,2-1/512,by=1/512);fs=512;Ts=1/fs;N=23;M=(N-1)/2;n=1:M;h=cos(n*pi)/(Ts*n);h=c(-pracma::fliplr(as.matrix(t(h))),0,h);win=signal::hamming(N);win*h",
-                              `Differentiator, Band-Limited, 23-pt Hamming window, fs=512, fc=0.3` = "fs=512;Ts=1/fs;N1=23;M=(N1-1)/2;n=0:(M-1);k=M-n;k2=k^2;fc=0.3*pi;h1=sin(k*fc);h2=(fc*k)*cos(k*fc);hd=(h1-h2)/(Ts*pi*k2);hd=c(hd,0,-pracma::fliplr(as.matrix(t(hd))));win=signal::hamming(N1);win*hd",
+                              `Hilbert (absolute values), order 40, Hamming window (WSL)` = "N=41;M=20;hz=matrix(data=0,nrow=1,ncol=M);zw=seq(1,(M-1),by=2);hz[seq(1,(M-1),by=2)]=2/ (pi*zw);hd=c(-pracma::fliplr(as.matrix(hz)),0,hz);w=signal::hamming(N);hd*w",
+                              `Ideal Differentiator (noiseless inputs only; else, corruption), 23pt Hamming,fs=512,fc=0.3 (WSL)` = "t=seq(0,2-1/512,by=1/512);fs=512;Ts=1/fs;N=23;M=(N-1)/2;n=1:M;h=cos(n*pi)/(Ts*n);h=c(-pracma::fliplr(as.matrix(t(h))),0,h);win=signal::hamming(N);win*h",
+                              `Differentiator, Band-Limited, 23-pt Hamming window, fs=512, fc=0.3 (WSL)` = "fs=512;Ts=1/fs;N1=23;M=(N1-1)/2;n=0:(M-1);k=M-n;k2=k^2;fc=0.3*pi;h1=sin(k*fc);h2=(fc*k)*cos(k*fc);hd=(h1-h2)/(Ts*pi*k2);hd=c(hd,0,-pracma::fliplr(as.matrix(t(hd))));win=signal::hamming(N1);win*hd",
                               `Butterworth, order 5, LPF, 0.3` = "butter(n=5,W=0.3,type=\"low\")",
                               `Butterworth, order 5, HPF, 0.65` = "butter(n=5,W=0.65,type=\"high\")",
                               `Butterworth, order 5, BPF, 0.3 to 0.65` = "butter(n=5,W=c(0.3,0.65),type=\"pass\")",
@@ -1501,6 +1505,10 @@ $('#loadmessage').fadeOut(500).fadeIn(500, blink);
                               `Min. Order, Chebyshev I: ripple: 0.5dB (29dB stopband), LPF, 0.3` = "cheby1(n=cheb1ord(Wp=0.3, Ws=0.34, Rp=0.5, Rs=29))",
                               `Min. Order, Elliptical: ripple: 0.5dB (29dB stopband), LPF, 0.3` = "ellip(n=ellipord(Wp=0.3, Ws=0.34, Rp=0.5, Rs=29))",
                               `LPF, Bilinear z-Transform, given b,a, cutoff=0.3, Dodge/ Jerse 1985 (Zolz2003)`="omegac=0.3;zeta=0.7;C=1/(tan(pi*omegac/2));b0=1/(1+2*zeta*C+C^2);Arma(b=c(b0,2*b0,b0),a=c(1,2*b0*(1-C^2),b0*(1-2*zeta*C+C^2)))",
+                              `Windowed Fourier FIR, length=30, LPF, 0.6, Hamming (WSL)`="L=30;N=L-1;f_type=1;f_para=0.6;w_type=2;M=(N-1)/2;n=0:(M-1);if (f_type==0) {omec1=0;omec2=pi;hd=(sin((n-M)*omec2)-sin((n-M)*omec1))/((n-M)*pi);hd=c(hd,(omec2-omec1)/pi,pracma::fliplr(as.matrix(t(hd))));f_type_name='all-pass';fparamstr='[0,+infty]'} else if (f_type==1) {omec=pi*f_para;hd=sin((n-M)*omec)/((n-M)*pi);hd=c(hd,omec/pi,pracma::fliplr(as.matrix(t(hd))));f_type_name='LPF';fparamstr=paste0('[0, ',toString(f_para[1]),'pi]')} else if (f_type==2) {omec=pi*f_para;hd=-sin((n-M)*omec)/((n-M)*pi);hd=c(hd,1-omec/pi,pracma::fliplr(as.matrix(t(hd))));f_type_name='HPF';fparamstr=paste0('[',toString(f_para[1]),'pi, +infty]')} else if (f_type==3) {omec1=pi*f_para[1];omec2=pi*f_para[2];hd=(sin((n-M)*omec2)-sin((n-M)*omec1))/((n-M)*pi);hd=c(hd,(omec2-omec1)/pi,pracma::fliplr(as.matrix(t(hd))));f_type_name='BPF';fparamstr=paste0('[',toString(f_para[1]),'pi, ',toString(f_para[2]),'pi]')} else if (f_type==4) {omec1=pi*f_para[1];omec2=pi*f_para[2];hd=(sin((n-M)*omec1)-sin((n-M)*omec2))/((n-M)*pi);hd=c(hd,1-(omec2-omec1)/pi,pracma::fliplr(as.matrix(t(hd))));f_type_name='BSF';fparamstr=paste0('[',toString(f_para[1]),'pi,',toString(f_para[2]),'pi]')};if (w_type==0) {w=matrix(data=1,nrow=1,ncol=N);w_type_name='(rect)'} else if (w_type==1) {w=0.5*(1-cos(pi*n/M));w=c(w,1,pracma::fliplr(as.matrix(t(w))));w_type_name='Hann'} else if (w_type == 2) {w=0.54-0.46*cos(pi*n/M);w=c(w,1,pracma::fliplr(as.matrix(t(w))));w_type_name='Hamm'} else if (w_type==3) {w=0.42-0.5*cos(pi*n/M)+0.08*cos(2*pi*n/M);w=c(w,1,pracma::fliplr(as.matrix(t(w))));w_type_name='Blckmn'} else if (w_type==4) {if (is.na(b)) {b=5};w=besselI(nu=0, x=b*sqrt(1-(n/M-1)^2))/besselI(nu=0,x=b);w=c(w,1,pracma::fliplr(as.matrix(t(w))));w_type_name=paste0('Kaiser,beta=',toString(b))};Ma(b=w*hd)",
+                              # `Windowed Fourier FIR, length=8, HPF, 0.5, Blackman (WSL)`="N=7;f_type=2;f_para=0.5;w_type=3;M=(N-1)/2;n=0:(M-1);if (f_type==0) {omec1=0;omec2=pi;hd=(sin((n-M)*omec2)-sin((n-M)*omec1))/((n-M)*pi);hd=c(hd,(omec2-omec1)/pi,pracma::fliplr(as.matrix(t(hd))));f_type_name='all-pass';fparamstr='[0,+infty]'} else if (f_type==1) {omec=pi*f_para;hd=sin((n-M)*omec)/((n-M)*pi);hd=c(hd,omec/pi,pracma::fliplr(as.matrix(t(hd))));f_type_name='LPF';fparamstr=paste0('[0, ',toString(f_para[1]),'pi]')} else if (f_type==2) {omec=pi*f_para;hd=-sin((n-M)*omec)/((n-M)*pi);hd=c(hd,1-omec/pi,pracma::fliplr(as.matrix(t(hd))));f_type_name='HPF';fparamstr=paste0('[',toString(f_para[1]),'pi, +infty]')} else if (f_type==3) {omec1=pi*f_para[1];omec2=pi*f_para[2];hd=(sin((n-M)*omec2)-sin((n-M)*omec1))/((n-M)*pi);hd=c(hd,(omec2-omec1)/pi,pracma::fliplr(as.matrix(t(hd))));f_type_name='BPF';fparamstr=paste0('[',toString(f_para[1]),'pi, ',toString(f_para[2]),'pi]')} else if (f_type==4) {omec1=pi*f_para[1];omec2=pi*f_para[2];hd=(sin((n-M)*omec1)-sin((n-M)*omec2))/((n-M)*pi);hd=c(hd,1-(omec2-omec1)/pi,pracma::fliplr(as.matrix(t(hd))));f_type_name='BSF';fparamstr=paste0('[',toString(f_para[1]),'pi,',toString(f_para[2]),'pi]')};if (w_type==0) {w=matrix(data=1,nrow=1,ncol=N);w_type_name='(rect)'} else if (w_type==1) {w=0.5*(1-cos(pi*n/M));w=c(w,1,pracma::fliplr(as.matrix(t(w))));w_type_name='Hann'} else if (w_type == 2) {w=0.54-0.46*cos(pi*n/M);w=c(w,1,pracma::fliplr(as.matrix(t(w))));w_type_name='Hamm'} else if (w_type==3) {w=0.42-0.5*cos(pi*n/M)+0.08*cos(2*pi*n/M);w=c(w,1,pracma::fliplr(as.matrix(t(w))));w_type_name='Blckmn'} else if (w_type==4) {if (is.na(b)) {b=5};w=besselI(nu=0, x=b*sqrt(1-(n/M-1)^2))/besselI(nu=0,x=b);w=c(w,1,pracma::fliplr(as.matrix(t(w))));w_type_name=paste0('Kaiser,beta=',toString(b))};Ma(b=w*hd)",
+                              `Windowed Fourier FIR, length=70, BPF, 0.35-0.65, Kaiser, beta=5 (WSL)`="L=70;N=L-1;f_type=3;f_para=c(0.35,0.65);w_type=4;b=5;M=(N-1)/2;n=0:(M-1);if (f_type==0) {omec1=0;omec2=pi;hd=(sin((n-M)*omec2)-sin((n-M)*omec1))/((n-M)*pi);hd=c(hd,(omec2-omec1)/pi,pracma::fliplr(as.matrix(t(hd))));f_type_name='all-pass';fparamstr='[0,+infty]'} else if (f_type==1) {omec=pi*f_para;hd=sin((n-M)*omec)/((n-M)*pi);hd=c(hd,omec/pi,pracma::fliplr(as.matrix(t(hd))));f_type_name='LPF';fparamstr=paste0('[0, ',toString(f_para[1]),'pi]')} else if (f_type==2) {omec=pi*f_para;hd=-sin((n-M)*omec)/((n-M)*pi);hd=c(hd,1-omec/pi,pracma::fliplr(as.matrix(t(hd))));f_type_name='HPF';fparamstr=paste0('[',toString(f_para[1]),'pi, +infty]')} else if (f_type==3) {omec1=pi*f_para[1];omec2=pi*f_para[2];hd=(sin((n-M)*omec2)-sin((n-M)*omec1))/((n-M)*pi);hd=c(hd,(omec2-omec1)/pi,pracma::fliplr(as.matrix(t(hd))));f_type_name='BPF';fparamstr=paste0('[',toString(f_para[1]),'pi, ',toString(f_para[2]),'pi]')} else if (f_type==4) {omec1=pi*f_para[1];omec2=pi*f_para[2];hd=(sin((n-M)*omec1)-sin((n-M)*omec2))/((n-M)*pi);hd=c(hd,1-(omec2-omec1)/pi,pracma::fliplr(as.matrix(t(hd))));f_type_name='BSF';fparamstr=paste0('[',toString(f_para[1]),'pi,',toString(f_para[2]),'pi]')};if (w_type==0) {w=matrix(data=1,nrow=1,ncol=N);w_type_name='(rect)'} else if (w_type==1) {w=0.5*(1-cos(pi*n/M));w=c(w,1,pracma::fliplr(as.matrix(t(w))));w_type_name='Hann'} else if (w_type == 2) {w=0.54-0.46*cos(pi*n/M);w=c(w,1,pracma::fliplr(as.matrix(t(w))));w_type_name='Hamm'} else if (w_type==3) {w=0.42-0.5*cos(pi*n/M)+0.08*cos(2*pi*n/M);w=c(w,1,pracma::fliplr(as.matrix(t(w))));w_type_name='Blckmn'} else if (w_type==4) {if (is.na(b)) {b=5};w=besselI(nu=0, x=b*sqrt(1-(n/M-1)^2))/besselI(nu=0,x=b);w=c(w,1,pracma::fliplr(as.matrix(t(w))));w_type_name=paste0('Kaiser,beta=',toString(b))};Ma(b=w*hd)",
+                              `Windowed Fourier FIR, length=72, BSF, 0.30-0.70, Kaiser, beta=5 (WSL)`="L=72;N=L-1;f_type=4;f_para=c(0.3,0.7);w_type=4;b=5;M=(N-1)/2;n=0:(M-1);if (f_type==0) {omec1=0;omec2=pi;hd=(sin((n-M)*omec2)-sin((n-M)*omec1))/((n-M)*pi);hd=c(hd,(omec2-omec1)/pi,pracma::fliplr(as.matrix(t(hd))));f_type_name='all-pass';fparamstr='[0,+infty]'} else if (f_type==1) {omec=pi*f_para;hd=sin((n-M)*omec)/((n-M)*pi);hd=c(hd,omec/pi,pracma::fliplr(as.matrix(t(hd))));f_type_name='LPF';fparamstr=paste0('[0, ',toString(f_para[1]),'pi]')} else if (f_type==2) {omec=pi*f_para;hd=-sin((n-M)*omec)/((n-M)*pi);hd=c(hd,1-omec/pi,pracma::fliplr(as.matrix(t(hd))));f_type_name='HPF';fparamstr=paste0('[',toString(f_para[1]),'pi, +infty]')} else if (f_type==3) {omec1=pi*f_para[1];omec2=pi*f_para[2];hd=(sin((n-M)*omec2)-sin((n-M)*omec1))/((n-M)*pi);hd=c(hd,(omec2-omec1)/pi,pracma::fliplr(as.matrix(t(hd))));f_type_name='BPF';fparamstr=paste0('[',toString(f_para[1]),'pi, ',toString(f_para[2]),'pi]')} else if (f_type==4) {omec1=pi*f_para[1];omec2=pi*f_para[2];hd=(sin((n-M)*omec1)-sin((n-M)*omec2))/((n-M)*pi);hd=c(hd,1-(omec2-omec1)/pi,pracma::fliplr(as.matrix(t(hd))));f_type_name='BSF';fparamstr=paste0('[',toString(f_para[1]),'pi,',toString(f_para[2]),'pi]')};if (w_type==0) {w=matrix(data=1,nrow=1,ncol=N);w_type_name='(rect)'} else if (w_type==1) {w=0.5*(1-cos(pi*n/M));w=c(w,1,pracma::fliplr(as.matrix(t(w))));w_type_name='Hann'} else if (w_type == 2) {w=0.54-0.46*cos(pi*n/M);w=c(w,1,pracma::fliplr(as.matrix(t(w))));w_type_name='Hamm'} else if (w_type==3) {w=0.42-0.5*cos(pi*n/M)+0.08*cos(2*pi*n/M);w=c(w,1,pracma::fliplr(as.matrix(t(w))));w_type_name='Blckmn'} else if (w_type==4) {if (is.na(b)) {b=5};w=besselI(nu=0, x=b*sqrt(1-(n/M-1)^2))/besselI(nu=0,x=b);w=c(w,1,pracma::fliplr(as.matrix(t(w))));w_type_name=paste0('Kaiser,beta=',toString(b))};Ma(b=w*hd)",
                               `1st-order All-Pass, (cutoff=0.2), Zolz2003`="omegac=0.2;omegacprime=tan(omegac*pi/2);cc=(omegacprime-1)/(omegacprime+1);Zpg(zero=c(-1/cc), pole=c(-cc), gain=cc)",
                               `1st-order Parametric LPF, cutoff=0.2, Zolz2003`="omegac=0.2;omegacprime=tan(omegac*pi/2);cc=(omegacprime-1)/(omegacprime+1);Zpg(zero=c(-1), pole=c(-cc), gain=cc/2)",
                               `1st-order Parametric HPF, cutoff=0.2, Zolz2003`="omegac=0.2;omegacprime=tan(omegac*pi/2);cc=(omegacprime-1)/(omegacprime+1);Zpg(zero=c(1), pole=c(-cc), gain=cc/2)",
@@ -1515,20 +1523,23 @@ $('#loadmessage').fadeOut(500).fadeIn(500, blink);
                               `2nd-order Shelving-filter (HF), Treble-cut= -15dB, cutoff=0.7, Zolz97`="omegac=0.7; G= -15; K=tan(pi*omegac/2);cutV0=10^(-G/20); b0=(1+sqrt(2)*K+K^2)/(cutV0+sqrt(2*cutV0)*K+cutV0*K^2); b1=2*(K^2-1)/(cutV0+sqrt(2*cutV0)*K+cutV0*K^2); b2=(1-sqrt(2)*K+K^2)/(cutV0+sqrt(2*cutV0)*K+cutV0*K^2); a1=2*(K^2/cutV0-1)/(1+sqrt(2/cutV0)*K+K^2/cutV0); a2=(1-sqrt(2/cutV0)*K+K^2/cutV0)/(1+sqrt(2/cutV0)*K+K^2/cutV0); Arma(b=c(b0,b1,b2),a=c(1,a1,a2))",
                               `2nd-order Peaking-filter (equalizer), boost=15dB, center=0.3, Q=1.25, Zolz97`="omegac=0.3; Q=1.25; G=15; K=tan(pi*omegac/2);boostV0=10^(G/20); b0=(1+(boostV0/Q)*K+K^2)/(1+(1/Q)*K+K^2); b1=2*(K^2-1)/(1+(1/Q)*K+K^2); b2=(1-(boostV0/Q)*K+K^2)/(1+(1/Q)*K+K^2); a1=b1; a2=(1-(1/Q)*K+K^2)/(1+(1/Q)*K+K^2); Arma(b=c(b0,b1,b2),a=c(1,a1,a2))",
                               `2nd-order Notch-filter (equalizer), cut= -15dB, center=0.3, Q=1.25, Zolz97`="omegac=0.3; Q=1.25; G= -15; K=tan(pi*omegac/2);cutV0  =10^(-G/20); b0=(1+(1/Q)*K+K^2)/(1+(cutV0/Q)*K+K^2); b1=2*(K^2-1)/(1+(cutV0/Q)*K+K^2); b2=(1-(1/Q)*K+K^2)/(1+(cutV0/Q)*K+K^2); a1=b1; a2=(1-(cutV0/Q)*K+K^2)/(1+(cutV0/Q)*K+K^2); Arma(b=c(b0,b1,b2),a=c(1,a1,a2))",
-                              `Remez (Parks-McClellan optimal/ equiripple/ minimax FIR), order 15, LPF, 0.3` = "remez(n=15, f= c(0, 0.3, 0.4, 1), a= c(1,1, 0,0), ftype= \"bandpass\")",
+                              `Remez (Parks-McClellan optimal/ equiripple/ minimax FIR), order=15, length=16, LPF, 0.3` = "L=16;remez(n=L-1, f= c(0, 0.3, 0.4, 1), a= c(1,1, 0,0), ftype= \"bandpass\")",
                               `Remez, ord. 30, symmetrical FIR (J. Dobes, 2003 Ex1)`="firstHalfCoef=c(0.034025544,0.006219216,-0.005305575,0.006128687,-0.005593423,0.00624262,-0.006848848,0.008979105,-0.008978654,0.017501073,-0.006953636,0.039774499,-0.064655981,0.085240952,-0.131292156);Ma(b=c(firstHalfCoef,0.195140968,rev(firstHalfCoef)))",
                               `Remez, ord. 48, symmetrical FIR (J. Dobes, 2003 Ex2)`="firstHalfCoef=c(0.00012511398639,0.00001335284427,0.00016015250121,0.00000634686622,0.00026201837991,0.00007281852105,0.00045629795460,0.00022819555936,0.00071588589103,0.00047316021190,0.00110189764986,0.00088563032407,0.00184819117706,0.00188050116629,0.00282392666400,0.00363976768981,0.00591155524557,0.00644303257612,0.01406190034797,0.00537162176461,0.03594691432517,0.06164502638211,0.08276620944465,0.13009560635626);Ma(b=c(firstHalfCoef,0.19452719610477,rev(firstHalfCoef)))",
                               `Remez, ord. 48, psychoacoustic/ physiological volume-control FIR (Dobes, 2003 Ex2)`="firstHalfZeros=c(-1.27851808211318+0.62684824819101i,-1.36614299238589+0.27717114439577i,-1.07284006705681+0.91235620647926i,-0.77267104757162+1.12541933041583i,-0.44961436355736+1.22363585379352i,-0.20330452525073+1.29600355151311i,0.14750702212683+1.34841369533889i,0.50634734941036+1.25979827310114i,0.83329614995319+1.04982507756824i,1.04560310563666+0.67293837999034i,1.20771535897979+0.24059979456907i,0.95139216401989+0.56315210274529i,0.77837030003487+0.46073626392613i,0.79640192035334+0.15865836018951i,0.67627030631208+0.43523995090672i,0.46384030886663+0.58436750039291i,0.27466939387352+0.68338074343342i,0.08016782642482+0.73284236586261i,-0.11813451163119+0.75307102211071i,-0.26456653442537+0.72002392155667i,-0.41461446573694+0.60389882069075i,-0.70304843505842+0.14263861132902i,-0.63057376627246+0.30916579614562i,-0.54091513103870+0.46000078868751i);Zpg(zero=c(firstHalfZeros,Conj(firstHalfZeros)),pole=c(0),gain=0.00012511398639)",
                               `Irregular IIR by Chained-Fractions (unstable) (J. Dobes, 2003 Ex3)`="Zpg(zero=c(0.9049098+0.1414979i,0.9049098-0.1414979i,1.192327), pole=c(0.9588639+0.7240575i,0.9588639-0.7240575i,1.511628), gain=1)",
-                              `Savitzky-Golay smoothing-filter, order 3 (cubic), length 5` = "p=3;n=2;sgolay(p,(2*n+1)) %*% c(1,rep(0,times=(2*n+1)-1))", # https://en.wikipedia.org/wiki/Savitzky%E2%80%93Golay_filter
+                              `Savitzky-Golay smoothing-filter, FIR, order 3 (cubic), length 5` = "p=3;n=2;sgolay(p,(2*n+1)) %*% c(1,rep(0,times=(2*n+1)-1))", # https://en.wikipedia.org/wiki/Savitzky%E2%80%93Golay_filter
                               `Pink-noise filter, 1/f power-law, 3rd-order IIR, (J. Smith, 2011)`="Arma(b=c(0.049922035,-0.095993537,0.050612699,-0.004408786),a=c(1,-2.494956002,2.017265875,-0.522189400))",
                               `Pink-noise filter, 1/f power-law, 3rd-order IIR, (RBJ, 1998)`="Zpg(pole=c(0.99572754,0.94790649,0.53567505),zero=c(0.98443604,0.83392334,0.07568359),gain=1)",
                               `Wiener FIR-filter example, transversal, two-taps, noisy channel, Haykin 1998`="Arma(b=c(1,-0.939137),a=c(1,-0.1,-0.8))",
+                              `Raised-cosine pulse-shaper, order 25, rolloff=0.25, span=6, Samples/Symbol=4`="Ma(b=c(-0.01877334400452212,0.0030135586664219974,0.032677234546254562,0.047093583340252425,0.026549517702290821,-0.027522224030017681,-0.085224875017083229,-0.099447435991926181,-0.03214726739831468,0.11903714817925418,0.31117641155547854,0.47200389556543276,0.53463207017815584,0.47200389556543276,0.31117641155547854,0.11903714817925418,-0.03214726739831468,-0.099447435991926181,-0.085224875017083229,-0.027522224030017681,0.026549517702290821,0.047093583340252425,0.032677234546254562,0.0030135586664219974,-0.01877334400452212))", # beta=0.25;m=12;n=4;b=rep(1,times=2*m);for (k in c(0:(2*m))) {knm=((k/n)-m+eps);b[k+1]=(sin(pi*knm)/(pi*knm))*(cos(beta*pi*knm)/(1-4*beta*beta*knm*knm))};b
+                              `Fractional-grpdelay, Thiran all-pass (Bessel max-flat grpdelay), grpdelay=2.4 Samples, ord. 3`="D=2.4;N=3;a=rep(1,times=N);for (k in (0:N)) {a[k+1]=(-1)^k*choose(N,k)*{accu=1;for (i in 0:N) {accu=accu*(((D-N+i)/(D-N+k+i)))};accu}};Arma(b=rev(a),a=a)", # "Zpg(zero=c(6.59457337747154+10.2534695974275i,6.59457337747154-10.2534695974275i,-1.61771818351450),pole=c(-0.618154639164343,0.0443714372292301+0.0689902373636964i,0.0443714372292301-0.0689902373636964i),gain=0.00415923945335710)",
+                              # `Room Impulse-Response (McGovern 2003)`="fs=16000;mic=c(19,18,1.6);n=6;r=0.3;rm=c(20,19,21);src=c(5,2,1);nn=(-n):n;rms=nn+0.5-0.5*(-1)^nn;srcs=(-1)^(nn);xi=srcs*src[1]+rms*rm[1]-mic[1];yj=srcs*src[2]+rms*rm[2]-mic[2];zk=srcs*src[3]+rms*rm[3]-mic[3];rv=matlab::meshgrid(xi,yj,zk,nargout=3);i=rv$x;j=rv$y;k=rv$z;d=sqrt(i^2+j^2+k^2);time=round(fs*d/343)+1;rv=matlab::meshgrid(nn,nn,nn,nargout=3);e=rv$x;f=rv$y;g=rv$z;c=r^(abs(e)+abs(f)+abs(g));e=c/d;h=Matrix::sparseMatrix(i=as.vector(time),j=rep(1,times=length(as.vector(time))),x=as.vector(e));b=as.vector(h[1:min(c(3000,length(h)))]);Ma(b=c(1,b)/max(abs(b)))",
                               `Dolph-Chebyshev window, 50-point, 100dB attenuation` = "chebwin(n=50, at=100)",
                               `Kaiser-window, 101-point, beta 0 (very-wide=Rectangle)` = "kaiser(n=101, beta=0)",
                               `Kaiser-window, 101-point, beta 50 (narrower)` = "kaiser(n=101, beta=50)",
                               `Kaiser-windowed FIR, LPF, 0.3, minimum-order` = "with(kaiserord(f=c(0.275,0.325), m=c(1,0), dev=c(0.1,0.1)),fir1(n=n,w=Wc,type=type,window=kaiser(n+1,beta),scale=FALSE))",
-                              `Rectangle, 101-point, given b` = "Ma(b=rep(1,times=101))",
+                              `Rectangle (FIR), 101-point, given b` = "Ma(b=rep(1,times=101))",
                               `Bartlett-window, 41-point` = "bartlett(41)",
                               `Blackman-window, 41-point` = "blackman(41)",
                               `Boxcar-window (aka. Rectangular, Dirichlet), 41-point` = "boxcar(41)",
@@ -1539,8 +1550,8 @@ $('#loadmessage').fadeOut(500).fadeIn(500, blink);
                               `Hamming-window, 41-point` = "hamming(41)",
                               `Triangle-window (Bartlett, but no zero-endpoint), 41-point` = "triang(41)",
                               `Windowed-Sinc (e.g. using Blackman), 19-point, 0.3` = "N=18;leftside=sin(pi*(0.3*(-(N/2):(-1))))/(pi*(0.3*(-(N/2):(-1))));c(leftside,1,rev(leftside))*blackman(N+1)", # "N=18;sinc(0.3*(-(N/2):(N/2)))*0.3*blackman(N+1)",
-                              `Spencer 15-point Moving-Average Filter` = "spencerFilter()",
-                              `Spencer MA, given b` = "Ma(b=c(-3, -6, -5, 3, 21, 46, 67, 74, 67, 46, 21, 3, -5, -6, -3) / 320)",
+                              `Spencer 15-point Moving-Average FIR` = "spencerFilter()",
+                              `Spencer 15-point MA FIR, given b` = "Ma(b=c(-3, -6, -5, 3, 21, 46, 67, 74, 67, 46, 21, 3, -5, -6, -3) / 320)",
                               `( random-filter from this list )` = paste0(
                                 "sample(c('",
                                 paste(
@@ -1570,6 +1581,8 @@ $('#loadmessage').fadeOut(500).fadeIn(500, blink);
                                   "R=5;M=1;Arma(b=c(1,rep(0,times=R*M-1),-1), a=c(1,-(1-eps)))",
                                   "N=8;Zpg(zero=c(1,-1,1i,-1i,1/sqrt(2)+1/sqrt(2)*1i,1/sqrt(2)-1/sqrt(2)*1i,-1/sqrt(2)+1/sqrt(2)*1i,-1/sqrt(2)-1/sqrt(2)*1i), pole=c(1-eps), gain=1/N)",
                                   "Arma(b=c(1,0,0, 0.5^3), a=c(1,0,0,0,0, 0.9^5))",
+                                  "K=8;alpha=0.9;Arma(b=c(1), a=c(1,rep(0,times=K-1),alpha))",
+                                  "K=8;alpha=-1;Arma(b=c(1,rep(0,times=K-1),alpha), a=c(1))",
                                   "Arma(b=c(1,1), a=c(1,-(1-eps)))",
                                   "Zpg(zero=c(1), pole=c(-(1-eps)), gain=1)",
                                   "omega0=0.22*pi;D=2*pi/omega0;rho=0.99;Arma(b=c(1,rep(0,times=floor(D-1)),-1), a=c(1,rep(0,times=floor(D-1)),-(rho)^D))",
@@ -1602,6 +1615,9 @@ $('#loadmessage').fadeOut(500).fadeIn(500, blink);
                                   "cheby1(n=cheb1ord(Wp=0.3, Ws=0.34, Rp=0.5, Rs=29))",
                                   "ellip(n=ellipord(Wp=0.3, Ws=0.34, Rp=0.5, Rs=29))",
                                   "omegac=0.3;zeta=0.7;C=1/(tan(pi*omegac/2));b0=1/(1+2*zeta*C+C^2);Arma(b=c(b0,2*b0,b0),a=c(1,2*b0*(1-C^2),b0*(1-2*zeta*C+C^2)))",
+                                  "L=30;N=L-1;f_type=1;f_para=0.6;w_type=2;M=(N-1)/2;n=0:(M-1);if (f_type==0) {omec1=0;omec2=pi;hd=(sin((n-M)*omec2)-sin((n-M)*omec1))/((n-M)*pi);hd=c(hd,(omec2-omec1)/pi,pracma::fliplr(as.matrix(t(hd))));f_type_name='all-pass';fparamstr='[0,+infty]'} else if (f_type==1) {omec=pi*f_para;hd=sin((n-M)*omec)/((n-M)*pi);hd=c(hd,omec/pi,pracma::fliplr(as.matrix(t(hd))));f_type_name='LPF';fparamstr=paste0('[0, ',toString(f_para[1]),'pi]')} else if (f_type==2) {omec=pi*f_para;hd=-sin((n-M)*omec)/((n-M)*pi);hd=c(hd,1-omec/pi,pracma::fliplr(as.matrix(t(hd))));f_type_name='HPF';fparamstr=paste0('[',toString(f_para[1]),'pi, +infty]')} else if (f_type==3) {omec1=pi*f_para[1];omec2=pi*f_para[2];hd=(sin((n-M)*omec2)-sin((n-M)*omec1))/((n-M)*pi);hd=c(hd,(omec2-omec1)/pi,pracma::fliplr(as.matrix(t(hd))));f_type_name='BPF';fparamstr=paste0('[',toString(f_para[1]),'pi, ',toString(f_para[2]),'pi]')} else if (f_type==4) {omec1=pi*f_para[1];omec2=pi*f_para[2];hd=(sin((n-M)*omec1)-sin((n-M)*omec2))/((n-M)*pi);hd=c(hd,1-(omec2-omec1)/pi,pracma::fliplr(as.matrix(t(hd))));f_type_name='BSF';fparamstr=paste0('[',toString(f_para[1]),'pi,',toString(f_para[2]),'pi]')};if (w_type==0) {w=matrix(data=1,nrow=1,ncol=N);w_type_name='(rect)'} else if (w_type==1) {w=0.5*(1-cos(pi*n/M));w=c(w,1,pracma::fliplr(as.matrix(t(w))));w_type_name='Hann'} else if (w_type == 2) {w=0.54-0.46*cos(pi*n/M);w=c(w,1,pracma::fliplr(as.matrix(t(w))));w_type_name='Hamm'} else if (w_type==3) {w=0.42-0.5*cos(pi*n/M)+0.08*cos(2*pi*n/M);w=c(w,1,pracma::fliplr(as.matrix(t(w))));w_type_name='Blckmn'} else if (w_type==4) {if (is.na(b)) {b=5};w=besselI(nu=0, x=b*sqrt(1-(n/M-1)^2))/besselI(nu=0,x=b);w=c(w,1,pracma::fliplr(as.matrix(t(w))));w_type_name=paste0('Kaiser,beta=',toString(b))};Ma(b=w*hd)",
+                                  "L=70;N=L-1;f_type=3;f_para=c(0.35,0.65);w_type=4;b=5;M=(N-1)/2;n=0:(M-1);if (f_type==0) {omec1=0;omec2=pi;hd=(sin((n-M)*omec2)-sin((n-M)*omec1))/((n-M)*pi);hd=c(hd,(omec2-omec1)/pi,pracma::fliplr(as.matrix(t(hd))));f_type_name='all-pass';fparamstr='[0,+infty]'} else if (f_type==1) {omec=pi*f_para;hd=sin((n-M)*omec)/((n-M)*pi);hd=c(hd,omec/pi,pracma::fliplr(as.matrix(t(hd))));f_type_name='LPF';fparamstr=paste0('[0, ',toString(f_para[1]),'pi]')} else if (f_type==2) {omec=pi*f_para;hd=-sin((n-M)*omec)/((n-M)*pi);hd=c(hd,1-omec/pi,pracma::fliplr(as.matrix(t(hd))));f_type_name='HPF';fparamstr=paste0('[',toString(f_para[1]),'pi, +infty]')} else if (f_type==3) {omec1=pi*f_para[1];omec2=pi*f_para[2];hd=(sin((n-M)*omec2)-sin((n-M)*omec1))/((n-M)*pi);hd=c(hd,(omec2-omec1)/pi,pracma::fliplr(as.matrix(t(hd))));f_type_name='BPF';fparamstr=paste0('[',toString(f_para[1]),'pi, ',toString(f_para[2]),'pi]')} else if (f_type==4) {omec1=pi*f_para[1];omec2=pi*f_para[2];hd=(sin((n-M)*omec1)-sin((n-M)*omec2))/((n-M)*pi);hd=c(hd,1-(omec2-omec1)/pi,pracma::fliplr(as.matrix(t(hd))));f_type_name='BSF';fparamstr=paste0('[',toString(f_para[1]),'pi,',toString(f_para[2]),'pi]')};if (w_type==0) {w=matrix(data=1,nrow=1,ncol=N);w_type_name='(rect)'} else if (w_type==1) {w=0.5*(1-cos(pi*n/M));w=c(w,1,pracma::fliplr(as.matrix(t(w))));w_type_name='Hann'} else if (w_type == 2) {w=0.54-0.46*cos(pi*n/M);w=c(w,1,pracma::fliplr(as.matrix(t(w))));w_type_name='Hamm'} else if (w_type==3) {w=0.42-0.5*cos(pi*n/M)+0.08*cos(2*pi*n/M);w=c(w,1,pracma::fliplr(as.matrix(t(w))));w_type_name='Blckmn'} else if (w_type==4) {if (is.na(b)) {b=5};w=besselI(nu=0, x=b*sqrt(1-(n/M-1)^2))/besselI(nu=0,x=b);w=c(w,1,pracma::fliplr(as.matrix(t(w))));w_type_name=paste0('Kaiser,beta=',toString(b))};Ma(b=w*hd)",
+                                  "L=72;N=L-1;f_type=4;f_para=c(0.3,0.7);w_type=4;b=5;M=(N-1)/2;n=0:(M-1);if (f_type==0) {omec1=0;omec2=pi;hd=(sin((n-M)*omec2)-sin((n-M)*omec1))/((n-M)*pi);hd=c(hd,(omec2-omec1)/pi,pracma::fliplr(as.matrix(t(hd))));f_type_name='all-pass';fparamstr='[0,+infty]'} else if (f_type==1) {omec=pi*f_para;hd=sin((n-M)*omec)/((n-M)*pi);hd=c(hd,omec/pi,pracma::fliplr(as.matrix(t(hd))));f_type_name='LPF';fparamstr=paste0('[0, ',toString(f_para[1]),'pi]')} else if (f_type==2) {omec=pi*f_para;hd=-sin((n-M)*omec)/((n-M)*pi);hd=c(hd,1-omec/pi,pracma::fliplr(as.matrix(t(hd))));f_type_name='HPF';fparamstr=paste0('[',toString(f_para[1]),'pi, +infty]')} else if (f_type==3) {omec1=pi*f_para[1];omec2=pi*f_para[2];hd=(sin((n-M)*omec2)-sin((n-M)*omec1))/((n-M)*pi);hd=c(hd,(omec2-omec1)/pi,pracma::fliplr(as.matrix(t(hd))));f_type_name='BPF';fparamstr=paste0('[',toString(f_para[1]),'pi, ',toString(f_para[2]),'pi]')} else if (f_type==4) {omec1=pi*f_para[1];omec2=pi*f_para[2];hd=(sin((n-M)*omec1)-sin((n-M)*omec2))/((n-M)*pi);hd=c(hd,1-(omec2-omec1)/pi,pracma::fliplr(as.matrix(t(hd))));f_type_name='BSF';fparamstr=paste0('[',toString(f_para[1]),'pi,',toString(f_para[2]),'pi]')};if (w_type==0) {w=matrix(data=1,nrow=1,ncol=N);w_type_name='(rect)'} else if (w_type==1) {w=0.5*(1-cos(pi*n/M));w=c(w,1,pracma::fliplr(as.matrix(t(w))));w_type_name='Hann'} else if (w_type == 2) {w=0.54-0.46*cos(pi*n/M);w=c(w,1,pracma::fliplr(as.matrix(t(w))));w_type_name='Hamm'} else if (w_type==3) {w=0.42-0.5*cos(pi*n/M)+0.08*cos(2*pi*n/M);w=c(w,1,pracma::fliplr(as.matrix(t(w))));w_type_name='Blckmn'} else if (w_type==4) {if (is.na(b)) {b=5};w=besselI(nu=0, x=b*sqrt(1-(n/M-1)^2))/besselI(nu=0,x=b);w=c(w,1,pracma::fliplr(as.matrix(t(w))));w_type_name=paste0('Kaiser,beta=',toString(b))};Ma(b=w*hd)",
                                   "omegac=0.2;omegacprime=tan(omegac*pi/2);cc=(omegacprime-1)/(omegacprime+1);Zpg(zero=c(-1/cc), pole=c(-cc), gain=cc)",
                                   "omegac=0.2;omegacprime=tan(omegac*pi/2);cc=(omegacprime-1)/(omegacprime+1);Zpg(zero=c(-1), pole=c(-cc), gain=cc/2)",
                                   "omegac=0.2;omegacprime=tan(omegac*pi/2);cc=(omegacprime-1)/(omegacprime+1);Zpg(zero=c(1), pole=c(-cc), gain=cc/2)",
@@ -1616,7 +1632,7 @@ $('#loadmessage').fadeOut(500).fadeIn(500, blink);
                                   "omegac=0.7;G=-15; K=tan(pi*omegac/2);cutV0  =10^(-G/20); b0=(1+sqrt(2)*K+K^2) /(cutV0+sqrt(2*cutV0)*K+cutV0*K^2); b1=2*(K^2-1)/(cutV0+sqrt(2*cutV0)*K+cutV0*K^2); b2=(1-sqrt(2)*K+K^2)/(cutV0+sqrt(2*cutV0)*K+cutV0*K^2); a1=2*(K^2/cutV0-1)/(1+sqrt(2/cutV0)*K+K^2/cutV0); a2=(1-sqrt(2/cutV0)*K+K^2/cutV0)/(1+sqrt(2/cutV0)*K+K^2/cutV0); Arma(b=c(b0,b1,b2),a=c(1,a1,a2))",
                                   "omegac=0.3;Q=1.25;G=15; K=tan(pi*omegac/2);boostV0=10^(G/20); b0=(1+(boostV0/Q)*K+K^2)/(1+(1/Q)*K+K^2); b1=2*(K^2-1)/(1+(1/Q)*K+K^2); b2=(1-(boostV0/Q)*K+K^2)/(1+(1/Q)*K+K^2); a1=b1; a2=(1-(1/Q)*K+K^2)/(1+(1/Q)*K+K^2); Arma(b=c(b0,b1,b2),a=c(1,a1,a2))",
                                   "omegac=0.3;Q=1.25;G=-15; K=tan(pi*omegac/2);cutV0  =10^(-G/20); b0=(1+(1/Q)*K+K^2)/(1+(cutV0/Q)*K+K^2); b1=2*(K^2-1)/(1+(cutV0/Q)*K+K^2); b2=(1-(1/Q)*K+K^2)/(1+(cutV0/Q)*K+K^2); a1=b1; a2=(1-(cutV0/Q)*K+K^2)/(1+(cutV0/Q)*K+K^2); Arma(b=c(b0,b1,b2),a=c(1,a1,a2))",
-                                  "remez(n=15, f= c(0, 0.3, 0.4, 1), a= c(1,1, 0,0), ftype= \"bandpass\")",
+                                  "L=16;remez(n=L-1, f= c(0, 0.3, 0.4, 1), a= c(1,1, 0,0), ftype= \"bandpass\")",
                                   "firstHalfCoef=c(0.034025544,0.006219216,-0.005305575,0.006128687,-0.005593423,0.00624262,-0.006848848,0.008979105,-0.008978654,0.017501073,-0.006953636,0.039774499,-0.064655981,0.085240952,-0.131292156);Ma(b=c(firstHalfCoef,0.195140968,rev(firstHalfCoef)))",
                                   "firstHalfCoef=c(0.00012511398639,0.00001335284427,0.00016015250121,0.00000634686622,0.00026201837991,0.00007281852105,0.00045629795460,0.00022819555936,0.00071588589103,0.00047316021190,0.00110189764986,0.00088563032407,0.00184819117706,0.00188050116629,0.00282392666400,0.00363976768981,0.00591155524557,0.00644303257612,0.01406190034797,0.00537162176461,0.03594691432517,0.06164502638211,0.08276620944465,0.13009560635626);Ma(b=c(firstHalfCoef,0.19452719610477,rev(firstHalfCoef)))",
                                   "firstHalfZeros=c(-1.27851808211318+0.62684824819101i,-1.36614299238589+0.27717114439577i,-1.07284006705681+0.91235620647926i,-0.77267104757162+1.12541933041583i,-0.44961436355736+1.22363585379352i,-0.20330452525073+1.29600355151311i,0.14750702212683+1.34841369533889i,0.50634734941036+1.25979827310114i,0.83329614995319+1.04982507756824i,1.04560310563666+0.67293837999034i,1.20771535897979+0.24059979456907i,0.95139216401989+0.56315210274529i,0.77837030003487+0.46073626392613i,0.79640192035334+0.15865836018951i,0.67627030631208+0.43523995090672i,0.46384030886663+0.58436750039291i,0.27466939387352+0.68338074343342i,0.08016782642482+0.73284236586261i,-0.11813451163119+0.75307102211071i,-0.26456653442537+0.72002392155667i,-0.41461446573694+0.60389882069075i,-0.70304843505842+0.14263861132902i,-0.63057376627246+0.30916579614562i,-0.54091513103870+0.46000078868751i);Zpg(zero=c(firstHalfZeros,Conj(firstHalfZeros)),pole=c(0),gain=0.00012511398639)",
@@ -1625,6 +1641,8 @@ $('#loadmessage').fadeOut(500).fadeIn(500, blink);
                                   "Arma(b=c(0.049922035,-0.095993537,0.050612699,-0.004408786),a=c(1,-2.494956002,2.017265875,-0.522189400))",
                                   "Zpg(pole=c(0.99572754,0.94790649,0.53567505),zero=c(0.98443604,0.83392334,0.07568359),gain=1)",
                                   "Arma(b=c(1,-0.939137),a=c(1,-0.1,-0.8))",
+                                  "Ma(b=c(-0.01877334400452212,0.0030135586664219974,0.032677234546254562,0.047093583340252425,0.026549517702290821,-0.027522224030017681,-0.085224875017083229,-0.099447435991926181,-0.03214726739831468,0.11903714817925418,0.31117641155547854,0.47200389556543276,0.53463207017815584,0.47200389556543276,0.31117641155547854,0.11903714817925418,-0.03214726739831468,-0.099447435991926181,-0.085224875017083229,-0.027522224030017681,0.026549517702290821,0.047093583340252425,0.032677234546254562,0.0030135586664219974,-0.01877334400452212))",
+                                  "D=2.4;N=3;a=rep(1,times=N);for (k in (0:N)) {a[k+1]=(-1)^k*choose(N,k)*{accu=1;for (i in 0:N) {accu=accu*(((D-N+i)/(D-N+k+i)))};accu}};Arma(b=rev(a),a=a)", # "Zpg(zero=c(6.59457337747154+10.2534695974275i,6.59457337747154-10.2534695974275i,-1.61771818351450),pole=c(-0.618154639164343,0.0443714372292301+0.0689902373636964i,0.0443714372292301-0.0689902373636964i),gain=0.00415923945335710)",
                                   "chebwin(n=50, at=100)",
                                   "kaiser(n=101, beta=0)",
                                   "kaiser(n=101, beta=50)",
@@ -1675,6 +1693,8 @@ $('#loadmessage').fadeOut(500).fadeIn(500, blink);
                                 "R=5;M=1;Arma(b=c(1,rep(0,times=R*M-1),-1), a=c(1,-(1-eps)))",
                                 "N=8;Zpg(zero=c(1,-1,1i,-1i,1/sqrt(2)+1/sqrt(2)*1i,1/sqrt(2)-1/sqrt(2)*1i,-1/sqrt(2)+1/sqrt(2)*1i,-1/sqrt(2)-1/sqrt(2)*1i), pole=c(1-eps), gain=1/N)",
                                 "Arma(b=c(1,0,0, 0.5^3), a=c(1,0,0,0,0, 0.9^5))",
+                                "K=8;alpha=0.9;Arma(b=c(1), a=c(1,rep(0,times=K-1),alpha))",
+                                "K=8;alpha=-1;Arma(b=c(1,rep(0,times=K-1),alpha), a=c(1))",
                                 "Arma(b=c(1,1), a=c(1,-(1-eps)))",
                                 "Zpg(zero=c(1), pole=c(-(1-eps)), gain=1)",
                                 "omega0=0.22*pi;D=2*pi/omega0;rho=0.99;Arma(b=c(1,rep(0,times=floor(D-1)),-1), a=c(1,rep(0,times=floor(D-1)),-(rho)^D))",
@@ -1707,6 +1727,9 @@ $('#loadmessage').fadeOut(500).fadeIn(500, blink);
                                 "cheby1(n=cheb1ord(Wp=0.3, Ws=0.34, Rp=0.5, Rs=29))",
                                 "ellip(n=ellipord(Wp=0.3, Ws=0.34, Rp=0.5, Rs=29))",
                                 "omegac=0.3;zeta=0.7;C=1/(tan(pi*omegac/2));b0=1/(1+2*zeta*C+C^2);Arma(b=c(b0,2*b0,b0),a=c(1,2*b0*(1-C^2),b0*(1-2*zeta*C+C^2)))",
+                                "L=30;N=L-1;f_type=1;f_para=0.6;w_type=2;M=(N-1)/2;n=0:(M-1);if (f_type==0) {omec1=0;omec2=pi;hd=(sin((n-M)*omec2)-sin((n-M)*omec1))/((n-M)*pi);hd=c(hd,(omec2-omec1)/pi,pracma::fliplr(as.matrix(t(hd))));f_type_name='all-pass';fparamstr='[0,+infty]'} else if (f_type==1) {omec=pi*f_para;hd=sin((n-M)*omec)/((n-M)*pi);hd=c(hd,omec/pi,pracma::fliplr(as.matrix(t(hd))));f_type_name='LPF';fparamstr=paste0('[0, ',toString(f_para[1]),'pi]')} else if (f_type==2) {omec=pi*f_para;hd=-sin((n-M)*omec)/((n-M)*pi);hd=c(hd,1-omec/pi,pracma::fliplr(as.matrix(t(hd))));f_type_name='HPF';fparamstr=paste0('[',toString(f_para[1]),'pi, +infty]')} else if (f_type==3) {omec1=pi*f_para[1];omec2=pi*f_para[2];hd=(sin((n-M)*omec2)-sin((n-M)*omec1))/((n-M)*pi);hd=c(hd,(omec2-omec1)/pi,pracma::fliplr(as.matrix(t(hd))));f_type_name='BPF';fparamstr=paste0('[',toString(f_para[1]),'pi, ',toString(f_para[2]),'pi]')} else if (f_type==4) {omec1=pi*f_para[1];omec2=pi*f_para[2];hd=(sin((n-M)*omec1)-sin((n-M)*omec2))/((n-M)*pi);hd=c(hd,1-(omec2-omec1)/pi,pracma::fliplr(as.matrix(t(hd))));f_type_name='BSF';fparamstr=paste0('[',toString(f_para[1]),'pi,',toString(f_para[2]),'pi]')};if (w_type==0) {w=matrix(data=1,nrow=1,ncol=N);w_type_name='(rect)'} else if (w_type==1) {w=0.5*(1-cos(pi*n/M));w=c(w,1,pracma::fliplr(as.matrix(t(w))));w_type_name='Hann'} else if (w_type == 2) {w=0.54-0.46*cos(pi*n/M);w=c(w,1,pracma::fliplr(as.matrix(t(w))));w_type_name='Hamm'} else if (w_type==3) {w=0.42-0.5*cos(pi*n/M)+0.08*cos(2*pi*n/M);w=c(w,1,pracma::fliplr(as.matrix(t(w))));w_type_name='Blckmn'} else if (w_type==4) {if (is.na(b)) {b=5};w=besselI(nu=0, x=b*sqrt(1-(n/M-1)^2))/besselI(nu=0,x=b);w=c(w,1,pracma::fliplr(as.matrix(t(w))));w_type_name=paste0('Kaiser,beta=',toString(b))};Ma(b=w*hd)",
+                                "L=70;N=L-1;f_type=3;f_para=c(0.35,0.65);w_type=4;b=5;M=(N-1)/2;n=0:(M-1);if (f_type==0) {omec1=0;omec2=pi;hd=(sin((n-M)*omec2)-sin((n-M)*omec1))/((n-M)*pi);hd=c(hd,(omec2-omec1)/pi,pracma::fliplr(as.matrix(t(hd))));f_type_name='all-pass';fparamstr='[0,+infty]'} else if (f_type==1) {omec=pi*f_para;hd=sin((n-M)*omec)/((n-M)*pi);hd=c(hd,omec/pi,pracma::fliplr(as.matrix(t(hd))));f_type_name='LPF';fparamstr=paste0('[0, ',toString(f_para[1]),'pi]')} else if (f_type==2) {omec=pi*f_para;hd=-sin((n-M)*omec)/((n-M)*pi);hd=c(hd,1-omec/pi,pracma::fliplr(as.matrix(t(hd))));f_type_name='HPF';fparamstr=paste0('[',toString(f_para[1]),'pi, +infty]')} else if (f_type==3) {omec1=pi*f_para[1];omec2=pi*f_para[2];hd=(sin((n-M)*omec2)-sin((n-M)*omec1))/((n-M)*pi);hd=c(hd,(omec2-omec1)/pi,pracma::fliplr(as.matrix(t(hd))));f_type_name='BPF';fparamstr=paste0('[',toString(f_para[1]),'pi, ',toString(f_para[2]),'pi]')} else if (f_type==4) {omec1=pi*f_para[1];omec2=pi*f_para[2];hd=(sin((n-M)*omec1)-sin((n-M)*omec2))/((n-M)*pi);hd=c(hd,1-(omec2-omec1)/pi,pracma::fliplr(as.matrix(t(hd))));f_type_name='BSF';fparamstr=paste0('[',toString(f_para[1]),'pi,',toString(f_para[2]),'pi]')};if (w_type==0) {w=matrix(data=1,nrow=1,ncol=N);w_type_name='(rect)'} else if (w_type==1) {w=0.5*(1-cos(pi*n/M));w=c(w,1,pracma::fliplr(as.matrix(t(w))));w_type_name='Hann'} else if (w_type == 2) {w=0.54-0.46*cos(pi*n/M);w=c(w,1,pracma::fliplr(as.matrix(t(w))));w_type_name='Hamm'} else if (w_type==3) {w=0.42-0.5*cos(pi*n/M)+0.08*cos(2*pi*n/M);w=c(w,1,pracma::fliplr(as.matrix(t(w))));w_type_name='Blckmn'} else if (w_type==4) {if (is.na(b)) {b=5};w=besselI(nu=0, x=b*sqrt(1-(n/M-1)^2))/besselI(nu=0,x=b);w=c(w,1,pracma::fliplr(as.matrix(t(w))));w_type_name=paste0('Kaiser,beta=',toString(b))};Ma(b=w*hd)",
+                                "L=72;N=L-1;f_type=4;f_para=c(0.3,0.7);w_type=4;b=5;M=(N-1)/2;n=0:(M-1);if (f_type==0) {omec1=0;omec2=pi;hd=(sin((n-M)*omec2)-sin((n-M)*omec1))/((n-M)*pi);hd=c(hd,(omec2-omec1)/pi,pracma::fliplr(as.matrix(t(hd))));f_type_name='all-pass';fparamstr='[0,+infty]'} else if (f_type==1) {omec=pi*f_para;hd=sin((n-M)*omec)/((n-M)*pi);hd=c(hd,omec/pi,pracma::fliplr(as.matrix(t(hd))));f_type_name='LPF';fparamstr=paste0('[0, ',toString(f_para[1]),'pi]')} else if (f_type==2) {omec=pi*f_para;hd=-sin((n-M)*omec)/((n-M)*pi);hd=c(hd,1-omec/pi,pracma::fliplr(as.matrix(t(hd))));f_type_name='HPF';fparamstr=paste0('[',toString(f_para[1]),'pi, +infty]')} else if (f_type==3) {omec1=pi*f_para[1];omec2=pi*f_para[2];hd=(sin((n-M)*omec2)-sin((n-M)*omec1))/((n-M)*pi);hd=c(hd,(omec2-omec1)/pi,pracma::fliplr(as.matrix(t(hd))));f_type_name='BPF';fparamstr=paste0('[',toString(f_para[1]),'pi, ',toString(f_para[2]),'pi]')} else if (f_type==4) {omec1=pi*f_para[1];omec2=pi*f_para[2];hd=(sin((n-M)*omec1)-sin((n-M)*omec2))/((n-M)*pi);hd=c(hd,1-(omec2-omec1)/pi,pracma::fliplr(as.matrix(t(hd))));f_type_name='BSF';fparamstr=paste0('[',toString(f_para[1]),'pi,',toString(f_para[2]),'pi]')};if (w_type==0) {w=matrix(data=1,nrow=1,ncol=N);w_type_name='(rect)'} else if (w_type==1) {w=0.5*(1-cos(pi*n/M));w=c(w,1,pracma::fliplr(as.matrix(t(w))));w_type_name='Hann'} else if (w_type == 2) {w=0.54-0.46*cos(pi*n/M);w=c(w,1,pracma::fliplr(as.matrix(t(w))));w_type_name='Hamm'} else if (w_type==3) {w=0.42-0.5*cos(pi*n/M)+0.08*cos(2*pi*n/M);w=c(w,1,pracma::fliplr(as.matrix(t(w))));w_type_name='Blckmn'} else if (w_type==4) {if (is.na(b)) {b=5};w=besselI(nu=0, x=b*sqrt(1-(n/M-1)^2))/besselI(nu=0,x=b);w=c(w,1,pracma::fliplr(as.matrix(t(w))));w_type_name=paste0('Kaiser,beta=',toString(b))};Ma(b=w*hd)",
                                 "omegac=0.2;omegacprime=tan(omegac*pi/2);cc=(omegacprime-1)/(omegacprime+1);Zpg(zero=c(-1/cc), pole=c(-cc), gain=cc)",
                                 "omegac=0.2;omegacprime=tan(omegac*pi/2);cc=(omegacprime-1)/(omegacprime+1);Zpg(zero=c(-1), pole=c(-cc), gain=cc/2)",
                                 "omegac=0.2;omegacprime=tan(omegac*pi/2);cc=(omegacprime-1)/(omegacprime+1);Zpg(zero=c(1), pole=c(-cc), gain=cc/2)",
@@ -1721,7 +1744,7 @@ $('#loadmessage').fadeOut(500).fadeIn(500, blink);
                                 "omegac=0.7;G=-15; K=tan(pi*omegac/2);cutV0  =10^(-G/20); b0=(1+sqrt(2)*K+K^2) /(cutV0+sqrt(2*cutV0)*K+cutV0*K^2); b1=2*(K^2-1)/(cutV0+sqrt(2*cutV0)*K+cutV0*K^2); b2=(1-sqrt(2)*K+K^2)/(cutV0+sqrt(2*cutV0)*K+cutV0*K^2); a1=2*(K^2/cutV0-1)/(1+sqrt(2/cutV0)*K+K^2/cutV0); a2=(1-sqrt(2/cutV0)*K+K^2/cutV0)/(1+sqrt(2/cutV0)*K+K^2/cutV0); Arma(b=c(b0,b1,b2),a=c(1,a1,a2))",
                                 "omegac=0.3;Q=1.25;G=15; K=tan(pi*omegac/2);boostV0=10^(G/20); b0=(1+(boostV0/Q)*K+K^2)/(1+(1/Q)*K+K^2); b1=2*(K^2-1)/(1+(1/Q)*K+K^2); b2=(1-(boostV0/Q)*K+K^2)/(1+(1/Q)*K+K^2); a1=b1; a2=(1-(1/Q)*K+K^2)/(1+(1/Q)*K+K^2); Arma(b=c(b0,b1,b2),a=c(1,a1,a2))",
                                 "omegac=0.3;Q=1.25;G=-15; K=tan(pi*omegac/2);cutV0  =10^(-G/20); b0=(1+(1/Q)*K+K^2)/(1+(cutV0/Q)*K+K^2); b1=2*(K^2-1)/(1+(cutV0/Q)*K+K^2); b2=(1-(1/Q)*K+K^2)/(1+(cutV0/Q)*K+K^2); a1=b1; a2=(1-(cutV0/Q)*K+K^2)/(1+(cutV0/Q)*K+K^2); Arma(b=c(b0,b1,b2),a=c(1,a1,a2))",
-                                "remez(n=15, f= c(0, 0.3, 0.4, 1), a= c(1,1, 0,0), ftype= \"bandpass\")",
+                                "L=16;remez(n=L-1, f= c(0, 0.3, 0.4, 1), a= c(1,1, 0,0), ftype= \"bandpass\")",
                                 "firstHalfCoef=c(0.034025544,0.006219216,-0.005305575,0.006128687,-0.005593423,0.00624262,-0.006848848,0.008979105,-0.008978654,0.017501073,-0.006953636,0.039774499,-0.064655981,0.085240952,-0.131292156);Ma(b=c(firstHalfCoef,0.195140968,rev(firstHalfCoef)))",
                                 "firstHalfCoef=c(0.00012511398639,0.00001335284427,0.00016015250121,0.00000634686622,0.00026201837991,0.00007281852105,0.00045629795460,0.00022819555936,0.00071588589103,0.00047316021190,0.00110189764986,0.00088563032407,0.00184819117706,0.00188050116629,0.00282392666400,0.00363976768981,0.00591155524557,0.00644303257612,0.01406190034797,0.00537162176461,0.03594691432517,0.06164502638211,0.08276620944465,0.13009560635626);Ma(b=c(firstHalfCoef,0.19452719610477,rev(firstHalfCoef)))",
                                 "firstHalfZeros=c(-1.27851808211318+0.62684824819101i,-1.36614299238589+0.27717114439577i,-1.07284006705681+0.91235620647926i,-0.77267104757162+1.12541933041583i,-0.44961436355736+1.22363585379352i,-0.20330452525073+1.29600355151311i,0.14750702212683+1.34841369533889i,0.50634734941036+1.25979827310114i,0.83329614995319+1.04982507756824i,1.04560310563666+0.67293837999034i,1.20771535897979+0.24059979456907i,0.95139216401989+0.56315210274529i,0.77837030003487+0.46073626392613i,0.79640192035334+0.15865836018951i,0.67627030631208+0.43523995090672i,0.46384030886663+0.58436750039291i,0.27466939387352+0.68338074343342i,0.08016782642482+0.73284236586261i,-0.11813451163119+0.75307102211071i,-0.26456653442537+0.72002392155667i,-0.41461446573694+0.60389882069075i,-0.70304843505842+0.14263861132902i,-0.63057376627246+0.30916579614562i,-0.54091513103870+0.46000078868751i);Zpg(zero=c(firstHalfZeros,Conj(firstHalfZeros)),pole=c(0),gain=0.00012511398639)",
@@ -1730,6 +1753,8 @@ $('#loadmessage').fadeOut(500).fadeIn(500, blink);
                                 "Arma(b=c(0.049922035,-0.095993537,0.050612699,-0.004408786),a=c(1,-2.494956002,2.017265875,-0.522189400))",
                                 "Zpg(pole=c(0.99572754,0.94790649,0.53567505),zero=c(0.98443604,0.83392334,0.07568359),gain=1)",
                                 "Arma(b=c(1,-0.939137),a=c(1,-0.1,-0.8))",
+                                "Ma(b=c(-0.01877334400452212,0.0030135586664219974,0.032677234546254562,0.047093583340252425,0.026549517702290821,-0.027522224030017681,-0.085224875017083229,-0.099447435991926181,-0.03214726739831468,0.11903714817925418,0.31117641155547854,0.47200389556543276,0.53463207017815584,0.47200389556543276,0.31117641155547854,0.11903714817925418,-0.03214726739831468,-0.099447435991926181,-0.085224875017083229,-0.027522224030017681,0.026549517702290821,0.047093583340252425,0.032677234546254562,0.0030135586664219974,-0.01877334400452212))",
+                                "D=2.4;N=3;a=rep(1,times=N);for (k in (0:N)) {a[k+1]=(-1)^k*choose(N,k)*{accu=1;for (i in 0:N) {accu=accu*(((D-N+i)/(D-N+k+i)))};accu}};Arma(b=rev(a),a=a)", # "Zpg(zero=c(6.59457337747154+10.2534695974275i,6.59457337747154-10.2534695974275i,-1.61771818351450),pole=c(-0.618154639164343,0.0443714372292301+0.0689902373636964i,0.0443714372292301-0.0689902373636964i),gain=0.00415923945335710)",
                                 "chebwin(n=50, at=100)",
                                 "kaiser(n=101, beta=0)",
                                 "kaiser(n=101, beta=50)",
@@ -2097,7 +2122,7 @@ $('#loadmessage').fadeOut(500).fadeIn(500, blink);
                           plotOutput(
                             outputId = "axes_mag",
                             width = "100%",
-                            height = "700px",
+                            height = "650px",
                             inline = FALSE,
                             hover = hoverOpts(
                               id = "magplot_hover",
@@ -2109,7 +2134,7 @@ $('#loadmessage').fadeOut(500).fadeIn(500, blink);
                           plotOutput(
                             outputId = "axes_magpassbandstopband",
                             width = "100%",
-                            height = "700px",
+                            height = "650px",
                             inline = FALSE
                           ),
                           tags$div(
@@ -2157,7 +2182,7 @@ $('#loadmessage').fadeOut(500).fadeIn(500, blink);
                               plotOutput(
                                 outputId = "axes_beamformer",
                                 width = "100%",
-                                height = "700px",
+                                height = "650px",
                                 inline = FALSE
                               )
                             )
@@ -2183,7 +2208,7 @@ $('#loadmessage').fadeOut(500).fadeIn(500, blink);
                           plotOutput(
                             outputId = "axes_phase",
                             width = "100%",
-                            height = "600px",
+                            height = "650px",
                             inline = FALSE
                           )
                         ),
@@ -2201,7 +2226,7 @@ $('#loadmessage').fadeOut(500).fadeIn(500, blink);
                           plotOutput(
                             outputId = "axes_grpdelay",
                             width = "100%",
-                            height = "600px",
+                            height = "650px",
                             inline = FALSE
                           )
                         )
@@ -2222,7 +2247,7 @@ $('#loadmessage').fadeOut(500).fadeIn(500, blink);
                           plotOutput(
                             outputId = "axes_imp",
                             width = "100%",
-                            height = "600px",
+                            height = "650px",
                             inline = FALSE
                           ),
                           uiOutput(outputId = "system_stable",
@@ -2549,7 +2574,7 @@ $('#loadmessage').fadeOut(500).fadeIn(500, blink);
                                 title = "tooltip: List of current b-coefficients",
                                 selectInput(
                                   inputId = "listbox_b",
-                                  label = "b Coefficients (moving-average MA)",
+                                  label = "b Coeff. (mov-avg MA, feed-forward)",
                                   choices = c("0"),
                                   selectize = FALSE,
                                   size = 10L
@@ -2609,7 +2634,7 @@ $('#loadmessage').fadeOut(500).fadeIn(500, blink);
                                 title = "tooltip: List of current a-coefficients",
                                 selectInput(
                                   inputId = "listbox_a",
-                                  label = "a Coefficients (autoregressive AR)",
+                                  label = "a Coeff. (auto-regressive AR, feedback)",
                                   choices = c("0"),
                                   selectize = FALSE,
                                   size = 10L
@@ -2756,13 +2781,13 @@ $('#loadmessage').fadeOut(500).fadeIn(500, blink);
                         # value = "",
                         # placeholder = "Enter R-commands here"
                         choices = c(
-                              `white-noise`='nSecsDuration=3;Fs=8000;xnWave=tuneR::noise(kind="white",duration=nSecsDuration*Fs,samp.rate=Fs);xn=xnWave@left;list(xn=xn,Fs=Fs)',
-                              `pinknoise`='nSecsDuration=3;Fs=8000;xnWave=tuneR::noise(kind="pink",duration=nSecsDuration*Fs,samp.rate=Fs);xn=xnWave@left;list(xn=xn,Fs=Fs)',
-                              `pulsed`='nSecsDuration=3;Fs=8000;frq=1;xnWave=tuneR::pulse(freq=frq,duration=nSecsDuration*Fs,samp.rate=Fs,width=0.1,plateau=0.2,interval=0.5);list(xn=xn,Fs=Fs)',
-                              `sawtooth`='nSecsDuration=3;Fs=8000;frq=1;xnWave=tuneR::sawtooth(freq=frq,duration=nSecsDuration*Fs,samp.rate=Fs);list(xn=xn,Fs=Fs)',
-                              `silence`='nSecsDuration=3;Fs=8000;xnWave=tuneR::silence(duration=nSecsDuration*Fs,samp.rate=Fs);list(xn=xn,Fs=Fs)',
-                              `sinewave`='nSecsDuration=3;Fs=8000;frq=1;xnWave=tuneR::sine(freq=frq,duration=nSecsDuration*Fs,samp.rate=Fs);list(xn=xn,Fs=Fs)',
-                              `squarewave`='nSecsDuration=3;Fs=8000;frq=1;xnWave=tuneR::squarewave(freq=frq,duration=nSecsDuration*Fs,samp.rate=Fs,up=0.5);list(xn=xn,Fs=Fs)',
+                              `white-noise`='nSecsDuration=3;Fs=8000;xnWave=tuneR::noise(kind="white",duration=nSecsDuration*Fs,samp.rate=Fs,xunit="samples");xn=xnWave@left;list(xn=xn,Fs=Fs)',
+                              `pinknoise`='nSecsDuration=3;Fs=8000;xnWave=tuneR::noise(kind="pink",duration=nSecsDuration*Fs,samp.rate=Fs,xunit="samples");xn=xnWave@left;list(xn=xn,Fs=Fs)',
+                              `pulsed`='nSecsDuration=3;Fs=8000;frq=1;xnWave=tuneR::pulse(freq=frq,from=0,duration=nSecsDuration*Fs,samp.rate=Fs,width=0.1,plateau=0.2,interval=0.5,xunit="samples");xn=xnWave@left;list(xn=xn,Fs=Fs)',
+                              `sawtooth`='nSecsDuration=3;Fs=8000;frq=1;xnWave=tuneR::sawtooth(freq=frq,from=0,duration=nSecsDuration*Fs,samp.rate=Fs,reverse=FALSE,xunit="samples");xn=xnWave@left;list(xn=xn,Fs=Fs)',
+                              `silence`='nSecsDuration=3;Fs=8000;xnWave=tuneR::silence(from=0,duration=nSecsDuration*Fs,samp.rate=Fs,xunit="samples");xn=xnWave@left;list(xn=xn,Fs=Fs)',
+                              `sinewave`='nSecsDuration=3;Fs=8000;frq=1;xnWave=tuneR::sine(freq=frq,from=0,duration=nSecsDuration*Fs,samp.rate=Fs,xunit="samples");xn=xnWave@left;list(xn=xn,Fs=Fs)',
+                              `squarewave`='nSecsDuration=3;Fs=8000;frq=1;xnWave=tuneR::square(freq=frq,from=0,duration=nSecsDuration*Fs,samp.rate=Fs,up=0.5,xunit="samples");xn=xnWave@left;list(xn=xn,Fs=Fs)',
                               `heavisine`='nSecsDuration=3;Fs=8000;xn=rwt::makesig(SIGNAL.HEAVI.SINE,N=nSecsDuration*Fs)$x;list(xn=xn,Fs=Fs)',
                               `bumps`='nSecsDuration=3;Fs=8000;xn=rwt::makesig(SIGNAL.BUMPS,N=nSecsDuration*Fs)$x;list(xn=xn,Fs=Fs)',
                               `blocks`='nSecsDuration=3;Fs=8000;xn=rwt::makesig(SIGNAL.BLOCKS,N=nSecsDuration*Fs)$x;list(xn=xn,Fs=Fs)',
@@ -2778,7 +2803,7 @@ $('#loadmessage').fadeOut(500).fadeIn(500, blink);
                               `mishmash`='nSecsDuration=3;Fs=8000;xn=rwt::makesig(SIGNAL.MISH.MASH,N=nSecsDuration*Fs)$x;list(xn=xn,Fs=Fs)',
                               `wernersorrows`='nSecsDuration=3;Fs=8000;xn=rwt::makesig(SIGNAL.WERNER.SORROWS,N=nSecsDuration*Fs)$x;list(xn=xn,Fs=Fs)',
                               `leopold`='nSecsDuration=3;Fs=8000;xn=rwt::makesig(SIGNAL.LEOPOLD,N=nSecsDuration*Fs)$x;list(xn=xn,Fs=Fs)',
-                              `sinc-function`='nSamples=1024;Fs=(nSamples-1)/20;nSecsDuration=3;tn=seq(0,nSecsDuration,by=1/Fs);xn=rep(1,times=nSamples);for (i in 1:nSamples) {if (abs(tn[i])<(2*eps)) {xn[i]=1} else {xn[i]=sin(pi*tn[i])/(pi*tn[i])}};list(xn=xn,Fs=Fs)',
+                              `shifted sinc-function`='nSamples=1000000;nSecsDuration=40;Fs=(nSamples-1)/(nSecsDuration);tn=seq(0,nSecsDuration,by=1/Fs);xn=rep(1,times=nSamples);for (i in 1:nSamples) {if (abs(tn[i]-nSecsDuration/2)<(2*eps)) {xn[i]=1} else {xn[i]=sin(pi*(tn[i]-nSecsDuration/2))/(pi*(tn[i]-nSecsDuration/2))}};list(xn=xn,Fs=Fs)',
                               `sum of multiple sine-waves` = 'nSecsDuration=3;Fs=8000;tn=seq(0,nSecsDuration,by=1/Fs);xn=5+1.5*sin(0.2*pi*tn)+1.3*cos(0.4*pi*tn)-0.9*sin(0.5*pi*tn)-0.5*cos(0.6*pi*tn);list(xn=xn,Fs=Fs)',
                               `Doppler (audible-range)`='nSecsDuration=4;Fs=8000;tn=seq(0,nSecsDuration,by=1/Fs);f0Hz=1000;xn=sqrt(tn*(nSecsDuration-tn))*sin((2*pi*f0Hz*1.05)/(tn+0.05));list(xn=xn,Fs=Fs)'
                               # ,`( random-signal from this list )` = paste0(
@@ -2897,7 +2922,7 @@ $('#loadmessage').fadeOut(500).fadeIn(500, blink);
                          plotOutput(
                            outputId = "specgrams",
                            width = "100%",
-                           height = "600px",
+                           height = "650px",
                            inline = FALSE
                          ),
                        shinyBS::bsCollapse(
@@ -2906,17 +2931,19 @@ $('#loadmessage').fadeOut(500).fadeIn(500, blink);
                             value = "audioTimePanelCollapse1",
                             title = "Audio Time-Domain Panel (click to expand/ collapse):",
                             style = "info",
-                       tags$head(tags$style(
-                              paste0(
-                                "#signaltimeplots{height:",
-                                verticalHeightOfPlots,
-                                " !important;}"
-                              )
-                            )),
+                            if (scalePlotsToVerticalHeight) {
+                              tags$head(tags$style(
+                                paste0(
+                                  "#signaltimeplots{height:",
+                                  verticalHeightOfPlots,
+                                  " !important;}"
+                                )
+                              ))
+                              },
                          plotOutput(
                            outputId = "signaltimeplots",
                            width = "100%",
-                           height = "600px",
+                           height = "650px",
                            inline = FALSE
                          )
                           ))
@@ -3663,8 +3690,8 @@ You can put anything into `absolutePanel`, including any Shiny inputs and output
       # rwtsgnl <- rwt::makesig(SIGNAL.HEAVI.SINE,N=nSecsDuration*Fs)$x
       rwtsgnl <- sigsmtx[input$audiogeneratorsignal,]
       # print(round(32767 * rwtsgnl/max(abs(rwtsgnl)))[1:100])
-      handles$generatorWave <- tuneR::Wave(left=as.matrix(round(32767 * rwtsgnl/max(abs(rwtsgnl))),
-                                                          nrow=length(rwtsgnl)),
+      handles$generatorWave <- tuneR::Wave(left=matrix(data=round(32767 * rwtsgnl/max(abs(rwtsgnl))),
+                                                          ncol=1), # nrow=length(rwtsgnl)),
                                            samp.rate=Fs,
                                            bit=16,
                                            pcm=TRUE
@@ -3673,7 +3700,7 @@ You can put anything into `absolutePanel`, including any Shiny inputs and output
     #   Fs <- 16000
     #   nSecsDuration <- 4
     #   rwtsgnl <- rwt::makesig(SIGNAL.BUMPS,N=nSecsDuration*Fs)$x
-    #   handles$generatorWave <- tuneR::Wave(left=as.matrix(round(32767 * rwtsgnl/max(abs(rwtsgnl)))),
+    #   handles$generatorWave <- tuneR::Wave(left=matrix(data=round(32767 * rwtsgnl/max(abs(rwtsgnl)))),
     #                                        samp.rate=Fs,
     #                                        bit=16,
     #                                        pcm=TRUE
@@ -3682,7 +3709,7 @@ You can put anything into `absolutePanel`, including any Shiny inputs and output
     #   Fs <- 16000
     #   nSecsDuration <- 4
     #   rwtsgnl <- rwt::makesig(SIGNAL.BLOCKS,N=nSecsDuration*Fs)$x
-    #   handles$generatorWave <- tuneR::Wave(left=as.matrix(round(32767 * rwtsgnl/max(abs(rwtsgnl)))),
+    #   handles$generatorWave <- tuneR::Wave(left=matrix(data=round(32767 * rwtsgnl/max(abs(rwtsgnl)))),
     #                                        samp.rate=Fs,
     #                                        bit=16,
     #                                        pcm=TRUE
@@ -3691,7 +3718,7 @@ You can put anything into `absolutePanel`, including any Shiny inputs and output
     #   Fs <- 16000
     #   nSecsDuration <- 4
     #   rwtsgnl <- rwt::makesig(SIGNAL.DOPPLER,N=nSecsDuration*Fs)$x
-    #   handles$generatorWave <- tuneR::Wave(left=as.matrix(round(32767 * rwtsgnl/max(abs(rwtsgnl)))),
+    #   handles$generatorWave <- tuneR::Wave(left=matrix(data=round(32767 * rwtsgnl/max(abs(rwtsgnl)))),
     #                                        samp.rate=Fs,
     #                                        bit=16,
     #                                        pcm=TRUE
@@ -3700,7 +3727,7 @@ You can put anything into `absolutePanel`, including any Shiny inputs and output
     #   Fs <- 16000
     #   nSecsDuration <- 4
     #   rwtsgnl <- rwt::makesig(SIGNAL.RAMP,N=nSecsDuration*Fs)$x
-    #   handles$generatorWave <- tuneR::Wave(left=as.matrix(round(32767 * rwtsgnl/max(abs(rwtsgnl)))),
+    #   handles$generatorWave <- tuneR::Wave(left=matrix(data=round(32767 * rwtsgnl/max(abs(rwtsgnl)))),
     #                                        samp.rate=Fs,
     #                                        bit=16,
     #                                        pcm=TRUE
@@ -3709,7 +3736,7 @@ You can put anything into `absolutePanel`, including any Shiny inputs and output
     #   Fs <- 16000
     #   nSecsDuration <- 4
     #   rwtsgnl <- rwt::makesig(SIGNAL.CUSP,N=nSecsDuration*Fs)$x
-    #   handles$generatorWave <- tuneR::Wave(left=as.matrix(round(32767 * rwtsgnl/max(abs(rwtsgnl)))),
+    #   handles$generatorWave <- tuneR::Wave(left=matrix(data=round(32767 * rwtsgnl/max(abs(rwtsgnl)))),
     #                                        samp.rate=Fs,
     #                                        bit=16,
     #                                        pcm=TRUE
@@ -3718,7 +3745,7 @@ You can put anything into `absolutePanel`, including any Shiny inputs and output
     #   Fs <- 16000
     #   nSecsDuration <- 4
     #   rwtsgnl <- rwt::makesig(SIGNAL.SING,N=nSecsDuration*Fs)$x
-    #   handles$generatorWave <- tuneR::Wave(left=as.matrix(round(32767 * rwtsgnl/max(abs(rwtsgnl)))),
+    #   handles$generatorWave <- tuneR::Wave(left=matrix(data=round(32767 * rwtsgnl/max(abs(rwtsgnl)))),
     #                                        samp.rate=Fs,
     #                                        bit=16,
     #                                        pcm=TRUE
@@ -3727,7 +3754,7 @@ You can put anything into `absolutePanel`, including any Shiny inputs and output
     #   Fs <- 16000
     #   nSecsDuration <- 4
     #   rwtsgnl <- rwt::makesig(SIGNAL.HI.SINE,N=nSecsDuration*Fs)$x
-    #   handles$generatorWave <- tuneR::Wave(left=as.matrix(round(32767 * rwtsgnl/max(abs(rwtsgnl)))),
+    #   handles$generatorWave <- tuneR::Wave(left=matrix(data=round(32767 * rwtsgnl/max(abs(rwtsgnl)))),
     #                                        samp.rate=Fs,
     #                                        bit=16,
     #                                        pcm=TRUE
@@ -3736,7 +3763,7 @@ You can put anything into `absolutePanel`, including any Shiny inputs and output
     #   Fs <- 16000
     #   nSecsDuration <- 4
     #   rwtsgnl <- rwt::makesig(SIGNAL.LO.SINE,N=nSecsDuration*Fs)$x
-    #   handles$generatorWave <- tuneR::Wave(left=as.matrix(round(32767 * rwtsgnl/max(abs(rwtsgnl)))),
+    #   handles$generatorWave <- tuneR::Wave(left=matrix(data=round(32767 * rwtsgnl/max(abs(rwtsgnl)))),
     #                                        samp.rate=Fs,
     #                                        bit=16,
     #                                        pcm=TRUE
@@ -3745,7 +3772,7 @@ You can put anything into `absolutePanel`, including any Shiny inputs and output
     #   Fs <- 16000
     #   nSecsDuration <- 4
     #   rwtsgnl <- rwt::makesig(SIGNAL.LIN.CHIRP,N=nSecsDuration*Fs)$x
-    #   handles$generatorWave <- tuneR::Wave(left=as.matrix(round(32767 * rwtsgnl/max(abs(rwtsgnl)))),
+    #   handles$generatorWave <- tuneR::Wave(left=matrix(data=round(32767 * rwtsgnl/max(abs(rwtsgnl)))),
     #                                        samp.rate=Fs,
     #                                        bit=16,
     #                                        pcm=TRUE
@@ -3754,7 +3781,7 @@ You can put anything into `absolutePanel`, including any Shiny inputs and output
     #   Fs <- 16000
     #   nSecsDuration <- 4
     #   rwtsgnl <- rwt::makesig(SIGNAL.TWO.CHIRP,N=nSecsDuration*Fs)$x
-    #   handles$generatorWave <- tuneR::Wave(left=as.matrix(round(32767 * rwtsgnl/max(abs(rwtsgnl)))),
+    #   handles$generatorWave <- tuneR::Wave(left=matrix(data=round(32767 * rwtsgnl/max(abs(rwtsgnl)))),
     #                                        samp.rate=Fs,
     #                                        bit=16,
     #                                        pcm=TRUE
@@ -3763,7 +3790,7 @@ You can put anything into `absolutePanel`, including any Shiny inputs and output
     #   Fs <- 16000
     #   nSecsDuration <- 4
     #   rwtsgnl <- rwt::makesig(SIGNAL.QUAD.CHIRP,N=nSecsDuration*Fs)$x
-    #   handles$generatorWave <- tuneR::Wave(left=as.matrix(round(32767 * rwtsgnl/max(abs(rwtsgnl)))),
+    #   handles$generatorWave <- tuneR::Wave(left=matrix(data=round(32767 * rwtsgnl/max(abs(rwtsgnl)))),
     #                                        samp.rate=Fs,
     #                                        bit=16,
     #                                        pcm=TRUE
@@ -3772,7 +3799,7 @@ You can put anything into `absolutePanel`, including any Shiny inputs and output
     #   Fs <- 16000
     #   nSecsDuration <- 4
     #   rwtsgnl <- rwt::makesig(SIGNAL.MISH.MASH,N=nSecsDuration*Fs)$x
-    #   handles$generatorWave <- tuneR::Wave(left=as.matrix(round(32767 * rwtsgnl/max(abs(rwtsgnl)))),
+    #   handles$generatorWave <- tuneR::Wave(left=matrix(data=round(32767 * rwtsgnl/max(abs(rwtsgnl)))),
     #                                        samp.rate=Fs,
     #                                        bit=16,
     #                                        pcm=TRUE
@@ -3781,7 +3808,7 @@ You can put anything into `absolutePanel`, including any Shiny inputs and output
     #   Fs <- 16000
     #   nSecsDuration <- 4
     #   rwtsgnl <- rwt::makesig(SIGNAL.WERNER.SORROWS,N=nSecsDuration*Fs)$x
-    #   handles$generatorWave <- tuneR::Wave(left=as.matrix(round(32767 * rwtsgnl/max(abs(rwtsgnl)))),
+    #   handles$generatorWave <- tuneR::Wave(left=matrix(data=round(32767 * rwtsgnl/max(abs(rwtsgnl)))),
     #                                        samp.rate=Fs,
     #                                        bit=16,
     #                                        pcm=TRUE
@@ -3790,7 +3817,7 @@ You can put anything into `absolutePanel`, including any Shiny inputs and output
     #   Fs <- 16000
     #   nSecsDuration <- 4
     #   rwtsgnl <- rwt::makesig(SIGNAL.LEOPOLD,N=nSecsDuration*Fs)$x
-    #   handles$generatorWave <- tuneR::Wave(left=as.matrix(round(32767 * rwtsgnl/max(abs(rwtsgnl)))),
+    #   handles$generatorWave <- tuneR::Wave(left=matrix(data=round(32767 * rwtsgnl/max(abs(rwtsgnl)))),
     #                                        samp.rate=Fs,
     #                                        bit=16,
     #                                        pcm=TRUE
@@ -3798,9 +3825,12 @@ You can put anything into `absolutePanel`, including any Shiny inputs and output
     } else if (input$audiogeneratorsignal=='custom') {
       xFsList <- try(eval(parse(text=input$edit_customsignalText)),silent=TRUE)
       if (!is.list(xFsList)) return()
-      xcustom <- xFsList$xn
+      xcustom <- matrix(xFsList$xn,ncol=1) # nrow=length(xFsList$xn))
+      # print(str(xcustom))
+      # print(str(matrix(round(32767 * xcustom/max(abs(xcustom))),ncol=1))) # ,nrow=length(xcustom))
       Fscustom <- xFsList$Fs
-      handles$generatorWave <- tuneR::Wave(left=as.matrix(round(32767 * xcustom/max(abs(xcustom)))),
+      handles$generatorWave <- tuneR::Wave(left=matrix(data=round(32767 * xcustom/max(abs(xcustom))),
+                                                          ncol=1), # nrow=length(xcustom),
                                            samp.rate=Fscustom,
                                            bit=16,
                                            pcm=TRUE
@@ -3820,15 +3850,15 @@ You can put anything into `absolutePanel`, including any Shiny inputs and output
       # print(handles$generatorWave)
       # print(input$audiogeneratorsignal)
       ygen <- handles$generatorWave@left
-      objWave <- tuneR::Wave(left=as.matrix(round(32767 * ygen/max(abs(ygen))),
-                                          nrow=length(ygen)),
+      objWave <- tuneR::Wave(left=matrix(data=round(32767 * ygen/max(abs(ygen))),
+                                          ncol=1), # nrow=length(ygen)),
                            samp.rate=Fs,
                            bit=16,
                            pcm=TRUE
                            )
       tdir <- "www"
       tfile <- file.path(tdir, paste0(tools::file_path_sans_ext(input$audiogeneratorsignal),".wav"))
-      cat(file=stderr(),"L3786 input$audiogeneratorsignal:",input$audiogeneratorsignal,".\n")
+      # cat(file=stderr(),"L3786 input$audiogeneratorsignal:",input$audiogeneratorsignal,".\n")
       if (!file.exists(tfile)
           # || (input$audiogeneratorsignal=="custom")
           ) {
@@ -3884,8 +3914,8 @@ You can put anything into `absolutePanel`, including any Shiny inputs and output
         nBits <- objMP3@bit
         # SIZEwav <- length(y)
         
-        Wobj <- tuneR::Wave(left=as.matrix(round(32767 * y/max(abs(y))),
-                                           nrow=length(y)), 
+        Wobj <- tuneR::Wave(left=matrix(data=round(32767 * y/max(abs(y))),
+                                           ncol=1), 
                             samp.rate = as.numeric(Fs), 
                             bit = 16, 
                             pcm = TRUE)
@@ -3919,8 +3949,8 @@ You can put anything into `absolutePanel`, including any Shiny inputs and output
         nBits <- 16 # assumed!?!?
         # updateNumericInput(session, inputId = "samplingfreq", value = Fs)
         
-        Wobj <- tuneR::Wave(left=as.matrix(round(32767 * y/max(abs(y))),
-                                           nrow=length(y)), 
+        Wobj <- tuneR::Wave(left=matrix(data=round(32767 * y/max(abs(y))),
+                                           ncol=1), 
                             samp.rate = as.numeric(Fs), 
                             bit = 16, 
                             pcm = TRUE)
@@ -3963,7 +3993,7 @@ You can put anything into `absolutePanel`, including any Shiny inputs and output
     # cat(file=stderr(),"L3261 head(yfiltered), before normalization:",head(yfiltered),".\n")
     # yfiltered <- tuneR::normalize(as.vector(yfiltered), unit=1) # yfiltered/max(yfiltered) # 
     
-    # Wobj <- tuneR::Wave(left=as.matrix(round(32767 * yfiltered/max(abs(yfiltered)))), samp.rate = as.numeric(Fs), bit = 16, pcm = TRUE)
+    # Wobj <- tuneR::Wave(left=matrix(data=round(32767 * yfiltered/max(abs(yfiltered)))), samp.rate = as.numeric(Fs), bit = 16, pcm = TRUE)
     # # print(Wobj)
     # # tdir <- tempdir()
     # tdir <- "www"
@@ -4062,8 +4092,8 @@ You can put anything into `absolutePanel`, including any Shiny inputs and output
       nBits <- objMP3@bit
       # SIZEwav <- length(y)
       
-      Wobj <- tuneR::Wave(left=as.matrix(round(32767 * y/max(abs(y))),
-                                         nrow=length(y)), 
+      Wobj <- tuneR::Wave(left=matrix(data=round(32767 * y/max(abs(y))),
+                                         ncol=1), 
                           samp.rate = as.numeric(Fs), 
                           bit = 16, 
                           pcm = TRUE)
@@ -4097,8 +4127,8 @@ You can put anything into `absolutePanel`, including any Shiny inputs and output
 
       # updateNumericInput(session, inputId = "samplingfreq", value = Fs)
       
-      Wobj <- tuneR::Wave(left=as.matrix(round(32767 * y/max(abs(y))),
-                                         nrow=length(y)), 
+      Wobj <- tuneR::Wave(left=matrix(data=round(32767 * y/max(abs(y))),
+                                         ncol=1), 
                           samp.rate = as.numeric(Fs), 
                           bit = 16, 
                           pcm = TRUE)
@@ -4139,8 +4169,8 @@ You can put anything into `absolutePanel`, including any Shiny inputs and output
     # cat(file=stderr(),"max(yfiltered...):",max(32767 * yfiltered/max(abs(yfiltered))),".\n")
     # cat(file=stderr(),"min(yfiltered...):",min(32767 * yfiltered/max(abs(yfiltered))),".\n")
 
-    Wobj <- tuneR::Wave(left=as.matrix(round(32767 * yfiltered/max(abs(yfiltered))),
-                                       nrow=length(yfiltered)), 
+    Wobj <- tuneR::Wave(left=matrix(data=round(32767 * yfiltered/max(abs(yfiltered))),
+                                       ncol=1), # nrow=length(yfiltered)), 
                         samp.rate = as.numeric(Fs), 
                         bit = 16, 
                         pcm = TRUE)
@@ -4188,7 +4218,7 @@ You can put anything into `absolutePanel`, including any Shiny inputs and output
     #   # }
     # })
     # # Wobj <- tuneR::Wave(left=tuneR::normalize(as.vector(trunc(yfiltered)),unit=16), samp.rate = Fs, bit = 16, pcm = TRUE)
-    # Wobj <- tuneR::Wave(left=as.matrix(round(32767 * yfiltered/max(abs(yfiltered)))), samp.rate = Fs, bit = 16, pcm = TRUE)
+    # Wobj <- tuneR::Wave(left=matrix(data=round(32767 * yfiltered/max(abs(yfiltered)))), samp.rate = Fs, bit = 16, pcm = TRUE)
     # # print(Wobj)
     # # Wobj <- tuneR::Wave(left=t(t(yfiltered)), samp.rate = Fs, bit = 16, pcm = TRUE)
     # tdir <- tempdir()
@@ -4438,8 +4468,8 @@ You can put anything into `absolutePanel`, including any Shiny inputs and output
       #if (interactive()) tuneR::play(objMP3)
       # Sys.sleep(1)
       
-      Wobj <- tuneR::Wave(left=as.matrix(round(32767 * y/max(abs(y))),
-                                         nrow=length(y)), 
+      Wobj <- tuneR::Wave(left=matrix(data=round(32767 * y/max(abs(y))),
+                                         ncol=1), 
                           samp.rate = as.numeric(Fs), 
                           bit = 16, 
                           pcm = TRUE)
@@ -4474,8 +4504,8 @@ You can put anything into `absolutePanel`, including any Shiny inputs and output
 
       # updateNumericInput(session, inputId = "samplingfreq", value = Fs)
       
-      Wobj <- tuneR::Wave(left=as.matrix(round(32767 * y/max(abs(y))),
-                                         nrow=length(y)), 
+      Wobj <- tuneR::Wave(left=matrix(data=round(32767 * y/max(abs(y))),
+                                         ncol=1), 
                           samp.rate = as.numeric(Fs), 
                           bit = 16, 
                           pcm = TRUE)
@@ -4546,8 +4576,8 @@ You can put anything into `absolutePanel`, including any Shiny inputs and output
     
     yfiltered <- signal::filter(filt=input$edit_gain*handlesb(), a=handlesa(), y)
     
-    objWave <- tuneR::Wave(left=as.matrix(round(32767 * yfiltered/max(abs(yfiltered))),
-                                          nrow=length(yfiltered)),
+    objWave <- tuneR::Wave(left=matrix(data=round(32767 * yfiltered/max(abs(yfiltered))),
+                                          ncol=1), # nrow=length(yfiltered)),
                            samp.rate=Fs,
                            bit=16,
                            pcm=TRUE
@@ -4595,7 +4625,7 @@ You can put anything into `absolutePanel`, including any Shiny inputs and output
     # cat(file=stderr(),"L3462 head(yfiltered), before normalization:",head(yfiltered),".\n")
     # yfiltered <- tuneR::normalize(as.vector(yfiltered), unit=1) # yfiltered/max(yfiltered) # 
     
-    # Wobj <- tuneR::Wave(left=as.matrix(round(32767 * yfiltered/max(abs(yfiltered)))), samp.rate = Fs, bit = 16, pcm = TRUE)
+    # Wobj <- tuneR::Wave(left=matrix(data=round(32767 * yfiltered/max(abs(yfiltered)))), samp.rate = Fs, bit = 16, pcm = TRUE)
     # # print(Wobj)
     # tdir <- tempdir()
     # tdir <- "www"
@@ -4651,10 +4681,7 @@ You can put anything into `absolutePanel`, including any Shiny inputs and output
     
    # output$signaltimeplots ----
   output$signaltimeplots <- renderPlot(width = "auto", height = "auto", {
-    par(mfrow = c(2, 2))
-    # par(mgp = c(2.5, 1, 0)) # line for axis-title, axis-labels and axis-line
-    # par(mar=c(1, 1, 1, 1)) # c(bottom, left, top, right)
-        if (input$inputsignalsource=="file") { 
+    if (input$inputsignalsource=="file") { 
     if (is.null(input$filenameAudio$name) || (!nzchar(input$filenameAudio$name, keepNA = FALSE))) {return()}
     if (tools::file_ext(input$filenameAudio$name) == "wav") {
       objWav <- try(tuneR::readWave(input$filenameAudio$name),silent=TRUE)
@@ -4681,8 +4708,8 @@ You can put anything into `absolutePanel`, including any Shiny inputs and output
       #if (interactive()) tuneR::play(objMP3)
       # Sys.sleep(1)
       
-      Wobj <- tuneR::Wave(left=as.matrix(round(32767 * y/max(abs(y))),
-                                         nrow=length(y)), 
+      Wobj <- tuneR::Wave(left=matrix(data=round(32767 * y/max(abs(y))),
+                                         ncol=1), 
                           samp.rate = as.numeric(Fs), 
                           bit = 16, 
                           pcm = TRUE)
@@ -4717,8 +4744,8 @@ You can put anything into `absolutePanel`, including any Shiny inputs and output
 
       # updateNumericInput(session, inputId = "samplingfreq", value = Fs)
       
-      Wobj <- tuneR::Wave(left=as.matrix(round(32767 * y/max(abs(y))),
-                                         nrow=length(y)), 
+      Wobj <- tuneR::Wave(left=matrix(data=round(32767 * y/max(abs(y))),
+                                         ncol=1), 
                           samp.rate = as.numeric(Fs), 
                           bit = 16, 
                           pcm = TRUE)
@@ -4795,8 +4822,9 @@ You can put anything into `absolutePanel`, including any Shiny inputs and output
     # print(head(yfiltered))
     # yfiltered <- tuneR::normalize(tuneR::Wave(left=as.vector(yfiltered,mode="numeric"))) # yfiltered/max(yfiltered) # 
 
+    par(mfrow = c(2, 2))
     # par(mgp = c(2.5, 1, 0)) # line for axis-title, axis-labels and axis-line
-    par(mar=c(5, 3, 4, 2)) # c(bottom, left, top, right)
+    par(mar=c(4.5, 2.5, 3.5, 2)) # c(bottom, left, top, right)
     
     # y <- y/max(abs(y)) * 1.0 #  tuneR::normalize(as.vector(y),unit=1) # 
     plot(
@@ -4805,7 +4833,7 @@ You can put anything into `absolutePanel`, including any Shiny inputs and output
       type="l",
       col="blue",
       main='Time-Domain Plot -- Original Signal',
-      xlab='Time (s)',
+      xlab='Time (s) (shifted to begin at zero)',
       ylab=""
     )
     grid(); abline(h=0); abline(v=0)
@@ -4816,11 +4844,11 @@ You can put anything into `absolutePanel`, including any Shiny inputs and output
 
     plot(
       (0:(length(yfiltered)-1))/Fs, # length(y)/Fs*(0:length(y))/Fs,
-      yfiltered, # /45, # huh!??!? -- must normalize the amplitudes somehow?
+      yfiltered, # /45, # huh!??!? -- perhaps, must normalize the amplitudes somehow?
       type="l",
       col="red",
       main='Time-Domain Plot -- Filtered Signal',
-      xlab='Time (s)',
+      xlab='Time (s) (shifted to begin at zero)',
       ylab=""
     )
     grid(); abline(h=0); abline(v=0)
@@ -4868,8 +4896,8 @@ You can put anything into `absolutePanel`, including any Shiny inputs and output
       #if (interactive()) tuneR::play(objMP3)
       # Sys.sleep(1)
       
-      Wobj <- tuneR::Wave(left=as.matrix(round(32767 * y/max(abs(y))),
-                                         nrow=length(y)), 
+      Wobj <- tuneR::Wave(left=matrix(data=round(32767 * y/max(abs(y))),
+                                         ncol=1), 
                           samp.rate = as.numeric(Fs), 
                           bit = 16, 
                           pcm = TRUE)
@@ -4904,8 +4932,8 @@ You can put anything into `absolutePanel`, including any Shiny inputs and output
 
       # updateNumericInput(session, inputId = "samplingfreq", value = Fs)
       
-      Wobj <- tuneR::Wave(left=as.matrix(round(32767 * y/max(abs(y))),
-                                         nrow=length(y)), 
+      Wobj <- tuneR::Wave(left=matrix(data=round(32767 * y/max(abs(y))),
+                                         ncol=1), 
                           samp.rate = as.numeric(Fs), 
                           bit = 16, 
                           pcm = TRUE)
@@ -4986,14 +5014,14 @@ You can put anything into `absolutePanel`, including any Shiny inputs and output
     # y <- y/max(abs(y)) * 1.0 #  tuneR::normalize(as.vector(y),unit=1) #   
     
 minSpgFreq <- trunc(input$stretchyslider3range[1] * (Fs/2)) # /(input$samplingfreq/2) # max(c(0.25* 44100/2, 0.01* Fs/2 ) )  # Hz - min-frequency to display
-maxSpgFreq <- trunc(input$stretchyslider3range[2] * (Fs/2)) # /(input$samplingfreq/2) # min(c(Fs/2, 0.75* 44100/2 ) ) # Hz - max-frequency to display
+maxSpgFreq <- trunc(input$stretchyslider3range[2] * (Fs/2)) # /(input$samplingfreq/2) # min(c(Fs/2, 0.80* 44100/2 ) ) # Hz - max-frequency to display
 
 # print(minSpgFreq)
 # print(maxSpgFreq)
 
-step <- trunc(0.005*Fs)
+step <- max(c(trunc(0.005*Fs),2))
 #windowW <- trunc(40*Fs/1000)          # 40 ms data window
-windowW <- trunc(0.040*Fs)
+windowW <- max(c(trunc(0.040*Fs),2))
 fftn <- 2^ceiling(log2(abs(windowW))) # next highest power of 2
 #fftn <- trunc(0.020*Fs)
 #spg= specgram(wav$sound, fftn, Fs, windowW, windowW-step)
@@ -5098,9 +5126,9 @@ abline(h=input$slider1, #  / (Fs/2) * input$samplingfreq, # /(maxSpgFreq/if (inp
        col = "magenta", lty="dashed")
 
 
-step <- trunc(0.005*Fs)
+step <- max(c(trunc(0.005*Fs),2))
 #windowW <- trunc(40*Fs/1000)          # 40 ms data window
-windowW <- trunc(0.040*Fs)
+windowW <- max(c(trunc(0.040*Fs),2))
 fftn <- 2^ceiling(log2(abs(windowW))) # next highest power of 2
 #fftn <- trunc(0.020*Fs)
 #spg= specgram(wav$sound, fftn, Fs, windowW, windowW-step)
@@ -5250,7 +5278,7 @@ abline(h=input$slider1, # (maxSpgFreq-minSpgFreq)*(input$slider1-minSpgFreq/ (Fs
   #     label = "Frequency-Range",
   #     min = 0.0,
   #     max = 1.0 * input$samplingfreq / 2,
-  #     value = c(0.01,0.75) * input$samplingfreq / 2,
+  #     value = c(0.01,0.80) * input$samplingfreq / 2,
   #     step = 0.01 * input$samplingfreq / 2,
   #     ticks = TRUE,
   #     animate = animationOptions(interval = 300, loop = FALSE),
@@ -5264,7 +5292,7 @@ abline(h=input$slider1, # (maxSpgFreq-minSpgFreq)*(input$slider1-minSpgFreq/ (Fs
       label = "Frequency-Range",
       min = handles$minslider3range,
       max = handles$maxslider3range,
-      value = c(0.01, 0.75) * input$samplingfreq / 2,
+      value = c(0.01, 0.80) * input$samplingfreq / 2,
       step = handles$inputstretchyslider3step, # 0.01,
       ticks = TRUE,
       animate = animationOptions(interval = 300, loop = FALSE),
@@ -6062,7 +6090,7 @@ abline(h=input$slider1, # (maxSpgFreq-minSpgFreq)*(input$slider1-minSpgFreq/ (Fs
                    }
                    else {
                      showNotification(
-                       ui = "Value is too small...",
+                       ui = "Value is too small (or clear the edit-field of the zero-value)...",
                        duration = 3L,
                        closeButton = TRUE,
                        type = "message"
@@ -9284,8 +9312,7 @@ license()
   handlesb <- reactive({
     updateSelectInput(session,
                       inputId = "listbox_b",
-                      choices = round(pracma::Poly(handles$zeroloc),
-                                      6L))
+                      choices = round(pracma::Poly(handles$zeroloc), 6L))
     shinyjs::disable(id = "listbox_b")
     rawcalc <- pracma::Poly(handles$zeroloc)
     rawcalc
@@ -9422,7 +9449,7 @@ license()
     renderPlot(width = "auto", height = "auto", {
       req(input$slider1)
       nc <- 100L
-      cc <- 1L * exp((0L + (0 + 1i)) * 2 * pi * c(0L:(nc - 1L)) / (nc - 1L))
+      cc <- 1L * exp((0L + (0 + 1i)) * 2 * pi * c(0L:(nc - 1L)) / (nc - 1L)) # unit-circle
       usr1 <- par("usr")[1]
       usr2 <- par("usr")[2]
       usr3 <- par("usr")[3]
@@ -9456,7 +9483,7 @@ license()
                 na.rm = TRUE
               ), na.rm = TRUE))
       plot(
-        1L * cc,
+        1L * cc, # unit-circle
         type = if (input$showUnitCircle) {
           "l"
         }
@@ -9593,7 +9620,7 @@ license()
         lines(r * cc, lty = "dotted", col = if (input$polargrid) {input$grcolor} else {"transparent"})
       }
       lines(
-        1L * cc,
+        1L * cc, # unit-circle
         lty = if (input$showUnitCircle) {
           "solid"
         }
@@ -10247,7 +10274,7 @@ license()
                {
                  nc <- 100L
                  cc <-
-                   1L * exp((0L + (0 + 1i)) * 2 * pi * c(0L:(nc - 1L)) / (nc - 1L))
+                   1L * exp((0L + (0 + 1i)) * 2 * pi * c(0L:(nc - 1L)) / (nc - 1L)) # unit-circle
                  usr1 <- par("usr")[1]
                  usr2 <- par("usr")[2]
                  usr3 <- par("usr")[3]
@@ -10285,7 +10312,7 @@ license()
                    ylims <- ranges$y
                  }
                  plot(
-                   1L * cc,
+                   1L * cc, # unit-circle
                    type = if (input$showUnitCircle) {
                      "l"
                    }
@@ -10407,7 +10434,7 @@ license()
                  }
                  if (input$showUnitCircle) {
                    lines(
-                     1L * cc,
+                     1L * cc, # unit-circle
                      lty = if (input$showUnitCircle) {
                        "solid"
                      }
@@ -10647,7 +10674,7 @@ license()
                {
                  nc <- 100L
                  cc <-
-                   1L * exp((0L + (0 + 1i)) * 2 * pi * c(0L:(nc - 1L)) / (nc - 1L))
+                   1L * exp((0L + (0 + 1i)) * 2 * pi * c(0L:(nc - 1L)) / (nc - 1L)) # unit-circle
                  pracma::polar(
                    Arg(cc),
                    Mod(cc),
@@ -10765,16 +10792,16 @@ license()
                  axis(side = 2L)
                  if (input$showUnitCircle) {
                    lines(
-                     sin(seq(
+                     1L * sin(seq(
                        from = 0L,
                        to = 2 * pi,
                        by = 2 * pi / 40L
                      )),
-                     cos(seq(
+                     1L * cos(seq(
                        from = 0L,
                        to = 2 * pi,
                        by = 2 * pi / 40L
-                     )),
+                     )), # unit-circle
                      col = input$ForegroundColor,
                      lty = "solid",
                      lwd = input$LineWidth
@@ -10954,7 +10981,7 @@ license()
                      print(
                        x$points3d(
                          1L * cos(rv$f + pi / 2),
-                         1L * sin(rv$f + pi / 2),
+                         1L * sin(rv$f + pi / 2), # unit-circle
                          20 * log10(Mod(rv$h)),
                          color = "red",
                          labels = "freq-response",
@@ -11109,7 +11136,7 @@ license()
                    if (input$showUnitCircle) {
                      rgl::plot3d(
                        1L * cos(rv$f),
-                       1L * sin(rv$f),
+                       1L * sin(rv$f), # unit-circle
                        20 * log10(Mod(input$edit_gain * rvh)),
                        type = "h",
                        col = "red",
@@ -11436,7 +11463,7 @@ license()
         if (input$showUnitCircle) {
           rgl::plot3d(
             1L * cos(rv$f + pi / 2),
-            1L * sin(rv$f + pi / 2),
+            1L * sin(rv$f + pi / 2), # unit-circle
             20 * log10(Mod(input$edit_gain * rv$h)),
             type = "h",
             col = "red",
@@ -14432,7 +14459,7 @@ labels=expression(-6*pi,-11*pi/2,-5*pi,-9L*pi/2,-4*pi,-7*pi/2,-3*pi,-5*pi/2,-2L*
       }
       else {
         showNotification(
-          ui = "Value is too small...",
+          ui = "Value is too small (or clear the edit-field of the zero-value)...",
           duration = 3,
           closeButton = TRUE,
           type = "message"
@@ -14486,7 +14513,7 @@ labels=expression(-6*pi,-11*pi/2,-5*pi,-9L*pi/2,-4*pi,-7*pi/2,-3*pi,-5*pi/2,-2L*
       }
       else {
         showNotification(
-          ui = "Value is too small...",
+          ui = "Value is too small (or clear the edit-field of the zero-value)...",
           duration = 3,
           closeButton = TRUE,
           type = "message"
@@ -14770,7 +14797,7 @@ labels=expression(-6*pi,-11*pi/2,-5*pi,-9L*pi/2,-4*pi,-7*pi/2,-3*pi,-5*pi/2,-2L*
       }
       else {
         showNotification(
-          ui = "Value is too small...",
+          ui = "Value is too small (or clear the edit-field of the zero-value)...",
           duration = 3,
           closeButton = TRUE,
           type = "message"
@@ -15116,7 +15143,7 @@ labels=expression(-6*pi,-11*pi/2,-5*pi,-9L*pi/2,-4*pi,-7*pi/2,-3*pi,-5*pi/2,-2L*
       }
       else {
         showNotification(
-          ui = "Value is too small...",
+          ui = "Value is too small (or clear the edit-field of the zero-value)...",
           duration = 3,
           closeButton = TRUE,
           type = "message"
@@ -15187,7 +15214,7 @@ labels=expression(-6*pi,-11*pi/2,-5*pi,-9L*pi/2,-4*pi,-7*pi/2,-3*pi,-5*pi/2,-2L*
       }
       else {
         showNotification(
-          ui = "Value is too small...",
+          ui = "Value is too small (or clear the edit-field of the zero-value)...",
           duration = 3,
           closeButton = TRUE,
           type = "message"
