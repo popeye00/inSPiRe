@@ -31,6 +31,7 @@ library(tools) # file_ext, file_path_sans_ext
 library(rwt) # makesig
 # library(matlab) # meshgrid (3D)
 # library(Matrix) # sparseMatrix
+library(astsa) # data("soi") # Southern-Oscillation Index (SOI), 453 months, 1950-1987 # data("nyse") # New York Stock Exchange, 2/Feb/84 to 31/Dec/91
 
 # Constant-Symbol Definitions ---------------------------------------- ----
 
@@ -1467,7 +1468,7 @@ $('#loadmessage').fadeOut(500).fadeIn(500, blink);
                               `Chebyshev I, order 5, 3dB ripple, BSF, 0.3 to 0.65` = "cheby1(n=5,Rp=3,W=c(0.3,0.65),type=\"stop\")",
                               `Sinusoidal/ Oscillator/ Resonator, 2 poles on imag-axis, near unit-circle, frq=0.5` = "Arma(b=c(1), a=c(1,0,(1-eps)))",
                               `Sinusoidal/ Oscillator/ Resonator, 2 conjugate-poles, frq=ray-slider` = "theta=input$slider1;Zpg(zero=c(0), pole=0.99999999999999*c(exp(theta*pi*1i),exp(-theta*pi*1i)), gain=1)",
-                              `L-point Moving-Average FIR, L=5` = "FftFilter(rep(1/5,times=5),n=512)$b",
+                              `L-point Moving-Average FIR, L=5` = "L=5;FftFilter(rep(1/L,times=L),n=512)$b",
                               `Delay-Line (three-terms) 'IIR-equivalent' CIC Mov-Avg filter, N=5` = "N=5;Arma(b=c(1/N,rep(0,times=N-1),-1/N),a=c(1,-(1-eps)))",
                               `Echo/Slapback-effects (delay-line comb), N=450 Samples (at Fs; needs ~10-50msecs)` = "N=450;Arma(b=c(1/N,rep(0,times=N-1),-1/N),a=c(1))",
                               `Cascaded Integrator-Comb CIC (MovAvg FIR), delay R=5 (b,a)` = "R=5;M=1;Arma(b=c(1,rep(0,times=R*M-1),-1), a=c(1,-(1-eps)))",
@@ -1550,7 +1551,7 @@ $('#loadmessage').fadeOut(500).fadeIn(500, blink);
                               `vonHann(ing)-window (raised-cosine, sine-squared), 41-point` = "hanning(41)",
                               `Hamming-window, 41-point` = "hamming(41)",
                               `Triangle-window (Bartlett, but no zero-endpoint), 41-point` = "triang(41)",
-                              `Windowed-Sinc (e.g. using Blackman), 19-point, 0.3` = "N=18;leftside=sin(pi*(0.3*(-(N/2):(-1))))/(pi*(0.3*(-(N/2):(-1))));c(leftside,1,rev(leftside))*blackman(N+1)", # "N=18;sinc(0.3*(-(N/2):(N/2)))*0.3*blackman(N+1)",
+                              `Windowed-Sinc (e.g. using Hamming), 11-point, 0.3` = "N=19;leftside=sin(pi*(0.3*(-(N/2):(-1))))/(pi*(0.3*(-(N/2):(-1))));c(leftside,1,rev(leftside))*hamming(N+1)", # "N=18;sinc(0.3*(-(N/2):(N/2)))*0.3*blackman(N+1)",
                               `Spencer 15-point Moving-Average FIR` = "spencerFilter()",
                               `Spencer 15-point MA FIR, given b` = "Ma(b=c(-3, -6, -5, 3, 21, 46, 67, 74, 67, 46, 21, 3, -5, -6, -3) / 320)",
                               `( random-filter from this list )` = paste0(
@@ -1658,7 +1659,7 @@ $('#loadmessage').fadeOut(500).fadeIn(500, blink);
                                   "hanning(41)",
                                   "hamming(41)",
                                   "triang(41)",
-                                  "N=18;leftside=sin(pi*(0.3*(-(N/2):(-1))))/(pi*(0.3*(-(N/2):(-1))));c(leftside,1,rev(leftside))*blackman(N+1)", # "N=18;sinc(0.3*(-(N/2):(N/2)))*0.3*blackman(N+1)",
+                                  "N=19;leftside=sin(pi*(0.3*(-(N/2):(-1))))/(pi*(0.3*(-(N/2):(-1))));c(leftside,1,rev(leftside))*hamming(N+1)", # "N=18;sinc(0.3*(-(N/2):(N/2)))*0.3*blackman(N+1)",
                                   "spencerFilter()",
                                   "Ma(b=c(-3, -6, -5, 3, 21, 46, 67, 74, 67, 46, 21, 3, -5, -6, -3) / 320)",
                                   sep = "','"
@@ -1770,7 +1771,7 @@ $('#loadmessage').fadeOut(500).fadeIn(500, blink);
                                 "hanning(41)",
                                 "hamming(41)",
                                 "triang(41)",
-                                "N=18;leftside=sin(pi*(0.3*(-(N/2):(-1))))/(pi*(0.3*(-(N/2):(-1))));c(leftside,1,rev(leftside))*blackman(N+1)", # "N=18;sinc(0.3*(-(N/2):(N/2)))*0.3*blackman(N+1)",
+                                "N=19;leftside=sin(pi*(0.3*(-(N/2):(-1))))/(pi*(0.3*(-(N/2):(-1))));c(leftside,1,rev(leftside))*hamming(N+1)", # "N=18;sinc(0.3*(-(N/2):(N/2)))*0.3*blackman(N+1)",
                                 "spencerFilter()",
                                 "Ma(b=c(-3, -6, -5, 3, 21, 46, 67, 74, 67, 46, 21, 3, -5, -6, -3) / 320)"
                               ),
@@ -2727,6 +2728,12 @@ $('#loadmessage').fadeOut(500).fadeIn(500, blink);
                         `Mish-Mash (Donoho)`="mishmash",
                         `Werner-sorrows (Heisenburg)`="wernersorrows",
                         `Leopold (Kronecker, 0.37t)`="leopold",
+                        `Southern-Oscill. '50-'87, 453mths=37.75yrs soi (astsa)`="astsasoi",
+                        `Cardiovasc.-mortality, 508wks=9.77yrs, '70-'79 (astsa)`="astsacmort",
+                        `Star-magnitude, 600days=19.6mths (astsa)`="astsastar",
+                        `NYSE '84-'91, 2000days=7.94yrs (21days/mth) (astsa)`="astsanyse",
+                        `Sunspots, 1749-2014, 3177mths=264.75yrs`="sunspotmonthly",
+                        `Simulated ARIMA(p=2,d=0,q=2) filtered-noise`="arimapdq",
                         `(custom)`="custom"
                       ),
                       selected = "whitenoise",
@@ -2783,29 +2790,35 @@ $('#loadmessage').fadeOut(500).fadeIn(500, blink);
                         # placeholder = "Enter R-commands here"
                         choices = c(
                               `white-noise`='nSecsDuration=3;Fs=8000;xnWave=tuneR::noise(kind="white",duration=nSecsDuration*Fs,samp.rate=Fs,xunit="samples");xn=xnWave@left;list(xn=xn,Fs=Fs)',
-                              `pinknoise`='nSecsDuration=3;Fs=8000;xnWave=tuneR::noise(kind="pink",duration=nSecsDuration*Fs,samp.rate=Fs,xunit="samples");xn=xnWave@left;list(xn=xn,Fs=Fs)',
+                              `pink-noise`='nSecsDuration=3;Fs=8000;xnWave=tuneR::noise(kind="pink",duration=nSecsDuration*Fs,samp.rate=Fs,xunit="samples");xn=xnWave@left;list(xn=xn,Fs=Fs)',
                               `pulsed`='nSecsDuration=3;Fs=8000;frq=1;xnWave=tuneR::pulse(freq=frq,from=0,duration=nSecsDuration*Fs,samp.rate=Fs,width=0.1,plateau=0.2,interval=0.5,xunit="samples");xn=xnWave@left;list(xn=xn,Fs=Fs)',
-                              `sawtooth`='nSecsDuration=3;Fs=8000;frq=1;xnWave=tuneR::sawtooth(freq=frq,from=0,duration=nSecsDuration*Fs,samp.rate=Fs,reverse=FALSE,xunit="samples");xn=xnWave@left;list(xn=xn,Fs=Fs)',
+                              `saw-tooth`='nSecsDuration=3;Fs=8000;frq=1;xnWave=tuneR::sawtooth(freq=frq,from=0,duration=nSecsDuration*Fs,samp.rate=Fs,reverse=FALSE,xunit="samples");xn=xnWave@left;list(xn=xn,Fs=Fs)',
                               `silence`='nSecsDuration=3;Fs=8000;xnWave=tuneR::silence(from=0,duration=nSecsDuration*Fs,samp.rate=Fs,xunit="samples");xn=xnWave@left;list(xn=xn,Fs=Fs)',
-                              `sinewave`='nSecsDuration=3;Fs=8000;frq=1;xnWave=tuneR::sine(freq=frq,from=0,duration=nSecsDuration*Fs,samp.rate=Fs,xunit="samples");xn=xnWave@left;list(xn=xn,Fs=Fs)',
-                              `squarewave`='nSecsDuration=3;Fs=8000;frq=1;xnWave=tuneR::square(freq=frq,from=0,duration=nSecsDuration*Fs,samp.rate=Fs,up=0.5,xunit="samples");xn=xnWave@left;list(xn=xn,Fs=Fs)',
-                              `heavisine`='nSecsDuration=3;Fs=8000;xn=rwt::makesig(SIGNAL.HEAVI.SINE,N=nSecsDuration*Fs)$x;list(xn=xn,Fs=Fs)',
+                              `sine-wave`='nSecsDuration=3;Fs=8000;frq=1;xnWave=tuneR::sine(freq=frq,from=0,duration=nSecsDuration*Fs,samp.rate=Fs,xunit="samples");xn=xnWave@left;list(xn=xn,Fs=Fs)',
+                              `square-wave`='nSecsDuration=3;Fs=8000;frq=1;xnWave=tuneR::square(freq=frq,from=0,duration=nSecsDuration*Fs,samp.rate=Fs,up=0.5,xunit="samples");xn=xnWave@left;list(xn=xn,Fs=Fs)',
+                              `heavi-sine`='nSecsDuration=3;Fs=8000;xn=rwt::makesig(SIGNAL.HEAVI.SINE,N=nSecsDuration*Fs)$x;list(xn=xn,Fs=Fs)',
                               `bumps`='nSecsDuration=3;Fs=8000;xn=rwt::makesig(SIGNAL.BUMPS,N=nSecsDuration*Fs)$x;list(xn=xn,Fs=Fs)',
                               `blocks`='nSecsDuration=3;Fs=8000;xn=rwt::makesig(SIGNAL.BLOCKS,N=nSecsDuration*Fs)$x;list(xn=xn,Fs=Fs)',
                               `doppler`='nSecsDuration=3;Fs=8000;xn=rwt::makesig(SIGNAL.DOPPLER,N=nSecsDuration*Fs)$x;list(xn=xn,Fs=Fs)',
                               `ramp`='nSecsDuration=3;Fs=8000;xn=rwt::makesig(SIGNAL.RAMP,N=nSecsDuration*Fs)$x;list(xn=xn,Fs=Fs)',
                               `cusp`='nSecsDuration=3;Fs=8000;xn=rwt::makesig(SIGNAL.CUSP,N=nSecsDuration*Fs)$x;list(xn=xn,Fs=Fs)',
                               `sing`='nSecsDuration=3;Fs=8000;xn=rwt::makesig(SIGNAL.SING,N=nSecsDuration*Fs)$x;list(xn=xn,Fs=Fs)',
-                              `hisine`='nSecsDuration=3;Fs=8000;xn=rwt::makesig(SIGNAL.HI.SINE,N=nSecsDuration*Fs)$x;list(xn=xn,Fs=Fs)',
-                              `losine`='nSecsDuration=3;Fs=8000;xn=rwt::makesig(SIGNAL.LO.SINE,N=nSecsDuration*Fs)$x;list(xn=xn,Fs=Fs)',
-                              `linchirp`='nSecsDuration=3;Fs=8000;xn=rwt::makesig(SIGNAL.LIN.CHIRP,N=nSecsDuration*Fs)$x;list(xn=xn,Fs=Fs)',
-                              `twochirp`='nSecsDuration=3;Fs=8000;xn=rwt::makesig(SIGNAL.TWO.CHIRP,N=nSecsDuration*Fs)$x;list(xn=xn,Fs=Fs)',
-                              `quadchirp`='nSecsDuration=3;Fs=8000;xn=rwt::makesig(SIGNAL.QUAD.CHIRP,N=nSecsDuration*Fs)$x;list(xn=xn,Fs=Fs)',
-                              `mishmash`='nSecsDuration=3;Fs=8000;xn=rwt::makesig(SIGNAL.MISH.MASH,N=nSecsDuration*Fs)$x;list(xn=xn,Fs=Fs)',
+                              `hi-sine`='nSecsDuration=3;Fs=8000;xn=rwt::makesig(SIGNAL.HI.SINE,N=nSecsDuration*Fs)$x;list(xn=xn,Fs=Fs)',
+                              `lo-sine`='nSecsDuration=3;Fs=8000;xn=rwt::makesig(SIGNAL.LO.SINE,N=nSecsDuration*Fs)$x;list(xn=xn,Fs=Fs)',
+                              `lin-chirp`='nSecsDuration=3;Fs=8000;xn=rwt::makesig(SIGNAL.LIN.CHIRP,N=nSecsDuration*Fs)$x;list(xn=xn,Fs=Fs)',
+                              `two-chirp`='nSecsDuration=3;Fs=8000;xn=rwt::makesig(SIGNAL.TWO.CHIRP,N=nSecsDuration*Fs)$x;list(xn=xn,Fs=Fs)',
+                              `quadratic-chirp`='nSecsDuration=3;Fs=8000;xn=rwt::makesig(SIGNAL.QUAD.CHIRP,N=nSecsDuration*Fs)$x;list(xn=xn,Fs=Fs)',
+                              `mish-mash`='nSecsDuration=3;Fs=8000;xn=rwt::makesig(SIGNAL.MISH.MASH,N=nSecsDuration*Fs)$x;list(xn=xn,Fs=Fs)',
                               `wernersorrows`='nSecsDuration=3;Fs=8000;xn=rwt::makesig(SIGNAL.WERNER.SORROWS,N=nSecsDuration*Fs)$x;list(xn=xn,Fs=Fs)',
                               `leopold`='nSecsDuration=3;Fs=8000;xn=rwt::makesig(SIGNAL.LEOPOLD,N=nSecsDuration*Fs)$x;list(xn=xn,Fs=Fs)',
+                              `astsa-soi`='xn=astsa::soi;Fs=(length(xn)/0.3775);list(xn=xn,Fs=Fs)',
+                              `astsa-cmort`='xn=astsa::cmort;Fs=(length(xn)/0.508);list(xn=xn,Fs=Fs)',
+                              `astsa-star`='xn=astsa::star;Fs=(length(xn)/0.197);list(xn=xn,Fs=Fs)',
+                              `astsa-nyse`='xn=astsa::nyse;Fs=(length(xn)/0.794);list(xn=xn,Fs=Fs)',
+                              `sunspot-monthly`='xn=datasets::sunspot.month;Fs=(length(xn)/0.265);list(xn=xn,Fs=Fs)',
+                              `arima(2,0,2) noise`='N=1024;Fs=4000;b=c(-0.2279,0.2488);a=c(0.8897,-0.4858);Tseasonal=12;xn=arima.sim(n=N,list(order=c(2,0,2),ma=b,ar=a,seasonal=list(order=c(0,0,0),period=Tseasonal)),rand.gen=rnorm,sd=sqrt(0.1796));list(xn=xn,Fs=Fs)',
                               `shifted sinc-function`='nSamples=1000000;nSecsDuration=40;Fs=(nSamples-1)/(nSecsDuration);tn=seq(0,nSecsDuration,by=1/Fs);xn=rep(1,times=nSamples);for (i in 1:nSamples) {if (abs(tn[i]-nSecsDuration/2)<(2*eps)) {xn[i]=1} else {xn[i]=sin(pi*(tn[i]-nSecsDuration/2))/(pi*(tn[i]-nSecsDuration/2))}};list(xn=xn,Fs=Fs)',
-                              `sum of multiple sine-waves` = 'nSecsDuration=3;Fs=8000;tn=seq(0,nSecsDuration,by=1/Fs);xn=5+1.5*sin(0.2*pi*tn)+1.3*cos(0.4*pi*tn)-0.9*sin(0.5*pi*tn)-0.5*cos(0.6*pi*tn);list(xn=xn,Fs=Fs)',
+                              `a sum of five-tonals (sine-waves)`='nSecsDuration=3;Fs=8000;tn=seq(0,nSecsDuration,by=1/Fs);xn=5+1.5*sin(0.2*Fs*pi*tn)+1.3*cos(0.4*Fs*pi*tn)-0.9*sin(0.5*Fs*pi*tn)-0.5*cos(0.6*Fs*pi*tn);list(xn=xn,Fs=Fs)',
                               `Doppler (audible-range)`='nSecsDuration=4;Fs=8000;tn=seq(0,nSecsDuration,by=1/Fs);f0Hz=1000;xn=sqrt(tn*(nSecsDuration-tn))*sin((2*pi*f0Hz*1.05)/(tn+0.05));list(xn=xn,Fs=Fs)'
                               # ,`( random-signal from this list )` = paste0(
                               #   "sample(c('",
@@ -3823,6 +3836,88 @@ You can put anything into `absolutePanel`, including any Shiny inputs and output
     #                                        bit=16,
     #                                        pcm=TRUE
     #                                        )
+    } else if (input$audiogeneratorsignal=="astsasoi") {
+      data("soi", package="astsa", verbose=FALSE)
+      Fs <- (length(astsa::soi)/0.3775)
+      astsasgnl <- astsa::soi
+      nSecsDuration <- length(astsasgnl)/Fs
+      handles$generatorWave <- 
+        tuneR::Wave(left=matrix(data=round(32767 * astsasgnl/max(abs(astsasgnl))),
+                                                          ncol=1), # nrow=length(rwtsgnl)),
+                                           samp.rate=Fs,
+                                           bit=16,
+                                           pcm=TRUE
+                                           )
+    } else if (input$audiogeneratorsignal=="astsacmort") {
+      data("cmort", package="astsa", verbose=FALSE)
+      Fs <- (length(astsa::cmort)/0.508)
+      astsasgnl <- astsa::cmort
+      nSecsDuration <- length(astsasgnl)/Fs
+      handles$generatorWave <- 
+        tuneR::Wave(left=matrix(data=round(32767 * astsasgnl/max(abs(astsasgnl))),
+                                                          ncol=1), # nrow=length(rwtsgnl)),
+                                           samp.rate=Fs,
+                                           bit=16,
+                                           pcm=TRUE
+                                           )
+    } else if (input$audiogeneratorsignal=="astsastar") {
+      data("star", package="astsa", verbose=FALSE)
+      Fs <- (length(astsa::star)/0.197)
+      astsasgnl <- astsa::star
+      nSecsDuration <- length(astsasgnl)/Fs
+      handles$generatorWave <- 
+        tuneR::Wave(left=matrix(data=round(32767 * astsasgnl/max(abs(astsasgnl))),
+                                                          ncol=1), # nrow=length(rwtsgnl)),
+                                           samp.rate=Fs,
+                                           bit=16,
+                                           pcm=TRUE
+                                           )
+    } else if (input$audiogeneratorsignal=="astsanyse") {
+      data("nyse", package="astsa", verbose=FALSE)
+      Fs <- (length(astsa::nyse)/0.794)
+      astsasgnl <- astsa::nyse
+      nSecsDuration <- length(astsasgnl)/Fs
+      handles$generatorWave <- 
+        tuneR::Wave(left=matrix(data=round(32767 * astsasgnl/max(abs(astsasgnl))),
+                                                          ncol=1), # nrow=length(rwtsgnl)),
+                                           samp.rate=Fs,
+                                           bit=16,
+                                           pcm=TRUE
+                                           )
+    } else if (input$audiogeneratorsignal=="sunspotmonthly") {
+      data("sunspot.month", package="datasets", verbose=FALSE)
+      Fs <- (length(datasets::sunspot.month)/0.265)
+      datasetssgnl <- datasets::sunspot.month
+      nSecsDuration <- length(datasetssgnl)/Fs
+      handles$generatorWave <- 
+        tuneR::Wave(left=matrix(data=round(32767 * datasetssgnl/max(abs(datasetssgnl))),
+                                                          ncol=1), # nrow=length(rwtsgnl)),
+                                           samp.rate=Fs,
+                                           bit=16,
+                                           pcm=TRUE
+                                           )
+    } else if (input$audiogeneratorsignal=="arimapdq") {
+      Fs <- 4000
+      N=1024
+      b=c(-0.2279,0.2488)
+      a=c(0.8897,-0.4858)
+      Tseasonal=12
+      arimapdqsgnl <- arima.sim(n=N,list(order=c(2,0,2),
+                                         ma=b,ar=a
+                                         ,seasonal=list(order=c(0,0,0),
+                                                        period=Tseasonal)
+                                         ),
+                                rand.gen=rnorm,
+                                sd=sqrt(0.1796)
+                                )
+      nSecsDuration <- length(arimapdqsgnl)/Fs
+      handles$generatorWave <- 
+        tuneR::Wave(left=matrix(data=round(32767 * arimapdqsgnl/max(abs(arimapdqsgnl))),
+                                                          ncol=1), # nrow=length(rwtsgnl)),
+                                           samp.rate=Fs,
+                                           bit=16,
+                                           pcm=TRUE
+                                           )
     } else if (input$audiogeneratorsignal=='custom') {
       xFsList <- try(eval(parse(text=input$edit_customsignalText)),silent=TRUE)
       if (!is.list(xFsList)) return()
@@ -4312,6 +4407,12 @@ You can put anything into `absolutePanel`, including any Shiny inputs and output
                                             "mishmash",
                                             "wernersorrows",
                                             "leopold"
+                                            ,"astsasoi"
+                                            ,"astsastar"
+                                            ,"astsacmort"
+                                            ,"astsanyse"
+                                            ,"sunspotmonthly"
+                                            ,"arimapdq"
                                             ,"custom"
                                             )
           ) {
@@ -4554,6 +4655,12 @@ You can put anything into `absolutePanel`, including any Shiny inputs and output
                                             "mishmash",
                                             "wernersorrows",
                                             "leopold"
+                                            ,"astsasoi"
+                                            ,"astsastar"
+                                            ,"astsacmort"
+                                            ,"astsanyse"
+                                            ,"sunspotmonthly"
+                                            ,"arimapdq"
                                             ,"custom"
                                             )
           ) {
@@ -4794,6 +4901,12 @@ You can put anything into `absolutePanel`, including any Shiny inputs and output
                                             "mishmash",
                                             "wernersorrows",
                                             "leopold"
+                                            ,"astsasoi"
+                                            ,"astsastar"
+                                            ,"astsacmort"
+                                            ,"astsanyse"
+                                            ,"sunspotmonthly"
+                                            ,"arimapdq"
                                             ,"custom"
                                             )
           ) {
@@ -4982,6 +5095,12 @@ You can put anything into `absolutePanel`, including any Shiny inputs and output
                                             "mishmash",
                                             "wernersorrows",
                                             "leopold"
+                                            ,"astsasoi"
+                                            ,"astsastar"
+                                            ,"astsacmort"
+                                            ,"astsanyse"
+                                            ,"sunspotmonthly"
+                                            ,"arimapdq"
                                             ,"custom"
                                             )
           ) {
