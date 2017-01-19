@@ -31,4 +31,9 @@ RStudio Team. RStudio: Integrated Development Environment for R. RStudio, Inc., 
 
 J.O. Smith. Introduction to digital filters: with audio applications, volume 2. 2008. website: https://www.dsprelated.com/freebooks/filters/.
 
+J.O. Smith. Spectral Audio Signal Processing. Online book, 2011 edition, website: https://ccrma.stanford.edu/~jos/sasp/sasp.html.
+
 S.W. Smith. The scientist and engineer’s guide to digital signal processing. 1997. website: http://www.DSPguide.com.
+
+R.H. Shumway and D.S. Stoffer. Time series analysis and its applications: with
+R examples. Springer, New York, 3rd edition, 2011. website: http://www.stat.pitt.edu/stoffer/tsa4/
