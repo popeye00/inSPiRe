@@ -26,12 +26,13 @@ library(devtools) # session_info
 library(png)
 library(webshot) # appshot
 library(audio) # play
-library(tuneR) # readWave, readMP3, writeWave, noise, pulse, sawtooth, silence, sine, square
+library(tuneR) # readWave, readMP3, writeWave, noise, pulse, sawtooth, silence, sine, square, periodogram
 library(tools) # file_ext, file_path_sans_ext
 library(rwt) # makesig
 # library(matlab) # meshgrid (3D)
 # library(Matrix) # sparseMatrix
 library(astsa) # data("soi") # Southern-Oscillation Index (SOI), 453 months, 1950-1987 # data("nyse") # New York Stock Exchange, 2/Feb/84 to 31/Dec/91
+# library(seewave) # localpeaks, spec, meanspec
 
 # Constant-Symbol Definitions ---------------------------------------- ----
 
@@ -97,7 +98,7 @@ sinc <- function(x) {
 }
 
 stripImagZero <- function(x) {
-  if (max(abs(Im(x))) < .Machine$double.eps ^ 0.5) {
+  if (max(abs(Im(x)),na.rm=TRUE) < .Machine$double.eps ^ 0.5) {
     return(Re(x))
   }
   else {
@@ -3021,6 +3022,7 @@ $('#loadmessage').fadeOut(500).fadeIn(500, blink);
 * R.H. Shumway and D.S. Stoffer. Time series analysis and its applications: with R examples. Springer, New York, 3rd edition, 2011.
 * J.O. Smith. Introduction to Digital Filters with Audio Applications. 2007. online book: http://ccrma.stanford.edu/~jos/filters/.
 * J.O. Smith. Introduction to Digital Filters: with Audio Applications, volume 2. Julius Smith, 2008. website: https://www.dsprelated.com/freebooks/filters/.
+* J.O. Smith. Spectral Audio Signal Processing. Online book, 2011 edition, website: https://ccrma.stanford.edu/~jos/sasp/sasp.html.
 * S.W. Smith. The scientist and engineer's guide to digital signal processing. 1997. website: http://www.DSPguide.com.
 * B.L. Sturm and J.D. Gibson. Signals and systems using MATLAB (SSUM): an integrated suite of applications for exploring and teaching media signal processing. pages F2E–21. IEEE, 2005.
 * S. Urbanek. `audio`: Audio Interface for R, 2013. R package version 0.1-5.
@@ -3704,7 +3706,7 @@ You can put anything into `absolutePanel`, including any Shiny inputs and output
       # rwtsgnl <- rwt::makesig(SIGNAL.HEAVI.SINE,N=nSecsDuration*Fs)$x
       rwtsgnl <- sigsmtx[input$audiogeneratorsignal,]
       # print(round(32767 * rwtsgnl/max(abs(rwtsgnl)))[1:100])
-      handles$generatorWave <- tuneR::Wave(left=matrix(data=round(32767 * rwtsgnl/max(abs(rwtsgnl))),
+      handles$generatorWave <- tuneR::Wave(left=matrix(data=round(32767 * rwtsgnl/max(abs(rwtsgnl),na.rm=TRUE)),
                                                           ncol=1), # nrow=length(rwtsgnl)),
                                            samp.rate=Fs,
                                            bit=16,
@@ -3842,7 +3844,7 @@ You can put anything into `absolutePanel`, including any Shiny inputs and output
       astsasgnl <- astsa::soi
       nSecsDuration <- length(astsasgnl)/Fs
       handles$generatorWave <- 
-        tuneR::Wave(left=matrix(data=round(32767 * astsasgnl/max(abs(astsasgnl))),
+        tuneR::Wave(left=matrix(data=round(32767 * astsasgnl/max(abs(astsasgnl),na.rm=TRUE)),
                                                           ncol=1), # nrow=length(rwtsgnl)),
                                            samp.rate=Fs,
                                            bit=16,
@@ -3854,7 +3856,7 @@ You can put anything into `absolutePanel`, including any Shiny inputs and output
       astsasgnl <- astsa::cmort
       nSecsDuration <- length(astsasgnl)/Fs
       handles$generatorWave <- 
-        tuneR::Wave(left=matrix(data=round(32767 * astsasgnl/max(abs(astsasgnl))),
+        tuneR::Wave(left=matrix(data=round(32767 * astsasgnl/max(abs(astsasgnl),na.rm=TRUE)),
                                                           ncol=1), # nrow=length(rwtsgnl)),
                                            samp.rate=Fs,
                                            bit=16,
@@ -3866,7 +3868,7 @@ You can put anything into `absolutePanel`, including any Shiny inputs and output
       astsasgnl <- astsa::star
       nSecsDuration <- length(astsasgnl)/Fs
       handles$generatorWave <- 
-        tuneR::Wave(left=matrix(data=round(32767 * astsasgnl/max(abs(astsasgnl))),
+        tuneR::Wave(left=matrix(data=round(32767 * astsasgnl/max(abs(astsasgnl),na.rm=TRUE)),
                                                           ncol=1), # nrow=length(rwtsgnl)),
                                            samp.rate=Fs,
                                            bit=16,
@@ -3878,7 +3880,7 @@ You can put anything into `absolutePanel`, including any Shiny inputs and output
       astsasgnl <- astsa::nyse
       nSecsDuration <- length(astsasgnl)/Fs
       handles$generatorWave <- 
-        tuneR::Wave(left=matrix(data=round(32767 * astsasgnl/max(abs(astsasgnl))),
+        tuneR::Wave(left=matrix(data=round(32767 * astsasgnl/max(abs(astsasgnl),na.rm=TRUE)),
                                                           ncol=1), # nrow=length(rwtsgnl)),
                                            samp.rate=Fs,
                                            bit=16,
@@ -3890,7 +3892,7 @@ You can put anything into `absolutePanel`, including any Shiny inputs and output
       datasetssgnl <- datasets::sunspot.month
       nSecsDuration <- length(datasetssgnl)/Fs
       handles$generatorWave <- 
-        tuneR::Wave(left=matrix(data=round(32767 * datasetssgnl/max(abs(datasetssgnl))),
+        tuneR::Wave(left=matrix(data=round(32767 * datasetssgnl/max(abs(datasetssgnl),na.rm=TRUE)),
                                                           ncol=1), # nrow=length(rwtsgnl)),
                                            samp.rate=Fs,
                                            bit=16,
@@ -3912,7 +3914,7 @@ You can put anything into `absolutePanel`, including any Shiny inputs and output
                                 )
       nSecsDuration <- length(arimapdqsgnl)/Fs
       handles$generatorWave <- 
-        tuneR::Wave(left=matrix(data=round(32767 * arimapdqsgnl/max(abs(arimapdqsgnl))),
+        tuneR::Wave(left=matrix(data=round(32767 * arimapdqsgnl/max(abs(arimapdqsgnl),na.rm=TRUE)),
                                                           ncol=1), # nrow=length(rwtsgnl)),
                                            samp.rate=Fs,
                                            bit=16,
@@ -3923,9 +3925,9 @@ You can put anything into `absolutePanel`, including any Shiny inputs and output
       if (!is.list(xFsList)) return()
       xcustom <- matrix(xFsList$xn,ncol=1) # nrow=length(xFsList$xn))
       # print(str(xcustom))
-      # print(str(matrix(round(32767 * xcustom/max(abs(xcustom))),ncol=1))) # ,nrow=length(xcustom))
+      # print(str(matrix(round(32767 * xcustom/max(abs(xcustom),na.rm=TRUE)),ncol=1))) # ,nrow=length(xcustom))
       Fscustom <- xFsList$Fs
-      handles$generatorWave <- tuneR::Wave(left=matrix(data=round(32767 * xcustom/max(abs(xcustom))),
+      handles$generatorWave <- tuneR::Wave(left=matrix(data=round(32767 * xcustom/max(abs(xcustom),na.rm=TRUE)),
                                                           ncol=1), # nrow=length(xcustom),
                                            samp.rate=Fscustom,
                                            bit=16,
@@ -3940,25 +3942,26 @@ You can put anything into `absolutePanel`, including any Shiny inputs and output
       # print(str(handles$generatorWave))
       # print(str(handles$generatorWave@left))
       # print(min(handles$generatorWave@left))
-      # print(max(handles$generatorWave@left))
+      # print(max(handles$generatorWave@left,na.rm=TRUE))
 
     # if (!is.null(input$audiogeneratorsignal) && isS4(handles$generatorWave)) {
       # print(handles$generatorWave)
       # print(input$audiogeneratorsignal)
       ygen <- handles$generatorWave@left
-      objWave <- tuneR::Wave(left=matrix(data=round(32767 * ygen/max(abs(ygen))),
+      objWave <- tuneR::Wave(left=matrix(data=round(32767 * ygen/max(abs(ygen),na.rm=TRUE)),
                                           ncol=1), # nrow=length(ygen)),
                            samp.rate=Fs,
                            bit=16,
                            pcm=TRUE
                            )
+      # FundFreq <- tuneR::FF(tuneR::periodogram(objWave))
       tdir <- "www"
       tfile <- file.path(tdir, paste0(tools::file_path_sans_ext(input$audiogeneratorsignal),".wav"))
       # cat(file=stderr(),"L3786 input$audiogeneratorsignal:",input$audiogeneratorsignal,".\n")
       if (!file.exists(tfile)
           # || (input$audiogeneratorsignal=="custom")
           ) {
-        tuneR::writeWave(objWave, tfile)
+        try(tuneR::writeWave(objWave, tfile),silent=TRUE)
       }
     # }
   })
@@ -3980,7 +3983,7 @@ You can put anything into `absolutePanel`, including any Shiny inputs and output
       if (is.null(input$filenameAudio$name) || (!nzchar(input$filenameAudio$name, keepNA = FALSE))) {return()}
       if (tools::file_ext(input$filenameAudio$name) == "wav") {
         # objWav <- try(tuneR::readWave(input$filenameAudio$name),silent=TRUE)
-        objWav <- tuneR::readWave(input$filenameAudio$name)
+        objWav <- try(tuneR::readWave(input$filenameAudio$name),silent=TRUE)
         if (isS4(objWav)) {
           # print(objWav)
         # a <- c(rv$samples, rv$channels)
@@ -3993,6 +3996,7 @@ You can put anything into `absolutePanel`, including any Shiny inputs and output
         # isPCM <- objWav@pcm
         nBits <- objWav@bit
         # SIZEwav <- length(y)
+        # FundFreq <- tuneR::FF(tuneR::periodogram(objWav))
         #if (interactive()) tuneR::play(objWav)
         # Sys.sleep(1)
         }
@@ -4010,11 +4014,12 @@ You can put anything into `absolutePanel`, including any Shiny inputs and output
         nBits <- objMP3@bit
         # SIZEwav <- length(y)
         
-        Wobj <- tuneR::Wave(left=matrix(data=round(32767 * y/max(abs(y))),
+        Wobj <- tuneR::Wave(left=matrix(data=round(32767 * y/max(abs(y),na.rm=TRUE)),
                                            ncol=1), 
                             samp.rate = as.numeric(Fs), 
                             bit = 16, 
                             pcm = TRUE)
+        # FundFreq <- tuneR::FF(tuneR::periodogram(Wobj))
         # print(Wobj)
         # tdir <- tempdir()
         tdir <- "www"
@@ -4027,7 +4032,7 @@ You can put anything into `absolutePanel`, including any Shiny inputs and output
         if (!file.exists(tfile)
             # || (input$audiogeneratorsignal=="custom")
             ) {
-          tuneR::writeWave(Wobj, filename = tfile) # input$filenameAudio$name) # 
+          try(tuneR::writeWave(Wobj, filename = tfile),silent=TRUE) # input$filenameAudio$name) # 
         }
         # close(file.path(tdir, paste0(tools::file_path_sans_ext(input$filenameAudio$name),".wav")))
         Sys.sleep(5) # wait 5 seconds
@@ -4045,7 +4050,7 @@ You can put anything into `absolutePanel`, including any Shiny inputs and output
         nBits <- 16 # assumed!?!?
         # updateNumericInput(session, inputId = "samplingfreq", value = Fs)
         
-        Wobj <- tuneR::Wave(left=matrix(data=round(32767 * y/max(abs(y))),
+        Wobj <- tuneR::Wave(left=matrix(data=round(32767 * y/max(abs(y),na.rm=TRUE)),
                                            ncol=1), 
                             samp.rate = as.numeric(Fs), 
                             bit = 16, 
@@ -4062,7 +4067,7 @@ You can put anything into `absolutePanel`, including any Shiny inputs and output
         if (!file.exists(tfile) 
             # || (input$audiogeneratorsignal=="custom")
             ) {
-          tuneR::writeWave(Wobj, filename = tfile) # input$filenameAudio$name) # 
+          try(tuneR::writeWave(Wobj, filename = tfile),silent=TRUE) # input$filenameAudio$name) # 
         }
         # close(file.path(tdir, paste0(tools::file_path_sans_ext(input$filenameAudio$name),".wav")))
         Sys.sleep(5) # wait 5 seconds
@@ -4080,10 +4085,15 @@ You can put anything into `absolutePanel`, including any Shiny inputs and output
         # updateNumericInput(session, inputId = "samplingfreq", value = Fs)
         # isPCM <- objWav@pcm
         nBits <- objWav@bit
+        # FundFreq <- tuneR::FF(tuneR::periodogram(objWav))
     }
     
-    yfiltered <- signal::filter(filt=input$edit_gain*handlesb(), a=handlesa(), y)
-    # yfiltered <- yfiltered / max(yfiltered) # normalization
+    if (!exists("y")) {return()}
+    yfiltered <- try(signal::filter(filt=input$edit_gain*handlesb(),
+                                    a=handlesa(), 
+                                    y
+                                    ),silent=TRUE)
+    # yfiltered <- yfiltered / max(yfiltered,na.rm=TRUE) # normalization
     # plot(yfiltered)
     # print(head(yfiltered))
     # cat(file=stderr(),"L3261 head(yfiltered), before normalization:",head(yfiltered),".\n")
@@ -4134,7 +4144,8 @@ You can put anything into `absolutePanel`, including any Shiny inputs and output
     # cat(file=stderr(),"min(yfiltered):",min(yfiltered),".\n")
     # cat(file=stderr(),"Fs:",Fs,".\n")
 
-    y <- y/max(abs(y)) * 1.0 #  tuneR::normalize(as.vector(y),unit=1) #   
+    if (!exists("y")) {return()}
+    y <- y/max(abs(y),na.rm=TRUE) * 1.0 #  tuneR::normalize(as.vector(y),unit=1) #   
     # cat(file=stderr(),"head(y):",head(y),".\n")
     # cat(file=stderr(),"max(y):",max(y),".\n")
     # cat(file=stderr(),"min(y):",min(y),".\n")
@@ -4142,11 +4153,14 @@ You can put anything into `absolutePanel`, including any Shiny inputs and output
     if ("windows" %in% get_os()) {
       showNotification(
         ui = paste0("Now playing the original y signal, '",input$filenameAudio$name,"' (",Fs," Samples/s) ..."),
-        duration = 3,
+        duration = NULL, # 3,
+        id="nowplaying",
         closeButton = TRUE,
         type = "message"
       )
       require(audio); try(audio::wait(audio::play(y, rate=Fs)),silent=TRUE)
+      removeNotification(id="nowplaying",session)
+
     }
   })
   
@@ -4158,7 +4172,7 @@ You can put anything into `absolutePanel`, including any Shiny inputs and output
     {
     if (tools::file_ext(input$filenameAudio$name) == "wav") {
       # objWav <- try(tuneR::readWave(input$filenameAudio$name),silent=TRUE)
-      objWav <- tuneR::readWave(input$filenameAudio$name)
+      objWav <- try(tuneR::readWave(input$filenameAudio$name),silent=TRUE)
       if (isS4(objWav)) {
         # print(objWav)
       # a <- c(rv$samples, rv$channels)
@@ -4173,6 +4187,7 @@ You can put anything into `absolutePanel`, including any Shiny inputs and output
       # SIZEwav <- length(y)
       #if (interactive()) tuneR::play(objWav)
       # Sys.sleep(1)
+      # FundFreq <- tuneR::FF(tuneR::periodogram(objWav))
       }
     } else if (tools::file_ext(input$filenameAudio$name) == "mp3") {
       objMP3 <- try(tuneR::readMP3(input$filenameAudio$name),silent=TRUE)
@@ -4188,30 +4203,35 @@ You can put anything into `absolutePanel`, including any Shiny inputs and output
       nBits <- objMP3@bit
       # SIZEwav <- length(y)
       
-      Wobj <- tuneR::Wave(left=matrix(data=round(32767 * y/max(abs(y))),
+      Wobj <- tuneR::Wave(left=matrix(data=round(32767 * y/max(abs(y),na.rm=TRUE)),
                                          ncol=1), 
                           samp.rate = as.numeric(Fs), 
                           bit = 16, 
                           pcm = TRUE)
+      # FundFreq <- tuneR::FF(tuneR::periodogram(Wobj))
       # print(Wobj)
       # tdir <- tempdir()
       tdir <- "www"
       tfile <- file.path(tdir, paste0(tools::file_path_sans_ext(input$filenameAudio$name),".wav"))
       # tfile <- paste0(tools::file_path_sans_ext(input$filenameAudio$name),".wav")
       # tfile <- input$filenameAudio$name
-      cat(file=stderr(),"L3899 tfile:",tfile,".\n")
+      # cat(file=stderr(),"L3899 tfile:",tfile,".\n")
       handles$tempfilteredfilelocation <- tfile
       
       if (!file.exists(tfile) 
           # || (input$audiogeneratorsignal=="custom")
           ) {
-        tuneR::writeWave(Wobj, filename = tfile) # input$filenameAudio$name) # 
+        try(tuneR::writeWave(Wobj, 
+                             filename = tfile
+                             ),silent=TRUE) # input$filenameAudio$name) # 
       }
       # close(file.path(tdir, paste0(tools::file_path_sans_ext(input$filenameAudio$name),".wav")))
       Sys.sleep(5) # wait 5 seconds
   
       # print(list.files(tdir, pattern = "\\.wav$"))
-      newWobjList <- try(tuneR::readWave(tfile,header = TRUE),silent=TRUE)
+      newWobjList <- try(tuneR::readWave(tfile,
+                                         header = TRUE
+                                         ),silent=TRUE)
       }
     } else if (tools::file_ext(input$filenameAudio$name) == "mat") {
       matmusic <- R.matlab::readMat(input$filenameAudio$name) # y= audio-signal, and Fs=8192 samples-per-second
@@ -4223,24 +4243,26 @@ You can put anything into `absolutePanel`, including any Shiny inputs and output
 
       # updateNumericInput(session, inputId = "samplingfreq", value = Fs)
       
-      Wobj <- tuneR::Wave(left=matrix(data=round(32767 * y/max(abs(y))),
+      Wobj <- try(tuneR::Wave(left=matrix(data=round(32767 * y/max(abs(y),na.rm=TRUE)),
                                          ncol=1), 
                           samp.rate = as.numeric(Fs), 
                           bit = 16, 
-                          pcm = TRUE)
+                          pcm = TRUE
+                          ),silent=TRUE)
+      # FundFreq <- tuneR::FF(tuneR::periodogram(Wobj))
       # print(Wobj)
       # tdir <- tempdir()
       tdir <- "www"
       tfile <- file.path(tdir, paste0(tools::file_path_sans_ext(input$filenameAudio$name),".wav"))
       # tfile <- paste0(tools::file_path_sans_ext(input$filenameAudio$name),".wav")
       # tfile <- input$filenameAudio$name
-      cat(file=stderr(),"L3924 tfile:",tfile,".\n")
+      # cat(file=stderr(),"L3924 tfile:",tfile,".\n")
       handles$tempfilteredfilelocation <- tfile
       
       if (!file.exists(tfile) 
           # || (input$audiogeneratorsignal=="custom")
           ) {
-        tuneR::writeWave(Wobj, filename = tfile) # input$filenameAudio$name) # 
+        try(tuneR::writeWave(Wobj, filename = tfile),silent=TRUE) # input$filenameAudio$name) # 
       }
       # close(file.path(tdir, paste0(tools::file_path_sans_ext(input$filenameAudio$name),".wav")))
       Sys.sleep(5) # wait 5 seconds
@@ -4250,7 +4272,10 @@ You can put anything into `absolutePanel`, including any Shiny inputs and output
 
     } else {return()}
 
-    yfiltered <- signal::filter(filt=input$edit_gain*handlesb(), a=handlesa(), y)
+    yfiltered <- try(signal::filter(filt=input$edit_gain*handlesb(), 
+                                    a=handlesa(), 
+                                    y
+                                    ),silent=TRUE)
     # yfiltered <- yfiltered / max(yfiltered) # normalization
     # plot(yfiltered)
     # cat(file=stderr(),"L3334 head(yfiltered), before normalization:",head(yfiltered),".\n")
@@ -4265,22 +4290,25 @@ You can put anything into `absolutePanel`, including any Shiny inputs and output
     # cat(file=stderr(),"max(yfiltered...):",max(32767 * yfiltered/max(abs(yfiltered))),".\n")
     # cat(file=stderr(),"min(yfiltered...):",min(32767 * yfiltered/max(abs(yfiltered))),".\n")
 
-    Wobj <- tuneR::Wave(left=matrix(data=round(32767 * yfiltered/max(abs(yfiltered))),
+    Wobj <- try(tuneR::Wave(left=matrix(data=round(32767 * yfiltered/max(abs(yfiltered),na.rm=TRUE)),
                                        ncol=1), # nrow=length(yfiltered)), 
                         samp.rate = as.numeric(Fs), 
                         bit = 16, 
-                        pcm = TRUE)
+                        pcm = TRUE),silent=TRUE)
+    # FundFreq <- tuneR::FF(tuneR::periodogram(Wobj))
     # print(Wobj)
     # tdir <- tempdir()
     tdir <- "www"
     tfile <- file.path(tdir, paste0(tools::file_path_sans_ext(input$filenameAudio$name),"filtered.wav")) # tools::file_path_sans_ext(input$filenameAudio$name),"filtered.wav") # input$filenameAudio$name))
     # tfile <- file.path(paste0(tools::file_path_sans_ext(input$filenameAudio$name),"filtered.wav"))
     # tfile <- paste0("filtered",input$filenameAudio$name)
-    cat(file=stderr(),"L3963 tfile:",tfile,".\n")
+    # cat(file=stderr(),"L3963 tfile:",tfile,".\n")
     handles$tempfilteredfilelocation <- paste0(tools::file_path_sans_ext(input$filenameAudio$name),"filtered.wav")
     
     # if (!file.exists(tfile) || input$audiogeneratorsignal=="custom") 
-      tuneR::writeWave(Wobj, filename = tfile) # paste0("filtered",input$filenameAudio$name)) # 
+      try(tuneR::writeWave(Wobj, 
+                           filename = tfile
+                           ),silent=TRUE) # paste0("filtered",input$filenameAudio$name)) # 
     # close(file.path(tdir, paste0("filtered",input$filenameAudio$name)))
     Sys.sleep(5) # wait 5 seconds
 
@@ -4347,9 +4375,10 @@ You can put anything into `absolutePanel`, including any Shiny inputs and output
             "nChannels:", objWavList$channels, "\n",
             "Fs, sample-rate:", objWavList$sample.rate, "\n",
             "Ts, sample-period (msecs):", round(1000/objWavList$sample.rate,3), "\n",
-            "(~50msecs delay, for echo-effects):", round(0.050*objWavList$sample.rate,1), "\n"
-            ,"maxvalue:",max(objWav@left),"\n",
-            "minvalue:",min(objWav@left)
+            "(~50msecs delay, for echo-effects):", round(0.050*objWavList$sample.rate,1)
+            ,"\n","maxvalue:",max(objWav@left,na.rm=TRUE)
+            ,"\n","minvalue:",min(objWav@left,na.rm=TRUE)
+            # ,"\n","Fund.Freq.:",try(tuneR::FF(tuneR::periodogram(objWav)),silent=TRUE)
             )
       }
     } else if (tools::file_ext(input$filenameAudio$name) == "mp3") {
@@ -4365,8 +4394,8 @@ You can put anything into `absolutePanel`, including any Shiny inputs and output
             "Fs, sample-rate:", objMP3@samp.rate, "\n",
             "Ts, sample-period (msecs):", round(1000/objMP3@samp.rate,3), "\n",
             "(~50msecs delay, for echo-effects):", round(0.050*objMP3@samp.rate,1), "\n",
-            "maxvalue:",max(objMP3@left),"\n",
-            "minvalue:",min(objMP3@left)
+            "maxvalue:",max(objMP3@left,na.rm=TRUE),"\n",
+            "minvalue:",min(objMP3@left,na.rm=TRUE)
             )
       }
     } else if (tools::file_ext(input$filenameAudio$name) == "mat") {
@@ -4379,8 +4408,8 @@ You can put anything into `absolutePanel`, including any Shiny inputs and output
               "Fs, sample-rate:", matmusic$Fs, "\n",
               "Ts, sample-period (msecs):", round(1000/matmusic$Fs,3), "\n",
               "(~50msecs delay, for echo-effects):", round(0.050*matmusic$Fs,1), "\n",
-              "maxvalue:",max(matmusic$y),"\n",
-              "minvalue:",min(matmusic$y)
+              "maxvalue:",max(matmusic$y,na.rm=TRUE),"\n",
+              "minvalue:",min(matmusic$y,na.rm=TRUE)
               )
       }
     } else {return()}
@@ -4430,7 +4459,7 @@ You can put anything into `absolutePanel`, including any Shiny inputs and output
         # updateNumericInput(session, inputId = "samplingfreq", value = Fs)
         # isPCM <- objWav@pcm
         nBits <- objWav@bit
-        
+        # FundFreq <- tuneR::FF(tuneR::periodogram(objWav))        
       # } else if (input$audiogeneratorsignal %in% c(
       #                                       )
       #     ) {
@@ -4443,8 +4472,8 @@ You can put anything into `absolutePanel`, including any Shiny inputs and output
               "Fs, sample-rate:", Fs, "\n",
               "Ts, sample-period (msecs):", round(1000/Fs,3), "\n",
               "(~50msecs delay, for echo-effects):", round(0.050*Fs,1), "\n",
-              "maxvalue:",max(y),"\n",
-              "minvalue:",min(y)
+              "maxvalue:",max(y,na.rm=TRUE),"\n",
+              "minvalue:",min(y,na.rm=TRUE)
               ,if (input$audiogeneratorsignal %in% c("sinewave","pulsed") 
                    ) {paste0("\n","freq (Hz):",input$parameter1)} # 220)}
               ,if (input$audiogeneratorsignal %in% c("sawtooth","squarewave") 
@@ -4457,6 +4486,8 @@ You can put anything into `absolutePanel`, including any Shiny inputs and output
               ,if (input$audiogeneratorsignal %in% c("squarewave") ) {
                 paste0("\n","duty-cycle (%):",0.5 *100)
               }
+              # ,"\n","Fund.Freq.:",try(tuneR::FF(tuneR::periodogram(objWav)),silent=TRUE)
+
               )
     }
   })
@@ -4557,6 +4588,7 @@ You can put anything into `absolutePanel`, including any Shiny inputs and output
       # SIZEwav <- length(y)
       #if (interactive()) tuneR::play(objWav)
       # Sys.sleep(1)
+      # FundFreq <- tuneR::FF(tuneR::periodogram(objWav))
       }
     } else if (tools::file_ext(input$filenameAudio$name) == "mp3") {
       objMP3 <- try(tuneR::readMP3(input$filenameAudio$name),silent=TRUE)
@@ -4570,7 +4602,7 @@ You can put anything into `absolutePanel`, including any Shiny inputs and output
       #if (interactive()) tuneR::play(objMP3)
       # Sys.sleep(1)
       
-      Wobj <- tuneR::Wave(left=matrix(data=round(32767 * y/max(abs(y))),
+      Wobj <- tuneR::Wave(left=matrix(data=round(32767 * y/max(abs(y),na.rm=TRUE)),
                                          ncol=1), 
                           samp.rate = as.numeric(Fs), 
                           bit = 16, 
@@ -4587,7 +4619,7 @@ You can put anything into `absolutePanel`, including any Shiny inputs and output
       if (!file.exists(tfile) 
           # || (input$audiogeneratorsignal=="custom")
           ) {
-        tuneR::writeWave(Wobj, filename = tfile) # input$filenameAudio$name) # 
+        try(tuneR::writeWave(Wobj, filename = tfile),silent=TRUE) # input$filenameAudio$name) # 
       }
       # close(file.path(tdir, paste0(tools::file_path_sans_ext(input$filenameAudio$name),".wav")))
       Sys.sleep(5) # wait 5 seconds
@@ -4606,7 +4638,7 @@ You can put anything into `absolutePanel`, including any Shiny inputs and output
 
       # updateNumericInput(session, inputId = "samplingfreq", value = Fs)
       
-      Wobj <- tuneR::Wave(left=matrix(data=round(32767 * y/max(abs(y))),
+      Wobj <- tuneR::Wave(left=matrix(data=round(32767 * y/max(abs(y),na.rm=TRUE)),
                                          ncol=1), 
                           samp.rate = as.numeric(Fs), 
                           bit = 16, 
@@ -4623,7 +4655,7 @@ You can put anything into `absolutePanel`, including any Shiny inputs and output
       if (!file.exists(tfile) 
           # || (input$audiogeneratorsignal=="custom")
           ) {
-        tuneR::writeWave(Wobj, filename = tfile) # input$filenameAudio$name) # 
+        try(tuneR::writeWave(Wobj, filename = tfile),silent=TRUE) # input$filenameAudio$name) # 
       }
       # close(file.path(tdir, paste0(tools::file_path_sans_ext(input$filenameAudio$name),".wav")))
       Sys.sleep(5) # wait 5 seconds
@@ -4670,26 +4702,33 @@ You can put anything into `absolutePanel`, including any Shiny inputs and output
         # stdv <- 0.196 # 10^(-1/sqrt(2)) # 10^(-7/10) # 0.2
         # y <- handles$generatorWave # (2^(nBits-1)-1) * rnorm(nSecsDuration*Fs, mean=0, sd=stdv)
         objWav <- handles$generatorWave
-        if (!isS4(objWav)) return()
+        if (!isS4(objWav)) {return()}
         y <- objWav@left # assumed monophonic, data stored within left-channel only
         #if (objWav@stereo) {xright <- objWav@right} # if stereo-recording
         Fs <- objWav@samp.rate
         # updateNumericInput(session, inputId = "samplingfreq", value = Fs)
         # isPCM <- objWav@pcm
         nBits <- objWav@bit
+        # FundFreq <- tuneR::FF(tuneR::periodogram(objWav))
       # } else if (input$audiogeneratorsignal=='custom') {
       #   # TBD
       }
     }
+                               
+    if (!exists("y")) {return()}
+                               
+    yfiltered <- try(signal::filter(filt=input$edit_gain*handlesb(), 
+                                    a=handlesa(), 
+                                    y
+                                    ),silent=TRUE)
+    # print(yfiltered)
     
-    yfiltered <- signal::filter(filt=input$edit_gain*handlesb(), a=handlesa(), y)
-    
-    objWave <- tuneR::Wave(left=matrix(data=round(32767 * yfiltered/max(abs(yfiltered))),
+    objWave <- try(tuneR::Wave(left=matrix(data=round(32767 * yfiltered/max(abs(yfiltered),na.rm=TRUE)),
                                           ncol=1), # nrow=length(yfiltered)),
                            samp.rate=Fs,
                            bit=16,
                            pcm=TRUE
-                           )
+                           ),silent=TRUE)
     # tuneR::writeWave(objWave, paste0(input$audiogeneratorsignal,"filtered.wav"))
 
     tdir <- "www"
@@ -4698,7 +4737,7 @@ You can put anything into `absolutePanel`, including any Shiny inputs and output
     if (!file.exists(tfile) 
         # || (input$audiogeneratorsignal=="custom")
         ){
-      tuneR::writeWave(objWave, tfile)
+      try(tuneR::writeWave(objWave, tfile),silent=TRUE)
     }
     
     output$HTML5audioWidget2 <- renderUI({
@@ -4754,15 +4793,18 @@ You can put anything into `absolutePanel`, including any Shiny inputs and output
     # cat(file=stderr(),"max(yfiltered):",max(yfiltered),".\n")
     # cat(file=stderr(),"min(yfiltered):",min(yfiltered),".\n")
     # cat(file=stderr(),"Fs:",Fs,".\n")
-    yfiltered <- yfiltered/max(abs(yfiltered)) * 1.0 #  tuneR::normalize(as.vector(yfiltered),unit=1) # 
+    
+    yfiltered <- yfiltered/max(abs(yfiltered),na.rm=TRUE) * 1.0 #  tuneR::normalize(as.vector(yfiltered),unit=1) # 
     if ("windows" %in% get_os()) {
       showNotification(
         ui = paste0("Now playing the filtered y signal, '",input$filenameAudio$name,"' (",Fs," Samples/s) ..."),
-        duration = 3,
+        duration = NULL, # 3,
+        id="nowplayingfiltered",
         closeButton = TRUE,
         type = "message"
       )
       require(audio); try(audio::wait(audio::play(yfiltered, rate=Fs)),silent=TRUE)
+      removeNotification(id="nowplayingfiltered",session)
     }
     # require(audio); try(audio::play(yfiltered, rate=Fs),silent=TRUE)
   })
@@ -4803,6 +4845,7 @@ You can put anything into `absolutePanel`, including any Shiny inputs and output
       # SIZEwav <- length(y)
       #if (interactive()) tuneR::play(objWav)
       # Sys.sleep(1)
+      # FundFreq <- tuneR::FF(tuneR::periodogram(objWav))
       }
     } else if (tools::file_ext(input$filenameAudio$name) == "mp3") {
       objMP3 <- try(tuneR::readMP3(input$filenameAudio$name),silent=TRUE)
@@ -4816,7 +4859,7 @@ You can put anything into `absolutePanel`, including any Shiny inputs and output
       #if (interactive()) tuneR::play(objMP3)
       # Sys.sleep(1)
       
-      Wobj <- tuneR::Wave(left=matrix(data=round(32767 * y/max(abs(y))),
+      Wobj <- tuneR::Wave(left=matrix(data=round(32767 * y/max(abs(y),na.rm=TRUE)),
                                          ncol=1), 
                           samp.rate = as.numeric(Fs), 
                           bit = 16, 
@@ -4833,7 +4876,7 @@ You can put anything into `absolutePanel`, including any Shiny inputs and output
       if (!file.exists(tfile) 
           # || (input$audiogeneratorsignal=="custom")
           ) {
-        tuneR::writeWave(Wobj, filename = tfile) # input$filenameAudio$name) # 
+        try(tuneR::writeWave(Wobj, filename = tfile),silent=TRUE) # input$filenameAudio$name) # 
       }
       # close(file.path(tdir, paste0(tools::file_path_sans_ext(input$filenameAudio$name),".wav")))
       Sys.sleep(5) # wait 5 seconds
@@ -4852,7 +4895,7 @@ You can put anything into `absolutePanel`, including any Shiny inputs and output
 
       # updateNumericInput(session, inputId = "samplingfreq", value = Fs)
       
-      Wobj <- tuneR::Wave(left=matrix(data=round(32767 * y/max(abs(y))),
+      Wobj <- tuneR::Wave(left=matrix(data=round(32767 * y/max(abs(y),na.rm=TRUE)),
                                          ncol=1), 
                           samp.rate = as.numeric(Fs), 
                           bit = 16, 
@@ -4869,7 +4912,7 @@ You can put anything into `absolutePanel`, including any Shiny inputs and output
       if (!file.exists(tfile) 
           # || (input$audiogeneratorsignal=="custom")
           ) {
-        tuneR::writeWave(Wobj, filename = tfile) # input$filenameAudio$name) # 
+        try(tuneR::writeWave(Wobj, filename = tfile),silent=TRUE) # input$filenameAudio$name) # 
       }
       # close(file.path(tdir, paste0(tools::file_path_sans_ext(input$filenameAudio$name),".wav")))
       Sys.sleep(5) # wait 5 seconds
@@ -4924,23 +4967,27 @@ You can put anything into `absolutePanel`, including any Shiny inputs and output
         # updateNumericInput(session, inputId = "samplingfreq", value = Fs)
         # isPCM <- objWav@pcm
         nBits <- objWav@bit
+        # FundFreq <- tuneR::FF(tuneR::periodogram(objWav))
       # } else if (input$audiogeneratorsignal=='custom') {
       #   # TBD
       }
     }
     
     # print(y)
-    yfiltered <- signal::filter(filt=input$edit_gain*handlesb(), a=handlesa(), y)
-    # yfiltered <- yfiltered / max(yfiltered) # normalization
+    yfiltered <- try(signal::filter(filt=input$edit_gain*handlesb(), 
+                                    a=handlesa(), 
+                                    y
+                                    ),silent=TRUE)
+    # yfiltered <- yfiltered / max(yfiltered,na.rm=TRUE) # normalization
     # plot(tyfiltered)
     # print(head(yfiltered))
-    # yfiltered <- tuneR::normalize(tuneR::Wave(left=as.vector(yfiltered,mode="numeric"))) # yfiltered/max(yfiltered) # 
+    # yfiltered <- tuneR::normalize(tuneR::Wave(left=as.vector(yfiltered,mode="numeric"))) # yfiltered/max(yfiltered,na.rm=TRUE) # 
 
     par(mfrow = c(2, 2))
     # par(mgp = c(2.5, 1, 0)) # line for axis-title, axis-labels and axis-line
     par(mar=c(4.5, 2.5, 3.5, 2)) # c(bottom, left, top, right)
     
-    # y <- y/max(abs(y)) * 1.0 #  tuneR::normalize(as.vector(y),unit=1) # 
+    # y <- y/max(abs(y),na.rm=TRUE) * 1.0 #  tuneR::normalize(as.vector(y),unit=1) # 
     plot(
       (0:(length(y)-1))/Fs, # length(y)/Fs*(0:length(y))/Fs,
       y,
@@ -4997,6 +5044,7 @@ You can put anything into `absolutePanel`, including any Shiny inputs and output
       # SIZEwav <- length(y)
       #if (interactive()) tuneR::play(objWav)
       # Sys.sleep(1)
+      # FundFreq <- tuneR::FF(tuneR::periodogram(objWav))
       }
     } else if (tools::file_ext(input$filenameAudio$name) == "mp3") {
       objMP3 <- try(tuneR::readMP3(input$filenameAudio$name),silent=TRUE)
@@ -5010,7 +5058,7 @@ You can put anything into `absolutePanel`, including any Shiny inputs and output
       #if (interactive()) tuneR::play(objMP3)
       # Sys.sleep(1)
       
-      Wobj <- tuneR::Wave(left=matrix(data=round(32767 * y/max(abs(y))),
+      Wobj <- tuneR::Wave(left=matrix(data=round(32767 * y/max(abs(y),na.rm=TRUE)),
                                          ncol=1), 
                           samp.rate = as.numeric(Fs), 
                           bit = 16, 
@@ -5027,7 +5075,7 @@ You can put anything into `absolutePanel`, including any Shiny inputs and output
       if (!file.exists(tfile) 
           # || (input$audiogeneratorsignal=="custom")
           ) {
-        tuneR::writeWave(Wobj, filename = tfile) # input$filenameAudio$name) # 
+        try(tuneR::writeWave(Wobj, filename = tfile),silent=TRUE) # input$filenameAudio$name) # 
       }
       # close(file.path(tdir, paste0(tools::file_path_sans_ext(input$filenameAudio$name),".wav")))
       Sys.sleep(5) # wait 5 seconds
@@ -5046,7 +5094,7 @@ You can put anything into `absolutePanel`, including any Shiny inputs and output
 
       # updateNumericInput(session, inputId = "samplingfreq", value = Fs)
       
-      Wobj <- tuneR::Wave(left=matrix(data=round(32767 * y/max(abs(y))),
+      Wobj <- tuneR::Wave(left=matrix(data=round(32767 * y/max(abs(y),na.rm=TRUE)),
                                          ncol=1), 
                           samp.rate = as.numeric(Fs), 
                           bit = 16, 
@@ -5063,7 +5111,7 @@ You can put anything into `absolutePanel`, including any Shiny inputs and output
       if (!file.exists(tfile) 
           # || (input$audiogeneratorsignal=="custom")
           ) {
-        tuneR::writeWave(Wobj, filename = tfile) # input$filenameAudio$name) # 
+        try(tuneR::writeWave(Wobj, filename = tfile),silent=TRUE) # input$filenameAudio$name) # 
       }
       # close(file.path(tdir, paste0(tools::file_path_sans_ext(input$filenameAudio$name),".wav")))
       Sys.sleep(5) # wait 5 seconds
@@ -5118,6 +5166,7 @@ You can put anything into `absolutePanel`, including any Shiny inputs and output
         # updateNumericInput(session, inputId = "samplingfreq", value = Fs)
         # isPCM <- objWav@pcm
         nBits <- objWav@bit
+        # FundFreq <- tuneR::FF(tuneR::periodogram(objWav))
         # }
       # } else if (input$audiogeneratorsignal=='custom') {
       #   # TBD
@@ -5125,23 +5174,28 @@ You can put anything into `absolutePanel`, including any Shiny inputs and output
     }
     
     # print(y)
-    yfiltered <- signal::filter(filt=input$edit_gain*handlesb(), a=handlesa(), y)
-    # yfiltered <- yfiltered / max(yfiltered) # normalization
+    yfiltered <- try(signal::filter(filt=input$edit_gain*handlesb(), 
+                                a=handlesa(), 
+                                y
+                                ),silent=TRUE)
+    # yfiltered <- yfiltered / max(yfiltered,na.rm=TRUE) # normalization
     # plot(tyfiltered)
     # print(head(yfiltered))
-    # yfiltered <- tuneR::normalize(tuneR::Wave(left=as.vector(yfiltered,mode="numeric"))) # yfiltered/max(yfiltered) # 
+    # yfiltered <- tuneR::normalize(tuneR::Wave(left=as.vector(yfiltered,mode="numeric"))) # yfiltered/max(yfiltered,na.rm=TRUE) # 
 
-    # y <- y/max(abs(y)) * 1.0 #  tuneR::normalize(as.vector(y),unit=1) #   
+    # y <- y/max(abs(y),na.rm=TRUE) * 1.0 #  tuneR::normalize(as.vector(y),unit=1) #   
     
-minSpgFreq <- trunc(input$stretchyslider3range[1] * (Fs/2)) # /(input$samplingfreq/2) # max(c(0.25* 44100/2, 0.01* Fs/2 ) )  # Hz - min-frequency to display
+    if (!exists("Fs")) {return()}
+    
+minSpgFreq <- trunc(input$stretchyslider3range[1] * (Fs/2)) # /(input$samplingfreq/2) # max(c(0.25* 44100/2, 0.01* Fs/2 ) ,na.rm=TRUE)  # Hz - min-frequency to display
 maxSpgFreq <- trunc(input$stretchyslider3range[2] * (Fs/2)) # /(input$samplingfreq/2) # min(c(Fs/2, 0.80* 44100/2 ) ) # Hz - max-frequency to display
 
 # print(minSpgFreq)
 # print(maxSpgFreq)
 
-step <- max(c(trunc(0.005*Fs),2))
+step <- max(c(trunc(0.005*Fs),2),na.rm=TRUE)
 #windowW <- trunc(40*Fs/1000)          # 40 ms data window
-windowW <- max(c(trunc(0.040*Fs),2))
+windowW <- max(c(trunc(0.040*Fs),2),na.rm=TRUE)
 fftn <- 2^ceiling(log2(abs(windowW))) # next highest power of 2
 #fftn <- trunc(0.020*Fs)
 #spg= specgram(wav$sound, fftn, Fs, windowW, windowW-step)
@@ -5149,9 +5203,9 @@ fftn <- 2^ceiling(log2(abs(windowW))) # next highest power of 2
 spg <- signal::specgram(y, n=fftn, Fs=Fs, window=windowW, overlap=windowW-step)
 #spg <- signal::specgram(x)
 #S <- abs(spg$S[2:(fftn*4000/Fs),])   # magnitude in range 0<f<=4000 Hz.
-S <- Mod(spg$S[(max(c(2,fftn*minSpgFreq/Fs))):(fftn*maxSpgFreq/Fs),])
-maxS1 <- max(abs(S)) # store this, for later usage on the second-plot below
-#S <- S/max(S)         # normalize magnitude so that max is 0 dB.
+S <- Mod(spg$S[(max(c(2,fftn*minSpgFreq/Fs),na.rm=TRUE)):(fftn*maxSpgFreq/Fs),])
+maxS1 <- max(abs(S),na.rm=TRUE) # store this, for later usage on the second-plot below
+#S <- S/max(S,na.rm=TRUE)         # normalize magnitude so that max is 0 dB.
 S <- S/maxS1 # normalize
 #S[S < 10^(-40/10)] <- 10^(-40/10)    # clip below -40 dB.
 #S[S > 10^(-3/10)] <- 10^(-3/10)      # clip above -3 dB.
@@ -5185,6 +5239,8 @@ title('Spectrogram -- Original Signal',
   ylab=paste0('Freq',if (input$freqaxisunits == "zero2one") {" (normalized)"} else {" (Hz)"})
 #  ylab=expression(paste('Norm. Freq. ', omega, '; i.e. from ', 0, ' to ', pi, ' rads/sec', phantom(.)==(F[s]/2))),
   )
+# print(FundFreq)
+# try(points(x=par("usr")[2], y=FundFreq*1000/(Fs/2), pch=23, col="red"),silent=TRUE)
 
 if (input$secondaryaxis) {
   axis(4,
@@ -5193,12 +5249,18 @@ if (input$secondaryaxis) {
   )
 }
 
+# print(Fs)
+# peaksmtx <- seewave::localpeaks(seewave::spec(y,f=Fs,plot=FALSE),bands=10,plot=FALSE,labels=TRUE)
+# print(seewave::meanspec(y,f=Fs,plot=FALSE))
+# print(peaksmtx)
+# text(x=20*log10(peaksmtx[,2]),y=peaksmtx[,1],pos=4,cex=0.7)
+
 dBFFT <- try(20*log10(Mod(fft(y))),silent=TRUE)
 if (is.null(dBFFT)) return()
 # print(head(dBFFT))
 # print(length(dBFFT))
 # print(min(dBFFT))
-# print(max(dBFFT))
+# print(max(dBFFT),na.rm=TRUE)
 
 dBFFT[dBFFT>320] <- 320
 dBFFT[dBFFT<0] <- 0
@@ -5210,14 +5272,14 @@ dBFFT[dBFFT<0] <- 0
 # print(minSpgFreq:maxSpgFreq)
 # print((minSpgFreq:maxSpgFreq) * (length(dBFFT)/2 * (Fs/2)))
 # print(head(dBFFT[(minSpgFreq:maxSpgFreq) * (length(dBFFT)/2 * (Fs/2))]))
-maxdBFFT <- max(dBFFT[(max(c(1,minSpgFreq)):maxSpgFreq) * (length(dBFFT)/2 / (Fs/2))]) # (minSpgFreq:maxSpgFreq)]) #  * (length(dBFFT)/2 * (Fs/2))]) # [1:(length(dBFFT)/2* maxSpgFreq / (Fs/2))])
+maxdBFFT <- max(dBFFT[(max(c(1,minSpgFreq)):maxSpgFreq) * (length(dBFFT)/2 / (Fs/2))],na.rm=TRUE) # (minSpgFreq:maxSpgFreq)]) #  * (length(dBFFT)/2 * (Fs/2))]) # [1:(length(dBFFT)/2* maxSpgFreq / (Fs/2))])
 # print(maxdBFFT)
 
-# print(dBFFT[(max(c(1,minSpgFreq)):maxSpgFreq) * (length(dBFFT)/2 / (Fs/2))])
+# print(dBFFT[(max(c(1,minSpgFreq),na.rm=TRUE):maxSpgFreq) * (length(dBFFT)/2 / (Fs/2))])
 
 plot(
-  -maxdBFFT+dBFFT[(max(c(1,minSpgFreq)):maxSpgFreq) * (length(dBFFT)/2 / (Fs/2))],
-  ((max(c(1,minSpgFreq)):maxSpgFreq) * (length(dBFFT)/2 / (Fs/2))) / (length(dBFFT)/2 ),# / (Fs/2),
+  -maxdBFFT+dBFFT[(max(c(1,minSpgFreq),na.rm=TRUE):maxSpgFreq) * (length(dBFFT)/2 / (Fs/2))],
+  ((max(c(1,minSpgFreq),na.rm=TRUE):maxSpgFreq) * (length(dBFFT)/2 / (Fs/2))) / (length(dBFFT)/2 ),# / (Fs/2),
   # x=dBFFT[1:maxSpgFreq], 
   # y=(1:maxSpgFreq) / (Fs/2), #  * input$samplingfreq, # /if (input$freqaxisunits == "zero2one") {Fs/2}else{1}, 
      type="o", 
@@ -5229,10 +5291,11 @@ plot(
   ylab=paste0('Freq',if (input$freqaxisunits == "zero2one") {" (normalized)"} else {" (Hz)"})
 , main='Spectrum -- original-signal'
      )
+# try(points(x=par("usr")[2], y=FundFreq*1000/(Fs/2), pch=23, col="red"),silent=TRUE)
 # pracma::errorbar(
-#   -maxdBFFT+0.5*dBFFT[(max(c(1,minSpgFreq)):maxSpgFreq) * (length(dBFFT)/2 / (Fs/2))],
-#   ((max(c(1,minSpgFreq)):maxSpgFreq) * (length(dBFFT)/2 / (Fs/2))) / (length(dBFFT)/2 ),
-#   xerr=-maxdBFFT+dBFFT[(max(c(1,minSpgFreq)):maxSpgFreq) * (length(dBFFT)/2 / (Fs/2))],
+#   -maxdBFFT+0.5*dBFFT[(max(c(1,minSpgFreq),na.rm=TRUE):maxSpgFreq) * (length(dBFFT)/2 / (Fs/2))],
+#   ((max(c(1,minSpgFreq),na.rm=TRUE):maxSpgFreq) * (length(dBFFT)/2 / (Fs/2))) / (length(dBFFT)/2 ),
+#   xerr=-maxdBFFT+dBFFT[(max(c(1,minSpgFreq),na.rm=TRUE):maxSpgFreq) * (length(dBFFT)/2 / (Fs/2))],
 #   bar.col="cyan",
 #   with=FALSE,
 #   add=TRUE
@@ -5246,9 +5309,9 @@ abline(h=input$slider1, #  / (Fs/2) * input$samplingfreq, # /(maxSpgFreq/if (inp
        col = "magenta", lty="dashed")
 
 
-step <- max(c(trunc(0.005*Fs),2))
+step <- max(c(trunc(0.005*Fs),2),na.rm=TRUE)
 #windowW <- trunc(40*Fs/1000)          # 40 ms data window
-windowW <- max(c(trunc(0.040*Fs),2))
+windowW <- max(c(trunc(0.040*Fs),2),na.rm=TRUE)
 fftn <- 2^ceiling(log2(abs(windowW))) # next highest power of 2
 #fftn <- trunc(0.020*Fs)
 #spg= specgram(wav$sound, fftn, Fs, windowW, windowW-step)
@@ -5256,8 +5319,8 @@ fftn <- 2^ceiling(log2(abs(windowW))) # next highest power of 2
 spg <- signal::specgram(yfiltered, n=fftn, Fs=Fs, window=windowW, overlap=windowW-step)
 #spg <- signal::specgram(x)
 #S <- abs(spg$S[2:(fftn*4000/Fs),])   # magnitude in range 0<f<=4000 Hz.
-S <- Mod(spg$S[(max(c(2,fftn*minSpgFreq/Fs))):(fftn*maxSpgFreq/Fs),])
-S <- S/max(S)         # normalize magnitude so that max is 0 dB.
+S <- Mod(spg$S[(max(c(2,fftn*minSpgFreq/Fs),na.rm=TRUE)):(fftn*maxSpgFreq/Fs),])
+S <- S/max(S,na.rm=TRUE)         # normalize magnitude so that max is 0 dB.
 # S <- S/maxS1 #* 1.1 # / (10^(80/10)) # normalize by same amount as first plot, minus some corrective-amount (e.g. -80dB?), in order to approximately match colours
 #S[S < 10^(-40/10)] <- 10^(-40/10)    # clip below -40 dB.
 #S[S > 10^(-3/10)] <- 10^(-3/10)      # clip above -3 dB.
@@ -5291,6 +5354,7 @@ title('Spectrogram -- Filtered Signal',
   ylab=paste0('Freq',if (input$freqaxisunits == "zero2one") {" (normalized)"} else {" (Hz)"})
 #  ylab=expression(paste('Norm. Freq. ', omega, '; i.e. from ', 0, ' to ', pi, ' rads/sec', phantom(.)==(F[s]/2))),
 )
+# try(points(x=par("usr")[2], y=FundFreq*1000/(Fs/2), pch=23, col="red"),silent=TRUE)
 
 if (input$secondaryaxis) {
   axis(4,
@@ -5326,13 +5390,13 @@ if (is.null(dBFFTfiltered)) return()
 dBFFTfiltered[dBFFTfiltered>320] <- 320
 dBFFTfiltered[dBFFTfiltered<0] <- 0
 
-maxdBFFTfiltered <- max(dBFFTfiltered[(length(dBFFTfiltered)/2* minSpgFreq / (Fs/2)):(length(dBFFTfiltered)/2* maxSpgFreq / (Fs/2))]) # [1:(length(dBFFTfiltered)/2* maxSpgFreq / (Fs/2))])
+maxdBFFTfiltered <- max(dBFFTfiltered[(length(dBFFTfiltered)/2* minSpgFreq / (Fs/2)):(length(dBFFTfiltered)/2* maxSpgFreq / (Fs/2))],na.rm=TRUE) # [1:(length(dBFFTfiltered)/2* maxSpgFreq / (Fs/2))])
 
 plot(
-  -maxdBFFT+dBFFTfiltered[(max(c(1,minSpgFreq)):maxSpgFreq) * (length(dBFFTfiltered)/2 / (Fs/2))],
-  ((max(c(1,minSpgFreq)):maxSpgFreq) * (length(dBFFTfiltered)/2 / (Fs/2))) / (length(dBFFTfiltered)/2 ),# / (Fs/2),
-  # -maxdBFFT+dBFFTfiltered[((max(c(1,minSpgFreq)):maxSpgFreq) * (length(dBFFTfiltered)/2 / (Fs/2)))],
-  # (((max(c(1,minSpgFreq)):maxSpgFreq) * (length(dBFFTfiltered)/2 / (Fs/2)))) / (length(dBFFTfiltered)/2), # / (Fs/2),
+  -maxdBFFT+dBFFTfiltered[(max(c(1,minSpgFreq),na.rm=TRUE):maxSpgFreq) * (length(dBFFTfiltered)/2 / (Fs/2))],
+  ((max(c(1,minSpgFreq),na.rm=TRUE):maxSpgFreq) * (length(dBFFTfiltered)/2 / (Fs/2))) / (length(dBFFTfiltered)/2 ),# / (Fs/2),
+  # -maxdBFFT+dBFFTfiltered[((max(c(1,minSpgFreq),na.rm=TRUE):maxSpgFreq) * (length(dBFFTfiltered)/2 / (Fs/2)))],
+  # (((max(c(1,minSpgFreq),na.rm=TRUE):maxSpgFreq) * (length(dBFFTfiltered)/2 / (Fs/2)))) / (length(dBFFTfiltered)/2), # / (Fs/2),
   # x=dBFFTfiltered[1:maxSpgFreq],
   #    y=(1:maxSpgFreq) / (Fs/2), # * input$samplingfreq, # /if (input$normalizedMagPlotAmplitude) {Fs/2}else{1},
      type="o",
@@ -5352,6 +5416,7 @@ plot(
   ylab=paste0('Freq',if (input$freqaxisunits == "zero2one") {" (normalized)"} else {" (Hz)"})
 , main='Spectrum -- filtered-signal'
      )
+# try(points(x=par("usr")[2], y=FundFreq*1000/(Fs/2), pch=23, col="red"),silent=TRUE)
 # barplot(
 #   # rbind(
 #     -maxdBFFT+dBFFTfiltered[((max(c(1,minSpgFreq)):maxSpgFreq) * (length(dBFFTfiltered)/2 / (Fs/2)))],
@@ -5497,7 +5562,7 @@ abline(h=input$slider1, # (maxSpgFreq-minSpgFreq)*(input$slider1-minSpgFreq/ (Fs
                          ) *
                            handles$inputstretchyslider3step
                        )
-                     )
+                     ,na.rm=TRUE)
                      if (handles$maxslider3range>1) {handles$maxslider3range <- 1}
                      updateSliderInput(
                        session,
@@ -5644,7 +5709,7 @@ abline(h=input$slider1, # (maxSpgFreq-minSpgFreq)*(input$slider1-minSpgFreq/ (Fs
                      n = 2L ^ 20L,
                      Fs = 2 * pi * input$samplingfreq / 2
                    )
-                   updateNumericInput(session, inputId = "edit_gain", value = 1/ max(Re(rv$h)))
+                   updateNumericInput(session, inputId = "edit_gain", value = 1/ max(Re(rv$h),na.rm=TRUE))
                  }
                  else {
                    updateNumericInput(session, inputId = "edit_gain", value = 1L)
@@ -5743,7 +5808,7 @@ abline(h=input$slider1, # (maxSpgFreq-minSpgFreq)*(input$slider1-minSpgFreq/ (Fs
                      n = 2L ^ 20L,
                      Fs = 2 * pi * input$samplingfreq / 2
                    )
-                   1/ max(Re(rv$h))
+                   1/ max(Re(rv$h),na.rm=TRUE)
                  }
                  ) # end updateNumericInput
                  
@@ -6108,7 +6173,7 @@ abline(h=input$slider1, # (maxSpgFreq-minSpgFreq)*(input$slider1-minSpgFreq/ (Fs
                          ) / inputstretchyslider1step
                          ) * inputstretchyslider1step
                        )
-                     )
+                     ,na.rm=TRUE)
                      updateSliderInput(
                        session,
                        inputId = "stretchyslider1range",
@@ -6286,7 +6351,7 @@ abline(h=input$slider1, # (maxSpgFreq-minSpgFreq)*(input$slider1-minSpgFreq/ (Fs
                          ) *
                            input$stretchyslider2Astep
                        )
-                     )
+                     ,na.rm=TRUE)
                      updateSliderInput(
                        session,
                        inputId = "stretchyslider2Arange",
@@ -6358,7 +6423,7 @@ abline(h=input$slider1, # (maxSpgFreq-minSpgFreq)*(input$slider1-minSpgFreq/ (Fs
                  }
                  if (abs(input$stretchyslider2Astep - handles$minslider2Astep) <
                      0.04 * abs(handles$maxslider2Astep - handles$minslider2Astep)) {
-                   handles$minslider2Astep <- max(c(1e-06, handles$minslider2Astep / 10))
+                   handles$minslider2Astep <- max(c(1e-06, handles$minslider2Astep / 10),na.rm=TRUE)
                    updateSliderInput(
                      session,
                      inputId = "stretchyslider2Astep",
@@ -6374,7 +6439,7 @@ abline(h=input$slider1, # (maxSpgFreq-minSpgFreq)*(input$slider1-minSpgFreq/ (Fs
                      ) / 1e-06
                      ) *
                        1e-06
-                   ))
+                   ),na.rm=TRUE)
                    updateSliderInput(
                      session,
                      inputId = "stretchyslider2Astep",
@@ -6451,7 +6516,7 @@ abline(h=input$slider1, # (maxSpgFreq-minSpgFreq)*(input$slider1-minSpgFreq/ (Fs
                          ) *
                            input$stretchyslider2Bstep
                        )
-                     )
+                     ,na.rm=TRUE)
                      updateSliderInput(
                        session,
                        inputId = "stretchyslider2Brange",
@@ -6523,7 +6588,7 @@ abline(h=input$slider1, # (maxSpgFreq-minSpgFreq)*(input$slider1-minSpgFreq/ (Fs
                  }
                  if (abs(input$stretchyslider2Bstep - handles$minslider2Bstep) <
                      0.04 * abs(handles$maxslider2Bstep - handles$minslider2Bstep)) {
-                   handles$minslider2Bstep <- max(c(1e-06, handles$minslider2Bstep / 10))
+                   handles$minslider2Bstep <- max(c(1e-06, handles$minslider2Bstep / 10),na.rm=TRUE)
                    updateSliderInput(
                      session,
                      inputId = "stretchyslider2Bstep",
@@ -6539,7 +6604,7 @@ abline(h=input$slider1, # (maxSpgFreq-minSpgFreq)*(input$slider1-minSpgFreq/ (Fs
                      ) / 1e-06
                      ) *
                        1e-06
-                   ))
+                   ),na.rm=TRUE)
                    updateSliderInput(
                      session,
                      inputId = "stretchyslider2Bstep",
@@ -6666,7 +6731,7 @@ abline(h=input$slider1, # (maxSpgFreq-minSpgFreq)*(input$slider1-minSpgFreq/ (Fs
                        ) / handles$stepZoomlimXpassband
                        ) *
                          handles$stepZoomlimXpassband
-                     )
+                     ,na.rm=TRUE)
                      updateSliderInput(
                        session,
                        inputId = "zoomlimXpassband",
@@ -6753,7 +6818,7 @@ abline(h=input$slider1, # (maxSpgFreq-minSpgFreq)*(input$slider1-minSpgFreq/ (Fs
                        ) / handles$stepZoomlimYpassband
                        ) *
                          handles$stepZoomlimYpassband
-                     )
+                     ,na.rm=TRUE)
                      updateSliderInput(
                        session,
                        inputId = "zoomlimYpassband",
@@ -6840,7 +6905,7 @@ abline(h=input$slider1, # (maxSpgFreq-minSpgFreq)*(input$slider1-minSpgFreq/ (Fs
                        ) / handles$stepZoomlimXstopband
                        ) *
                          handles$stepZoomlimXstopband
-                     )
+                     ,na.rm=TRUE)
                      updateSliderInput(
                        session,
                        inputId = "zoomlimXstopband",
@@ -6927,7 +6992,7 @@ abline(h=input$slider1, # (maxSpgFreq-minSpgFreq)*(input$slider1-minSpgFreq/ (Fs
                        ) / handles$stepZoomlimYstopband
                        ) *
                          handles$stepZoomlimYstopband
-                     )
+                     ,na.rm=TRUE)
                      updateSliderInput(
                        session,
                        inputId = "zoomlimYstopband",
@@ -7107,7 +7172,7 @@ abline(h=input$slider1, # (maxSpgFreq-minSpgFreq)*(input$slider1-minSpgFreq/ (Fs
           sep = "\t"
         )
       maxlengthimported <-
-        max(length(importedPoles), length(importedZeros))
+        max(length(importedPoles), length(importedZeros),na.rm=TRUE)
        # http://stackoverflow.com/questions/19074163/cbind-is-there-a-way-to-have-missing-values-set-to-na
       length(importedPoles) <- maxlengthimported
       length(importedZeros) <- maxlengthimported
@@ -8037,7 +8102,7 @@ plot(
     ""
   },
   xlim = if (params$logarithmicFreqAxis) {
-    c(max(0.01, 1e-04 * params$samplingfreq / 2),
+    c(max(c(0.01, 1e-04 * params$samplingfreq / 2),na.rm=TRUE),
       params$samplingfreq / 2)
   }
   else {
@@ -8062,13 +8127,13 @@ plot(
       } else {
         1/ params$edit_gain
       })
-    ))), max(0L, min(120, 20 * log10(
+    )),na.rm=TRUE), max(0L, min(120, 20 * log10(
       max(Mod(rv$h), na.rm = TRUE) / (if (params$normalizedMagPlotAmplitude) {
         max(Mod(rv$h), na.rm = TRUE)
       } else {
         1/ params$edit_gain
       })
-    ), na.rm = TRUE)))
+    ), na.rm = TRUE),na.rm=TRUE))
   }
   else {
     c(0L, max(1L, Mod(rv$h) / (if (params$normalizedMagPlotAmplitude) {
@@ -9413,7 +9478,7 @@ license()
                      Fs = 2 *
                        pi * input$samplingfreq / 2
                    )
-                 updateNumericInput(session, inputId = "edit_gain", value = 1/ max(Re(rv$h)))
+                 updateNumericInput(session, inputId = "edit_gain", value = 1/ max(Re(rv$h),na.rm=TRUE))
                  updateCheckboxInput(session, inputId = "normalizedMagPlotAmplitude",
                                      value = TRUE)
                })
@@ -9465,13 +9530,18 @@ license()
                        c(1L, rep(0L, times = (pt - 1L)))) # impulse
     }
     else {
-      temphnimag <- signal::filter(handlesb(), handlesa(), c(1L, rep(0L,
-                                                                    times = (pt - 1L))))
+      temphnimag <- try(signal::filter(handlesb(), 
+                                       handlesa(), 
+                                       c(1L, rep(0L, 
+                                                 times = (pt - 1L)
+                                                 )
+                                         )
+                                       ),silent=TRUE)
     }
     if (length(temphnimag) < 2L) {
       temphnimag <- temphnimag * 0L
     }
-    else if (max(abs(temphnimag[2L:length(temphnimag)])) > 0L) {
+    else if (max(abs(temphnimag[2L:length(temphnimag)]),na.rm=TRUE) > 0L) {
       temphnimag <- temphnimag * 0L
       temphnimag[2] <- (0 + 1i) * Im(handles$poleloc[1])
     }
@@ -9492,13 +9562,19 @@ license()
                        c(1L, rep(1L, times = (pt - 1L)))) # step
     }
     else {
-      temphnimag <- signal::filter(handlesb(), handlesa(), c(1L, rep(0L,
-                                                                    times = (pt - 1L))))
+      temphnimag <- try(signal::filter(handlesb(), 
+                                       handlesa(), 
+                                       c(1L, 
+                                         rep(0L, 
+                                             times = (pt - 1L)
+                                             )
+                                         )
+                                       ),silent=TRUE)
     }
     if (length(temphnimag) < 2L) {
       temphnimag <- temphnimag * 0L
     }
-    else if (max(abs(temphnimag[2L:length(temphnimag)])) > 0L) {
+    else if (max(abs(temphnimag[2L:length(temphnimag)]),na.rm=TRUE) > 0L) {
       temphnimag <- temphnimag * 0L
       temphnimag[2] <- (0 + 1i) * Im(handles$poleloc[1])
     }
@@ -9706,7 +9782,7 @@ license()
         abline(h = 0L, col = "magenta")
         abline(v = 0L, col = "magenta")
       }
-      if (max(Mod(handles$poleloc)) > (1L + 1e-04)) {
+      if (max(Mod(handles$poleloc),na.rm=TRUE) > (1L + 1e-04)) {
         box(
           which = "plot",
           col = MyColourForUnstableSystem,
@@ -10519,7 +10595,7 @@ license()
                      rayY[2] <- 0L
                    lines(rayX, rayY, lwd = input$LineWidth, col = "magenta")
                  }
-                 if (max(Mod(handles$poleloc)) > (1L + 1e-04)) {
+                 if (max(Mod(handles$poleloc),na.rm=TRUE) > (1L + 1e-04)) {
                    box(
                      which = "plot",
                      col = MyColourForUnstableSystem,
@@ -11037,7 +11113,7 @@ license()
                    z <- rv$X + rv$Y * 1i
                    shiny::setProgress(0.2)
                    aPolyValueAtz <- pracma::polyval(handlesa(), z)
-                   if (max(abs(aPolyValueAtz)) > 2 * eps) {
+                   if (max(abs(aPolyValueAtz),na.rm=TRUE) > 2 * eps) {
                      Hz <- pracma::polyval(handlesb(), z) / aPolyValueAtz # http://stackoverflow.com/questions/21264968/matlab-3d-plot-of-transfer-function-magnitude
                    }
                    else {
@@ -11077,7 +11153,7 @@ license()
                      ceiling(input$colors3D * (20 * log10(zz) - 20 * log10(min(
                        Mod(Hz),
                        na.last = TRUE
-                     ))) / (20 * log10(max(zz)) - 20 * log10(min(zz))))
+                     ))) / (20 * log10(max(zz,na.rm=TRUE)) - 20 * log10(min(zz,na.rm=TRUE))))
                    col <- topo.colors(input$colors3D)
                    shiny::setProgress(0.4)
                    zz <- 20 * log10(zz)
@@ -11685,7 +11761,7 @@ license()
         ""
       },
       xlim = if (input$logarithmicFreqAxis) {
-        c(max(0.01, 1e-04 * input$samplingfreq / 2),
+        c(max(c(0.01, 1e-04 * input$samplingfreq / 2),na.rm=TRUE),
           input$samplingfreq / 2)
       }
       else {
@@ -11710,13 +11786,13 @@ license()
           } else {
             1/ input$edit_gain
           })
-        ))), max(0L, min(120, 20 * log10(
+        )),na.rm=TRUE), max(0L, min(120, 20 * log10(
           max(Mod(rv$h), na.rm = TRUE) / (if (input$normalizedMagPlotAmplitude) {
             max(Mod(rv$h), na.rm = TRUE)
           } else {
             1/ input$edit_gain
           })
-        ), na.rm = TRUE)))
+        ), na.rm = TRUE),na.rm=TRUE))
       }
       else {
         c(0L, max(1L, Mod(rv$h) / (if (input$normalizedMagPlotAmplitude) {
@@ -11994,7 +12070,7 @@ labels=expression(-6*pi,-11*pi/2,-5*pi,-9L*pi/2,-4*pi,-7*pi/2,-3*pi,-5*pi/2,-2L*
               indxs <- which(isolate(handles$magnmaximumsa) < (20L *
                                                                  log10(max(
                                                                    Mod(rv$h), na.rm = TRUE
-                                                                 )) - 0.01))
+                                                                 ),na.rm=TRUE) - 0.01))
               handles$magnmaximumsa <-
                 isolate(handles$magnmaximumsa[indxs])
               handles$magnmaximumsf <-
@@ -12047,7 +12123,7 @@ labels=expression(-6*pi,-11*pi/2,-5*pi,-9L*pi/2,-4*pi,-7*pi/2,-3*pi,-5*pi/2,-2L*
               indxs <- which(isolate(handles$magnmaximumsa) < (20L *
                                                                  log10(max(
                                                                    Mod(rv$h), na.rm = TRUE
-                                                                 )) - 0.01))
+                                                                 ,na.rm=TRUE)) - 0.01))
               handles$magnmaximumsa <-
                 isolate(handles$magnmaximumsa[indxs])
               handles$magnmaximumsf <-
@@ -13255,7 +13331,7 @@ labels=expression(-6*pi,-11*pi/2,-5*pi,-9L*pi/2,-4*pi,-7*pi/2,-3*pi,-5*pi/2,-2L*
                                                      max(c(
                                                        2L,
                                                        countZeroDigitsRightOfDecimalPoint(handles$zeroloc[i])
-                                                     ))
+                                                     ),na.rm=TRUE)
                                                    ))),
                                               "})"
                                             )
@@ -13273,7 +13349,7 @@ labels=expression(-6*pi,-11*pi/2,-5*pi,-9L*pi/2,-4*pi,-7*pi/2,-3*pi,-5*pi/2,-2L*
                        handles$zeroloc[i], max(c(
                          2L,
                          countZeroDigitsRightOfDecimalPoint(handles$zeroloc[i])
-                       ))
+                       ),na.rm=TRUE)
                      ))),
                 "})"
               )
@@ -13307,7 +13383,7 @@ labels=expression(-6*pi,-11*pi/2,-5*pi,-9L*pi/2,-4*pi,-7*pi/2,-3*pi,-5*pi/2,-2L*
                                                      max(c(
                                                        2L,
                                                        countZeroDigitsRightOfDecimalPoint(handles$poleloc[i])
-                                                     ))
+                                                     ),na.rm=TRUE)
                                                    ))),
                                               "})"
                                             )
@@ -13325,7 +13401,7 @@ labels=expression(-6*pi,-11*pi/2,-5*pi,-9L*pi/2,-4*pi,-7*pi/2,-3*pi,-5*pi/2,-2L*
                        handles$poleloc[i], max(c(
                          2L,
                          countZeroDigitsRightOfDecimalPoint(handles$poleloc[i])
-                       ))
+                       ),na.rm=TRUE)
                      ))),
                 "})"
               )
@@ -13345,7 +13421,7 @@ labels=expression(-6*pi,-11*pi/2,-5*pi,-9L*pi/2,-4*pi,-7*pi/2,-3*pi,-5*pi/2,-2L*
         gsub("i", "\\\\jmath", round(input$edit_gain,
                                      max(
                                        c(5, countZeroDigitsRightOfDecimalPoint(input$edit_gain))
-                                     ))),
+                                     ,na.rm=TRUE))),
         "}^{G\\equiv b_{[0]}}\\cdot\\frac{",
         {
           accumulatorstring <- NULL
@@ -13369,7 +13445,7 @@ labels=expression(-6*pi,-11*pi/2,-5*pi,-9L*pi/2,-4*pi,-7*pi/2,-3*pi,-5*pi/2,-2L*
                                                      handles$zeroloc[i], max(c(
                                                        2,
                                                        countZeroDigitsRightOfDecimalPoint(handles$zeroloc[i])
-                                                     ))
+                                                     ),na.rm=TRUE)
                                                    ))),
                                               ")}^{z_{[",
                                               i,
@@ -13435,7 +13511,7 @@ labels=expression(-6*pi,-11*pi/2,-5*pi,-9L*pi/2,-4*pi,-7*pi/2,-3*pi,-5*pi/2,-2L*
                   max(c(
                     2L,
                     countZeroDigitsRightOfDecimalPoint(handles$zeroloc[i])
-                  ))
+                  ),na.rm=TRUE)
                 ))),
                 ")}^{z_{[",
                 i,
@@ -13506,7 +13582,7 @@ labels=expression(-6*pi,-11*pi/2,-5*pi,-9L*pi/2,-4*pi,-7*pi/2,-3*pi,-5*pi/2,-2L*
                                                      handles$poleloc[i], max(c(
                                                        2L,
                                                        countZeroDigitsRightOfDecimalPoint(handles$poleloc[i])
-                                                     ))
+                                                     ),na.rm=TRUE)
                                                    ))),
                                               ")}_{p_{[",
                                               i,
@@ -13561,7 +13637,7 @@ labels=expression(-6*pi,-11*pi/2,-5*pi,-9L*pi/2,-4*pi,-7*pi/2,-3*pi,-5*pi/2,-2L*
                   max(c(
                     2L,
                     countZeroDigitsRightOfDecimalPoint(handles$poleloc[i])
-                  ))
+                  ),na.rm=TRUE)
                 ))),
                 ")}_{p_{[",
                 i,
@@ -13618,7 +13694,7 @@ labels=expression(-6*pi,-11*pi/2,-5*pi,-9L*pi/2,-4*pi,-7*pi/2,-3*pi,-5*pi/2,-2L*
                                              5L,
                                              countZeroDigitsRightOfDecimalPoint(input$edit_gain)
                                            )
-                                         ))),
+                                         ,na.rm=TRUE))),
             "}^{G\\equiv b_{[0]}}\\cdot\\frac{",
             "1",
             if (length(handlesb()) >
@@ -13637,7 +13713,7 @@ labels=expression(-6*pi,-11*pi/2,-5*pi,-9L*pi/2,-4*pi,-7*pi/2,-3*pi,-5*pi/2,-2L*
                            handles$zeroloc[1], max(c(
                              2L,
                              countZeroDigitsRightOfDecimalPoint(handles$zeroloc[1])
-                           ))
+                           ),na.rm=TRUE)
                          ))),
                     ")",
                     if (length(handles$zeroloc) > 1L) {
@@ -13648,7 +13724,7 @@ labels=expression(-6*pi,-11*pi/2,-5*pi,-9L*pi/2,-4*pi,-7*pi/2,-3*pi,-5*pi/2,-2L*
                                   2L,
                                   countZeroDigitsRightOfDecimalPoint(handles$zeroloc[2])
                                 )
-                              ))
+                              ,na.rm=TRUE))
                       )),
                       ")")
                     },
@@ -13661,7 +13737,7 @@ labels=expression(-6*pi,-11*pi/2,-5*pi,-9L*pi/2,-4*pi,-7*pi/2,-3*pi,-5*pi/2,-2L*
                                      2L,
                                      countZeroDigitsRightOfDecimalPoint(handlesb()[2] / handlesb()[1])
                                    )
-                                 ))
+                                 ,na.rm=TRUE))
                          )),
                     "}\\cdot z^{-1}"
                   )
@@ -13673,7 +13749,7 @@ labels=expression(-6*pi,-11*pi/2,-5*pi,-9L*pi/2,-4*pi,-7*pi/2,-3*pi,-5*pi/2,-2L*
                          handles$zeroloc[1], max(c(
                            2L,
                            countZeroDigitsRightOfDecimalPoint(handles$zeroloc[1])
-                         ))
+                         ),na.rm=TRUE)
                        ))),
                   ")",
                   if (length(handles$zeroloc) > 1L) {
@@ -13682,7 +13758,7 @@ labels=expression(-6*pi,-11*pi/2,-5*pi,-9L*pi/2,-4*pi,-7*pi/2,-3*pi,-5*pi/2,-2L*
                       max(c(
                         2L,
                         countZeroDigitsRightOfDecimalPoint(handles$zeroloc[2])
-                      ))
+                      ),na.rm=TRUE)
                     ))),
                     ")")
                   },
@@ -13695,7 +13771,7 @@ labels=expression(-6*pi,-11*pi/2,-5*pi,-9L*pi/2,-4*pi,-7*pi/2,-3*pi,-5*pi/2,-2L*
                                    2L,
                                    countZeroDigitsRightOfDecimalPoint(handlesb()[2] / handlesb()[1])
                                  )
-                               ))
+                               ,na.rm=TRUE))
                        )),
                   "}\\cdot z^{-1}"
                 )
@@ -13718,7 +13794,7 @@ labels=expression(-6*pi,-11*pi/2,-5*pi,-9L*pi/2,-4*pi,-7*pi/2,-3*pi,-5*pi/2,-2L*
                                   2L,
                                   countZeroDigitsRightOfDecimalPoint(handles$zeroloc[i])
                                 )
-                              ))
+                              ,na.rm=TRUE))
                       )),
                       ")}^{b_{[2]}/b_{[0]}=",
                       gsub("i", "\\\\jmath",
@@ -13730,7 +13806,7 @@ labels=expression(-6*pi,-11*pi/2,-5*pi,-9L*pi/2,-4*pi,-7*pi/2,-3*pi,-5*pi/2,-2L*
                                        countZeroDigitsRightOfDecimalPoint(handlesb()[2L + 1] /
                                                                             handlesb()[1])
                                      )
-                                   ))
+                                   ,na.rm=TRUE))
                            )),
                       "}\\cdot z^{-2}"
                     )
@@ -13742,7 +13818,7 @@ labels=expression(-6*pi,-11*pi/2,-5*pi,-9L*pi/2,-4*pi,-7*pi/2,-3*pi,-5*pi/2,-2L*
                            handles$zeroloc[1], max(c(
                              2L,
                              countZeroDigitsRightOfDecimalPoint(handles$zeroloc[1])
-                           ))
+                           ),na.rm=TRUE)
                          ))),
                     ")",
                     "\\cdot (",
@@ -13751,7 +13827,7 @@ labels=expression(-6*pi,-11*pi/2,-5*pi,-9L*pi/2,-4*pi,-7*pi/2,-3*pi,-5*pi/2,-2L*
                       max(c(
                         2L,
                         countZeroDigitsRightOfDecimalPoint(handles$zeroloc[i])
-                      ))
+                      ),na.rm=TRUE)
                     ))),
                     ")}^{b_{[2]}/b_{[0]}=",
                     gsub("i", "\\\\jmath",
@@ -13764,7 +13840,7 @@ labels=expression(-6*pi,-11*pi/2,-5*pi,-9L*pi/2,-4*pi,-7*pi/2,-3*pi,-5*pi/2,-2L*
                                                                                      1] /
                                                                           handlesb()[1])
                                    )
-                                 ))
+                                 ,na.rm=TRUE))
                          )),
                     "}\\cdot z^{-2}"
                   )
@@ -13788,7 +13864,7 @@ labels=expression(-6*pi,-11*pi/2,-5*pi,-9L*pi/2,-4*pi,-7*pi/2,-3*pi,-5*pi/2,-2L*
                            handles$poleloc[1], max(c(
                              2L,
                              countZeroDigitsRightOfDecimalPoint(handles$poleloc[1])
-                           ))
+                           ),na.rm=TRUE)
                          ))),
                     ")",
                     if (length(handles$poleloc) > 1L) {
@@ -13798,7 +13874,7 @@ labels=expression(-6*pi,-11*pi/2,-5*pi,-9L*pi/2,-4*pi,-7*pi/2,-3*pi,-5*pi/2,-2L*
                                 c(2L,
                                   countZeroDigitsRightOfDecimalPoint(handles$poleloc[2])
                                 )
-                              ))
+                              ,na.rm=TRUE))
                       )),
                       ")")
                     },
@@ -13808,7 +13884,7 @@ labels=expression(-6*pi,-11*pi/2,-5*pi,-9L*pi/2,-4*pi,-7*pi/2,-3*pi,-5*pi/2,-2L*
                            handlesa()[2], max(c(
                              2L,
                              countZeroDigitsRightOfDecimalPoint(handlesa()[2])
-                           ))
+                           ),na.rm=TRUE)
                          ))),
                     "}\\cdot z^{-1}"
                   )
@@ -13820,7 +13896,7 @@ labels=expression(-6*pi,-11*pi/2,-5*pi,-9L*pi/2,-4*pi,-7*pi/2,-3*pi,-5*pi/2,-2L*
                          handles$poleloc[1], max(c(
                            2L,
                            countZeroDigitsRightOfDecimalPoint(handles$poleloc[1])
-                         ))
+                         ),na.rm=TRUE)
                        ))),
                   ")",
                   if (length(handles$poleloc) > 1L) {
@@ -13829,7 +13905,7 @@ labels=expression(-6*pi,-11*pi/2,-5*pi,-9L*pi/2,-4*pi,-7*pi/2,-3*pi,-5*pi/2,-2L*
                       max(c(
                         2L,
                         countZeroDigitsRightOfDecimalPoint(handles$poleloc[2])
-                      ))
+                      ),na.rm=TRUE)
                     ))),
                     ")")
                   },
@@ -13838,7 +13914,7 @@ labels=expression(-6*pi,-11*pi/2,-5*pi,-9L*pi/2,-4*pi,-7*pi/2,-3*pi,-5*pi/2,-2L*
                        stripImagZero(round(
                          handlesa()[2], max(c(
                            2L, countZeroDigitsRightOfDecimalPoint(handlesa()[2])
-                         ))
+                         ),na.rm=TRUE)
                        ))),
                   "}\\cdot z^{-1}"
                 )
@@ -13860,7 +13936,7 @@ labels=expression(-6*pi,-11*pi/2,-5*pi,-9L*pi/2,-4*pi,-7*pi/2,-3*pi,-5*pi/2,-2L*
                                  2L,
                                  countZeroDigitsRightOfDecimalPoint(handles$poleloc[1])
                                )
-                             ))
+                             ,na.rm=TRUE))
                            )),
                       ")",
                       "\\cdot (",
@@ -13871,7 +13947,7 @@ labels=expression(-6*pi,-11*pi/2,-5*pi,-9L*pi/2,-4*pi,-7*pi/2,-3*pi,-5*pi/2,-2L*
                                   2L,
                                   countZeroDigitsRightOfDecimalPoint(handles$poleloc[i])
                                 )
-                              ))
+                              ,na.rm=TRUE))
                       )),
                       ")}_{a_{[2]}=",
                       gsub("i", "\\\\jmath", stripImagZero(round(
@@ -13880,7 +13956,7 @@ labels=expression(-6*pi,-11*pi/2,-5*pi,-9L*pi/2,-4*pi,-7*pi/2,-3*pi,-5*pi/2,-2L*
                           2L,
                           countZeroDigitsRightOfDecimalPoint(handlesa()[i +
                                                                           1])
-                        ))
+                        ),na.rm=TRUE)
                       ))),
                       "}\\cdot z^{-2}"
                     )
@@ -13892,7 +13968,7 @@ labels=expression(-6*pi,-11*pi/2,-5*pi,-9L*pi/2,-4*pi,-7*pi/2,-3*pi,-5*pi/2,-2L*
                            handles$poleloc[1], max(c(
                              2L,
                              countZeroDigitsRightOfDecimalPoint(handles$poleloc[1])
-                           ))
+                           ),na.rm=TRUE)
                          ))),
                     ")",
                     "\\cdot (",
@@ -13901,7 +13977,7 @@ labels=expression(-6*pi,-11*pi/2,-5*pi,-9L*pi/2,-4*pi,-7*pi/2,-3*pi,-5*pi/2,-2L*
                       max(c(
                         2L,
                         countZeroDigitsRightOfDecimalPoint(handles$poleloc[i])
-                      ))
+                      ),na.rm=TRUE)
                     ))),
                     ")}_{a_{[2]}=",
                     gsub("i", "\\\\jmath", stripImagZero(round(
@@ -13909,7 +13985,7 @@ labels=expression(-6*pi,-11*pi/2,-5*pi,-9L*pi/2,-4*pi,-7*pi/2,-3*pi,-5*pi/2,-2L*
                       max(c(
                         2L, countZeroDigitsRightOfDecimalPoint(handlesa()[i +
                                                                            1])
-                      ))
+                      ),na.rm=TRUE)
                     ))),
                     "}\\cdot z^{-2}"
                   )
@@ -13925,7 +14001,7 @@ labels=expression(-6*pi,-11*pi/2,-5*pi,-9L*pi/2,-4*pi,-7*pi/2,-3*pi,-5*pi/2,-2L*
               5L,
               countZeroDigitsRightOfDecimalPoint(input$edit_gain)
             )
-          )),
+          ,na.rm=TRUE)),
           "\\cdot")
         },
         "\\frac{",
@@ -13936,7 +14012,7 @@ labels=expression(-6*pi,-11*pi/2,-5*pi,-9L*pi/2,-4*pi,-7*pi/2,-3*pi,-5*pi/2,-2L*
               pracma::polymul(polyproduct, c(1, handles$zeroloc[i])) # pracma::conv(polyproduct, c(1, handles$zeroloc[i])) # stats::convolve(polyproduct, rev(c(1, handles$zeroloc[i])))
           }
           numeratorstring <-
-            if (max(Mod(polyproduct)) > 1e+06) {
+            if (max(Mod(polyproduct),na.rm=TRUE) > 1e+06) {
               "0"
             }
           else {
@@ -13969,15 +14045,15 @@ labels=expression(-6*pi,-11*pi/2,-5*pi,-9L*pi/2,-4*pi,-7*pi/2,-3*pi,-5*pi/2,-2L*
                                                         if (is.infinite(polyproduct[i])) {
                                                           sign(polyproduct[i])
                                                         } else {
-                                                          -polyproduct[i] / if (max(Mod(polyproduct)) > 1e+06) {
-                                                            max(Mod(polyproduct))
+                                                          -polyproduct[i] / if (max(Mod(polyproduct),na.rm=TRUE) > 1e+06) {
+                                                            max(Mod(polyproduct),na.rm=TRUE)
                                                           } else {
                                                             1
                                                           }
                                                         }, max(c(
                                                           2,
                                                           countZeroDigitsRightOfDecimalPoint(polyproduct[i])
-                                                        ))
+                                                        ),na.rm=TRUE)
                                                       ))),
                                                       if ((abs(Im(
                                                         polyproduct[i]
@@ -14013,15 +14089,15 @@ labels=expression(-6*pi,-11*pi/2,-5*pi,-9L*pi/2,-4*pi,-7*pi/2,-3*pi,-5*pi/2,-2L*
                                                         if (is.infinite(polyproduct[i])) {
                                                           sign(polyproduct[i])
                                                         } else {
-                                                          polyproduct[i] / if (max(Mod(polyproduct)) > 1e+06) {
-                                                            max(Mod(polyproduct))
+                                                          polyproduct[i] / if (max(Mod(polyproduct),na.rm=TRUE) > 1e+06) {
+                                                            max(Mod(polyproduct),na.rm=TRUE)
                                                           } else {
                                                             1
                                                           }
                                                         }, max(c(
                                                           2,
                                                           countZeroDigitsRightOfDecimalPoint(polyproduct[i])
-                                                        ))
+                                                        ),na.rm=TRUE)
                                                       ))),
                                                       if ((abs(Im(
                                                         polyproduct[i]
@@ -14049,7 +14125,7 @@ labels=expression(-6*pi,-11*pi/2,-5*pi,-9L*pi/2,-4*pi,-7*pi/2,-3*pi,-5*pi/2,-2L*
               pracma::polymul(polyproduct, c(1, handles$poleloc[i])) # pracma::conv(polyproduct, c(1, handles$poleloc[i])) # stats::convolve(polyproduct, rev(c(1, handles$poleloc[i])))
           }
           denominatorstring <-
-            if (max(Mod(polyproduct)) > 1e+06) {
+            if (max(Mod(polyproduct),na.rm=TRUE) > 1e+06) {
               "0"
             }
           else {
@@ -14086,15 +14162,15 @@ labels=expression(-6*pi,-11*pi/2,-5*pi,-9L*pi/2,-4*pi,-7*pi/2,-3*pi,-5*pi/2,-2L*
                       if (is.infinite(polyproduct[i])) {
                         sign(polyproduct[i])
                       } else {
-                        -polyproduct[i] / if (max(Mod(polyproduct)) > 1e+06) {
-                          max(Mod(polyproduct))
+                        -polyproduct[i] / if (max(Mod(polyproduct),na.rm=TRUE) > 1e+06) {
+                          max(Mod(polyproduct),na.rm=TRUE)
                         } else {
                           1
                         }
                       }, max(c(
                         2,
                         countZeroDigitsRightOfDecimalPoint(polyproduct[i])
-                      ))
+                      ),na.rm=TRUE)
                     ))),
                     if ((abs(Im(
                       polyproduct[i]
@@ -14136,15 +14212,15 @@ labels=expression(-6*pi,-11*pi/2,-5*pi,-9L*pi/2,-4*pi,-7*pi/2,-3*pi,-5*pi/2,-2L*
                       if (is.infinite(polyproduct[i])) {
                         sign(polyproduct[i])
                       } else {
-                        polyproduct[i] / if (max(Mod(polyproduct)) > 1e+06) {
-                          max(Mod(polyproduct))
+                        polyproduct[i] / if (max(Mod(polyproduct),na.rm=TRUE) > 1e+06) {
+                          max(Mod(polyproduct),na.rm=TRUE)
                         } else {
                           1
                         }
                       }, max(c(
                         2,
                         countZeroDigitsRightOfDecimalPoint(polyproduct[i])
-                      ))
+                      ),na.rm=TRUE)
                     ))),
                     if ((abs(Im(
                       polyproduct[i]
@@ -14207,7 +14283,7 @@ labels=expression(-6*pi,-11*pi/2,-5*pi,-9L*pi/2,-4*pi,-7*pi/2,-3*pi,-5*pi/2,-2L*
                                                 handlesa()[i],
                                                 max(c(
                                                   2, countZeroDigitsRightOfDecimalPoint(handlesa()[i])
-                                                ))
+                                                ),na.rm=TRUE)
                                               ))),
                                               ")}_{a_{[",
                                               i - 1L,
@@ -14223,7 +14299,7 @@ labels=expression(-6*pi,-11*pi/2,-5*pi,-9L*pi/2,-4*pi,-7*pi/2,-3*pi,-5*pi/2,-2L*
                   handlesa()[i],
                   max(c(
                     2L, countZeroDigitsRightOfDecimalPoint(handlesa()[i])
-                  ))
+                  ),na.rm=TRUE)
                 ))),
                 ")}_{a_{[",
                 i - 1L,
@@ -14272,7 +14348,7 @@ labels=expression(-6*pi,-11*pi/2,-5*pi,-9L*pi/2,-4*pi,-7*pi/2,-3*pi,-5*pi/2,-2L*
                                      2L,
                                      countZeroDigitsRightOfDecimalPoint(handlesb()[i] / handlesb()[1])
                                    )
-                                 ))
+                                 ,na.rm=TRUE))
                          )),
                     ")}_{b_{[",
                     i - 1L,
@@ -14291,7 +14367,7 @@ labels=expression(-6*pi,-11*pi/2,-5*pi,-9L*pi/2,-4*pi,-7*pi/2,-3*pi,-5*pi/2,-2L*
                             2L,
                             countZeroDigitsRightOfDecimalPoint(handlesb()[i] / handlesb()[1])
                           )
-                        ))
+                        ,na.rm=TRUE))
                 )),
                 ")}_{b_{[",
                 i - 1L,
@@ -14332,7 +14408,7 @@ labels=expression(-6*pi,-11*pi/2,-5*pi,-9L*pi/2,-4*pi,-7*pi/2,-3*pi,-5*pi/2,-2L*
                                                      handlesa()[i],
                                                      max(c(
                                                        2L, countZeroDigitsRightOfDecimalPoint(handlesa()[i])
-                                                     ))
+                                                     ),na.rm=TRUE)
                                                    ))),
                                               ")}_{a_{[",
                                               i - 1L,
@@ -14345,7 +14421,7 @@ labels=expression(-6*pi,-11*pi/2,-5*pi,-9L*pi/2,-4*pi,-7*pi/2,-3*pi,-5*pi/2,-2L*
                                               #   max(c(
                                               #     2L,
                                               #     countZeroDigitsRightOfDecimalPoint(-handlesa()[i])
-                                              #   ))
+                                              #   ),na.rm=TRUE)
                                               # ))),
                                               # "}\\cdot y_{[n-",
                                               "\\cdot y_{[n-",
@@ -14362,7 +14438,7 @@ labels=expression(-6*pi,-11*pi/2,-5*pi,-9L*pi/2,-4*pi,-7*pi/2,-3*pi,-5*pi/2,-2L*
                      stripImagZero(round(
                        handlesa()[i], max(c(
                          2L, countZeroDigitsRightOfDecimalPoint(handlesa()[i])
-                       ))
+                       ),na.rm=TRUE)
                      ))),
                 ")}_{a_{[",
                 i - 1L,
@@ -14375,7 +14451,7 @@ labels=expression(-6*pi,-11*pi/2,-5*pi,-9L*pi/2,-4*pi,-7*pi/2,-3*pi,-5*pi/2,-2L*
                 #        -handlesa()[i],
                 #        max(c(
                 #          2L, countZeroDigitsRightOfDecimalPoint(-handlesa()[i])
-                #        ))
+                #        ),na.rm=TRUE)
                 #      ))),
                 # "}\\cdot y_{[n-",
                 "\\cdot y_{[n-",
@@ -14396,7 +14472,7 @@ labels=expression(-6*pi,-11*pi/2,-5*pi,-9L*pi/2,-4*pi,-7*pi/2,-3*pi,-5*pi/2,-2L*
           paste0( # for positive/ negative values
             "\\underbrace{",
             gsub("i", "\\\\jmath", if (max(Mod(handlesb(
-            ))) >
+            )),na.rm=TRUE) >
             1e+06) {
               0L
             } else {
@@ -14433,7 +14509,7 @@ labels=expression(-6*pi,-11*pi/2,-5*pi,-9L*pi/2,-4*pi,-7*pi/2,-3*pi,-5*pi/2,-2L*
                     "+ \\underbrace{(",
                     gsub("i", "\\\\jmath",
                          stripImagZero(round(
-                           if (max(Mod(handlesb())) >
+                           if (max(Mod(handlesb()),na.rm=TRUE) >
                                1e+06) {
                              (handlesb()[i] / handlesb()[1]) / (1/ eps) / 1000
                            } else {
@@ -14441,7 +14517,7 @@ labels=expression(-6*pi,-11*pi/2,-5*pi,-9L*pi/2,-4*pi,-7*pi/2,-3*pi,-5*pi/2,-2L*
                            }, max(c(
                              2L,
                              countZeroDigitsRightOfDecimalPoint(handlesb()[i] / handlesb()[1])
-                           ))
+                           ),na.rm=TRUE)
                          ))),
                     ")}_{b_{[",
                     i - 1L,
@@ -14454,7 +14530,7 @@ labels=expression(-6*pi,-11*pi/2,-5*pi,-9L*pi/2,-4*pi,-7*pi/2,-3*pi,-5*pi/2,-2L*
                 accumulatorstring,
                 "+ \\underbrace{(",
                 gsub("i", "\\\\jmath", stripImagZero(round(
-                  if (max(Mod(handlesb())) >
+                  if (max(Mod(handlesb()),na.rm=TRUE) >
                       1e+06) {
                     (handlesb()[i] / handlesb()[1]) / (1/ eps) / 1000
                   } else {
@@ -14462,7 +14538,7 @@ labels=expression(-6*pi,-11*pi/2,-5*pi,-9L*pi/2,-4*pi,-7*pi/2,-3*pi,-5*pi/2,-2L*
                   }, max(c(
                     2L,
                     countZeroDigitsRightOfDecimalPoint(handlesb()[i] / handlesb()[1])
-                  ))
+                  ),na.rm=TRUE)
                 ))),
                 ")}_{b_{[",
                 i - 1L,
