@@ -33,6 +33,7 @@ library(rwt) # makesig
 # library(Matrix) # sparseMatrix
 library(astsa) # data("soi") # Southern-Oscillation Index (SOI), 453 months, 1950-1987 # data("nyse") # New York Stock Exchange, 2/Feb/84 to 31/Dec/91
 # library(seewave) # localpeaks, spec, meanspec
+library(rintrojs) # introBox # wrapper for the [Intro.js library](http://www.introjs.com)
 
 # Constant-Symbol Definitions ---------------------------------------- ----
 
@@ -596,7 +597,10 @@ ui <-
           "\");}"
         ))
       },
+      
       useShinyjs(),
+      rintrojs::introjsUI(),
+      
       tags$style(type = "text/css", ".recalculating {opacity: 1.0;}"), # https://groups.google.com/forum/#!topic/shiny-discuss/9faA5OUm2Hc
       theme = paste0(MyChosenTheme, ".css"),
       tags$head(tags$style(".navbar .navbar-header {float: right}")),
@@ -706,6 +710,7 @@ $('#loadmessage').fadeOut(500).fadeIn(500, blink);
       # navbarPage ----
       navbarPage(
         id = "mainNavBarPage",
+        # selected="MainPlots",
         title = div(HTML(MyAppNameAndTheme),
                     img(src = "bigorb.png", height = 20L
                         , alt = "R-logo big orb"
@@ -721,7 +726,10 @@ $('#loadmessage').fadeOut(500).fadeIn(500, blink);
           style = paste0("background-color: ", NavBarPageBackgroundColor,
                          ";"),
           title = "Plots",
+          # id="MainPlots",
+          # selected="PeZDemoPlotsPage",
           icon = shiny::icon("bar-chart-o", lib = "font-awesome"), # http://fontawesome.io/icons/
+          
           shinyBS::bsModal(
             id = "modalExample",
             title = "Your plot",
@@ -730,11 +738,16 @@ $('#loadmessage').fadeOut(500).fadeIn(500, blink);
             plotOutput("plotshowgph"),
             downloadButton(outputId = "downloadShowgphPlot", label = "Download")
           ),
-          fluidPage(title = "PeZDemo Plots Page", fluidRow(
+          fluidPage(title = "PeZDemo Plots Page", 
+                    id="PeZDemoPlotsPage",
+                    fluidRow(
             # . sidebarLayout ----
             sidebarLayout(
               position = "left",
               fluid = TRUE,
+              
+              # https://groups.google.com/forum/#!topic/shiny-discuss/iOqdpc-C80Y
+              rintrojs::introBox(
               # .. sidebarPanel ----
               sidebarPanel(
                 style = paste0("background-color: ",
@@ -1552,7 +1565,7 @@ $('#loadmessage').fadeOut(500).fadeIn(500, blink);
                               `vonHann(ing)-window (raised-cosine, sine-squared), 41-point` = "hanning(41)",
                               `Hamming-window, 41-point` = "hamming(41)",
                               `Triangle-window (Bartlett, but no zero-endpoint), 41-point` = "triang(41)",
-                              `Windowed-Sinc (e.g. using Hamming), 11-point, 0.3` = "N=19;leftside=sin(pi*(0.3*(-(N/2):(-1))))/(pi*(0.3*(-(N/2):(-1))));c(leftside,1,rev(leftside))*hamming(N+1)", # "N=18;sinc(0.3*(-(N/2):(N/2)))*0.3*blackman(N+1)",
+                              `Windowed-Sinc (e.g. using Hamming), 19-point, 0.3` = "N=19;leftside=sin(pi*(0.3*(-(N/2):(-1))))/(pi*(0.3*(-(N/2):(-1))));c(leftside,1,rev(leftside))*hamming(N+1)", # "N=18;sinc(0.3*(-(N/2):(N/2)))*0.3*blackman(N+1)",
                               `Spencer 15-point Moving-Average FIR` = "spencerFilter()",
                               `Spencer 15-point MA FIR, given b` = "Ma(b=c(-3, -6, -5, 3, 21, 46, 67, 74, 67, 46, 21, 3, -5, -6, -3) / 320)",
                               `( random-filter from this list )` = paste0(
@@ -2053,8 +2066,13 @@ $('#loadmessage').fadeOut(500).fadeIn(500, blink);
                     bsAlert(anchorId = "AlertMsgToUser")
                   )
                 )
-              ),
+              ) # end sidePanel
+              ,data.step=1, 
+              data.intro="This is the (Left/ Input) Side-panel.", 
+              data.hint="Hint: This is the (Left/ Input) Side-panel."
+              ), # end rintrojs::introBox
               # .. mainPanel ----
+              rintrojs::introBox(
               mainPanel(
                 id = "mainPanel",
                 style = paste0("background-color: ", MainSidePanelBackgroundColor,
@@ -2405,9 +2423,14 @@ $('#loadmessage').fadeOut(500).fadeIn(500, blink);
                   )
                 )
               )
+              ,data.step=2,
+              data.intro="This is the Main (Results) panel.", 
+              data.hint="Hint: This is the Main (Results) panel."
+              ) # end rintrojs::introBox
             )
-          )),
+          )), # end FluidPage
           withMathJax(),
+          rintrojs::introBox(
           shinyBS::bsCollapse(
             id = "FnBoxesCollapse",
             multiple = TRUE,
@@ -2648,7 +2671,12 @@ $('#loadmessage').fadeOut(500).fadeIn(500, blink);
                         ))
             ) # end shinyBS::bsCollapsePanel
           ) # end shinyBS::bsCollapse
-          ,shinyBS::bsCollapse(
+          ,data.step=3, 
+          data.intro="These are the Equation-panels.", 
+          data.hint="Hint: These are the Equation-panels."
+          ), # end rintrojs::introBox
+          rintrojs::introBox(
+          shinyBS::bsCollapse(
             id = "AudioCollapse",
             multiple = TRUE,
             shinyBS::bsCollapsePanel(
@@ -2966,8 +2994,16 @@ $('#loadmessage').fadeOut(500).fadeIn(500, blink);
               ) # end tags$span
             ) # end fluidRow
           ) # shinyBS::bsCollapsePanel
-          ) # ?~?~!?!?!
-        ), # shinyBS::bsCollapse
+          ) # shinyBS::bsCollapse
+          ,data.step=4, 
+          data.intro="This is the Audio-Applications panel.", 
+          data.hint="Hint: This is the Audio-Applications panel."
+          ) # end rintrojs::introBox
+        ), # end tabPanel
+        # ,data.step=1, 
+        # data.intro="This is the main plots panel.", 
+        # data.hint="Hint: This is the main plots panel."
+        # ) # end rintrojs::introBox
         # 'More' navbarMenu ----
         navbarMenu(
           title = "More",
@@ -3048,6 +3084,20 @@ $('#loadmessage').fadeOut(500).fadeIn(500, blink);
                             WellPanelBackgroundColor, ";"),
               helpText("Welcome to the MySettings Page ..."),
               br(),
+              shinyBS::bsButton(
+                            inputId = "pb_runintro",
+                            label = "Start guided-tour",
+                            # width = "31.5%",
+                            style = "primary",
+                            # size = "small",
+                            # type = "toggle",
+                            block = FALSE,
+                            disabled = FALSE,
+                            value = FALSE,
+                            icon = shiny::icon("map-o", lib = "font-awesome")
+              ),
+              br(),
+              hr(),
               colourpicker::colourInput(
                 inputId = "grcolor",
                 label = "Grid-Colour for plots (or just choose 'transparent' for none)",
@@ -3404,6 +3454,13 @@ server <- shinyServer(function(input, output, session) {
   shinyjs::hide(selector = "#ResultsPanel li a[data-value=Tbl]")
   shinyjs::hide(selector = "#ResultsPanel li a[data-value=All]")
   shinyjs::hide(selector = "#pzPlotsPanel li a[data-value=3js]")
+  
+  # # initiate hints on startup with custom button and event
+  # rintrojs::hintjs(session, 
+  #                  options = list("hintButtonLabel"="Hope this hint was helpful"),
+  #                  events = list("onhintclose"='alert("Wasn\'t that hint helpful")')
+  # )
+  
   handles <-
     reactiveValues(
       poleloc = c(0L),
@@ -3921,6 +3978,7 @@ You can put anything into `absolutePanel`, including any Shiny inputs and output
                                            pcm=TRUE
                                            )
     } else if (input$audiogeneratorsignal=='custom') {
+      if (any(grepl("system|shell|pipe|url|file|socket|fifo|open|Sys[.]", input$edit_customsignalText,ignore.case=FALSE))) return() # info-system security
       xFsList <- try(eval(parse(text=input$edit_customsignalText)),silent=TRUE)
       if (!is.list(xFsList)) return()
       xcustom <- matrix(xFsList$xn,ncol=1) # nrow=length(xFsList$xn))
@@ -4828,7 +4886,22 @@ You can put anything into `absolutePanel`, including any Shiny inputs and output
     #     # )
     #   # }
     # })
-    
+
+  observeEvent(input$pb_runintro, {
+    updateNavbarPage(session, 
+                     inputId = "mainNavBarPage", 
+                     selected = "Plots")
+
+    # intro <- data.frame(element="#pb_ma",
+    #                     intro="In Codd we trust")
+    introjs(session, # options = list(steps= intro))
+            options = list("nextLabel"="Next",
+                           "prevLabel"="Prev",
+                           "skipLabel"="Exit guided-tour"),
+            events = list("oncomplete"='alert("Hope you enjoyed the tour ...")')
+          )
+  })
+  
    # output$signaltimeplots ----
   output$signaltimeplots <- renderPlot(width = "auto", height = "auto", {
     if (input$inputsignalsource=="file") { 
@@ -5733,6 +5806,7 @@ abline(h=input$slider1, # (maxSpgFreq-minSpgFreq)*(input$slider1-minSpgFreq/ (Fs
                  shinyjs::disable(id = "pb_delpole")
                  shinyjs::disable(id = "pb_delzero")
                  if (grepl("sample", input$commonFilters)) {
+                   if (any(grepl("system|shell|pipe|url|file|socket|fifo|open|Sys[.]", input$commonFilters,ignore.case=FALSE))) return() # info-system security
                    chosenFilter <- try(eval(parse(text = input$commonFilters)),silent=TRUE)
                    updateSelectInput(session, inputId = "commonFilters", selected = chosenFilter)
                    return(NULL)
@@ -5741,6 +5815,7 @@ abline(h=input$slider1, # (maxSpgFreq-minSpgFreq)*(input$slider1-minSpgFreq/ (Fs
                    chosenFilter <- input$commonFilters
                  }
                  if (grepl("Zpg|sftrans|bilinear", chosenFilter)) {
+                   if (any(grepl("system|shell|pipe|url|file|socket|fifo|open|Sys[.]", chosenFilter,ignore.case=FALSE))) return() # info-system security
                    zpg <- try(eval(parse(text = chosenFilter)),silent=TRUE)
                    if (is.list(zpg)) {
                    handles$zeroloc <- zpg$zero
@@ -5755,6 +5830,7 @@ abline(h=input$slider1, # (maxSpgFreq-minSpgFreq)*(input$slider1-minSpgFreq/ (Fs
                    chosenFilter
                  )) {
                    handles$poleloc <- c(0L)
+                   if (any(grepl("system|shell|pipe|url|file|socket|fifo|open|Sys[.]", chosenFilter,ignore.case=FALSE))) return() # info-system security
                    b <- try(eval(parse(text = chosenFilter)),silent=TRUE)
                    if (length(b) < 2L) {
                      handles$zeroloc <- c(0L)
@@ -5765,6 +5841,7 @@ abline(h=input$slider1, # (maxSpgFreq-minSpgFreq)*(input$slider1-minSpgFreq/ (Fs
                  }
                  else if (grepl("FftFilter", chosenFilter)) {
                    handles$poleloc <- c(0L)
+                   if (any(grepl("system|shell|pipe|url|file|socket|fifo|open|Sys[.]", chosenFilter,ignore.case=FALSE))) return() # info-system security
                    b <- try(eval(parse(text = chosenFilter)),silent=TRUE)
                    if (length(b) < 2L) {
                      handles$zeroloc <- c(0L)
@@ -5774,6 +5851,7 @@ abline(h=input$slider1, # (maxSpgFreq-minSpgFreq)*(input$slider1-minSpgFreq/ (Fs
                    }
                  }
                  else {
+                   if (any(grepl("system|shell|pipe|url|file|socket|fifo|open|Sys[.]", chosenFilter,ignore.case=FALSE))) return() # info-system security
                    a <- try(eval(parse(text = paste0(chosenFilter, "$a"))),silent=TRUE)
                    if (length(a) < 2L) {
                      handles$poleloc <- c(0L)
@@ -5781,6 +5859,7 @@ abline(h=input$slider1, # (maxSpgFreq-minSpgFreq)*(input$slider1-minSpgFreq/ (Fs
                    else {
                      handles$poleloc <- try(polyroot(rev(a)),silent=TRUE) # numerical stability may be an issue for all but low-degree polynomials
                    }
+                   if (any(grepl("system|shell|pipe|url|file|socket|fifo|open|Sys[.]", chosenFilter,ignore.case=FALSE))) return() # info-system security
                    b <- try(eval(parse(text = paste0(chosenFilter, "$b"))),silent=TRUE)
                    if (length(b) < 2L) {
                      handles$zeroloc <- c(0L)
@@ -6234,6 +6313,7 @@ abline(h=input$slider1, # (maxSpgFreq-minSpgFreq)*(input$slider1-minSpgFreq/ (Fs
                          valueToReplace <- input$slider2A * exp(1i * input$slider2B)
                        }
                        else {
+                         if (any(grepl("system|shell|pipe|url|file|socket|fifo|open|Sys[.]", input$edit_currentSelectionText,ignore.case=FALSE))) return() # info-system security
                          valueToReplace <-
                            try(eval(parse(text = input$edit_currentSelectionText)),silent=TRUE)
                        }
@@ -6256,6 +6336,7 @@ abline(h=input$slider1, # (maxSpgFreq-minSpgFreq)*(input$slider1-minSpgFreq/ (Fs
                          }
                        }
                        else {
+                         if (any(grepl("system|shell|pipe|url|file|socket|fifo|open|Sys[.]", input$edit_currentSelectionText,ignore.case=FALSE))) return() # info-system security
                          valueToReplace <-
                            try(eval(parse(text = input$edit_currentSelectionText)),silent=TRUE)
                        }
@@ -14562,8 +14643,10 @@ labels=expression(-6*pi,-11*pi/2,-5*pi,-9L*pi/2,-4*pi,-7*pi/2,-3*pi,-5*pi/2,-2L*
     if ((grepl("rnorm|runif", input$edit_polezeroloc)) ||
         (grepl("rnorm|runif",
                input$edit_polezerolocImag))) {
-      invalidateLater(10000)
+      invalidateLater(10000) # update every ~10 seconds
     }
+    if (any(grepl("system|shell|pipe|url|file|socket|fifo|open|Sys[.]", input$edit_polezeroloc,ignore.case=FALSE))) return() # info-system security
+    if (any(grepl("system|shell|pipe|url|file|socket|fifo|open|Sys[.]", input$edit_polezerolocImag,ignore.case=FALSE))) return() # info-system security
     n1 <- try(eval(parse(text = input$edit_polezeroloc)),silent=TRUE)
     n2 <- try(eval(parse(text = input$edit_polezerolocImag)),silent=TRUE)
     if (is.infinite(n2)) {
@@ -14599,6 +14682,8 @@ labels=expression(-6*pi,-11*pi/2,-5*pi,-9L*pi/2,-4*pi,-7*pi/2,-3*pi,-5*pi/2,-2L*
                input$edit_polezerolocAngle))) {
       invalidateLater(10000)
     }
+    if (any(grepl("system|shell|pipe|url|file|socket|fifo|open|Sys[.]", input$edit_polezerolocRadius,ignore.case=FALSE))) return() # info-system security
+    if (any(grepl("system|shell|pipe|url|file|socket|fifo|open|Sys[.]", input$edit_polezerolocAngle,ignore.case=FALSE))) return() # info-system security
     r <- try(eval(parse(text = input$edit_polezerolocRadius)),silent=TRUE)
     theta <- try(eval(parse(text = input$edit_polezerolocAngle)),silent=TRUE)
     a <- r * exp(1i * theta)
@@ -14616,6 +14701,8 @@ labels=expression(-6*pi,-11*pi/2,-5*pi,-9L*pi/2,-4*pi,-7*pi/2,-3*pi,-5*pi/2,-2L*
   # observeEvent (button) addpole ----
   observeEvent(eventExpr = input$pb_addpole, handlerExpr = {
     if (input$tabPoleZeroEditing == "rtheta") {
+      if (any(grepl("system|shell|pipe|url|file|socket|fifo|open|Sys[.]", input$edit_polezerolocRadius,ignore.case=FALSE))) return() # info-system security
+      if (any(grepl("system|shell|pipe|url|file|socket|fifo|open|Sys[.]", input$edit_polezerolocAngle,ignore.case=FALSE))) return() # info-system security
       n1 <- try(eval(parse(text = input$edit_polezerolocRadius)),silent=TRUE)
       n2 <- try(eval(parse(text = input$edit_polezerolocAngle)),silent=TRUE)
       valueToBeAdded <- n1 * exp(n2)
@@ -14634,6 +14721,7 @@ labels=expression(-6*pi,-11*pi/2,-5*pi,-9L*pi/2,-4*pi,-7*pi/2,-3*pi,-5*pi/2,-2L*
           valueToBeAdded <- n1 * exp(1i * n2)
         }
         else {
+          if (any(grepl("system|shell|pipe|url|file|socket|fifo|open|Sys[.]", input$edit_currentSelectionText,ignore.case=FALSE))) return() # info-system security
           valueToBeAdded <-
             try(eval(parse(text = input$edit_currentSelectionText)),silent=TRUE)
         }
@@ -14671,6 +14759,8 @@ labels=expression(-6*pi,-11*pi/2,-5*pi,-9L*pi/2,-4*pi,-7*pi/2,-3*pi,-5*pi/2,-2L*
       }
     }
     else if (input$tabPoleZeroEditing == "RealImag") {
+      if (any(grepl("system|shell|pipe|url|file|socket|fifo|open|Sys[.]", input$edit_polezeroloc,ignore.case=FALSE))) return() # info-system security
+      if (any(grepl("system|shell|pipe|url|file|socket|fifo|open|Sys[.]", input$edit_polezerolocImag,ignore.case=FALSE))) return() # info-system security
       n1 <- try(eval(parse(text = input$edit_polezeroloc)),silent=TRUE)
       n2 <- try(eval(parse(text = input$edit_polezerolocImag)),silent=TRUE)
       if (is.infinite(Im(n2))) {
@@ -14688,6 +14778,7 @@ labels=expression(-6*pi,-11*pi/2,-5*pi,-9L*pi/2,-4*pi,-7*pi/2,-3*pi,-5*pi/2,-2L*
           valueToBeAdded <- n1 + 1i * n2
         }
         else {
+          if (any(grepl("system|shell|pipe|url|file|socket|fifo|open|Sys[.]", input$edit_currentSelectionText,ignore.case=FALSE))) return() # info-system security
           valueToBeAdded <-
             try(eval(parse(text = input$edit_currentSelectionText)),silent=TRUE)
         }
@@ -14734,6 +14825,7 @@ labels=expression(-6*pi,-11*pi/2,-5*pi,-9L*pi/2,-4*pi,-7*pi/2,-3*pi,-5*pi/2,-2L*
         inputFilterCommandString <- input$edit_currentSelectionText
       }
       if (grepl("Zpg|sftrans|bilinear", inputFilterCommandString)) {
+        if (any(grepl("system|shell|pipe|url|file|socket|fifo|open|Sys[.]", inputFilterCommandString,ignore.case=FALSE))) return() # info-system security
         zpg <- try(eval(parse(text = inputFilterCommandString)),silent=TRUE)
         if (is.list(zpg)) {
         handles$zeroloc <- zpg$zero
@@ -14748,6 +14840,7 @@ labels=expression(-6*pi,-11*pi/2,-5*pi,-9L*pi/2,-4*pi,-7*pi/2,-3*pi,-5*pi/2,-2L*
         inputFilterCommandString
       )) {
         handles$poleloc <- c(0)
+        if (any(grepl("system|shell|pipe|url|file|socket|fifo|open|Sys[.]", inputFilterCommandString,ignore.case=FALSE))) return() # info-system security
         b <- try(eval(parse(text = inputFilterCommandString)),silent=TRUE)
         if (length(b) < 2L) {
           handles$zeroloc <- c(0)
@@ -14758,6 +14851,7 @@ labels=expression(-6*pi,-11*pi/2,-5*pi,-9L*pi/2,-4*pi,-7*pi/2,-3*pi,-5*pi/2,-2L*
       }
       else if (grepl("FftFilter", inputFilterCommandString)) {
         handles$poleloc <- c(0)
+        if (any(grepl("system|shell|pipe|url|file|socket|fifo|open|Sys[.]", inputFilterCommandString,ignore.case=FALSE))) return() # info-system security
         b <- try(eval(parse(text = inputFilterCommandString)),silent=TRUE)
         if (length(b) < 2L) {
           handles$zeroloc <- c(0)
@@ -14767,6 +14861,7 @@ labels=expression(-6*pi,-11*pi/2,-5*pi,-9L*pi/2,-4*pi,-7*pi/2,-3*pi,-5*pi/2,-2L*
         }
       }
       else {
+        if (any(grepl("system|shell|pipe|url|file|socket|fifo|open|Sys[.]", inputFilterCommandString,ignore.case=FALSE))) return() # info-system security
         a <- try(eval(parse(text = paste0(inputFilterCommandString,"$a"))),silent=TRUE)
         if (length(a) < 2L) {
           handles$poleloc <- c(0)
@@ -14774,6 +14869,7 @@ labels=expression(-6*pi,-11*pi/2,-5*pi,-9L*pi/2,-4*pi,-7*pi/2,-3*pi,-5*pi/2,-2L*
         else {
           handles$poleloc <- try(polyroot(rev(a)),silent=TRUE) # numerical stability may be an issue for all but low-degree polynomials
         }
+        if (any(grepl("system|shell|pipe|url|file|socket|fifo|open|Sys[.]", inputFilterCommandString,ignore.case=FALSE))) return() # info-system security
         b <- try(eval(parse(text = paste0(inputFilterCommandString,"$b"))),silent=TRUE)
         if (length(b) < 2L) {
           handles$zeroloc <- c(0)
@@ -14813,6 +14909,7 @@ labels=expression(-6*pi,-11*pi/2,-5*pi,-9L*pi/2,-4*pi,-7*pi/2,-3*pi,-5*pi/2,-2L*
         if (input$coordsevaluateImport) {
           importedPolesValues <- rep(0, length(importedPoles))
           for (i in 1L:length(importedPoles)) {
+            if (any(grepl("system|shell|pipe|url|file|socket|fifo|open|Sys[.]", importedPoles[i],ignore.case=FALSE))) return() # info-system security
             importedPolesValues[i] <- try(eval(parse(text = importedPoles[i])),silent=TRUE)
           }
         }
@@ -14839,6 +14936,7 @@ labels=expression(-6*pi,-11*pi/2,-5*pi,-9L*pi/2,-4*pi,-7*pi/2,-3*pi,-5*pi/2,-2L*
         if (input$coordsevaluateImport) {
           importedZerosValues <- rep(0, length(importedZeros))
           for (i in 1L:length(importedZeros)) {
+            if (any(grepl("system|shell|pipe|url|file|socket|fifo|open|Sys[.]", importedZeros[i],ignore.case=FALSE))) return() # info-system security
             importedZerosValues[i] <- try(eval(parse(text = importedZeros[i])),silent=TRUE)
           }
         }
@@ -14897,9 +14995,11 @@ labels=expression(-6*pi,-11*pi/2,-5*pi,-9L*pi/2,-4*pi,-7*pi/2,-3*pi,-5*pi/2,-2L*
         # cat(file=stderr(),"L12112 length(data$mypolescopy):",length(data$mypolescopy),".\n")
         # cat(file=stderr(),"L12113 length(data$myzeroscopy):",length(data$myzeroscopy),".\n")
         for (i in (1L:length(data$mypolescopy))) {
+          if (any(grepl("system|shell|pipe|url|file|socket|fifo|open|Sys[.]", data$mypolescopy[i],ignore.case=FALSE))) return() # info-system security
           handles$poleloc[i] <- try(eval(parse(text = data$mypolescopy[i])),silent=TRUE)
         }
         for (i in (1L:length(data$myzeroscopy))) {
+          if (any(grepl("system|shell|pipe|url|file|socket|fifo|open|Sys[.]", data$mypolescopy[i],ignore.case=FALSE))) return() # info-system security
           handles$zeroloc[i] <- try(eval(parse(text = data$myzeroscopy[i])),silent=TRUE)
         }
         unlink(input$filecoordsImport$datapath) # inpFile$datapath)
@@ -14912,6 +15012,8 @@ labels=expression(-6*pi,-11*pi/2,-5*pi,-9L*pi/2,-4*pi,-7*pi/2,-3*pi,-5*pi/2,-2L*
   # observeEvent (button) addzero ----
   observeEvent(eventExpr = input$pb_addzero, handlerExpr = {
     if (input$tabPoleZeroEditing == "rtheta") {
+      if (any(grepl("system|shell|pipe|url|file|socket|fifo|open|Sys[.]", input$edit_polezerolocRadius,ignore.case=FALSE))) return() # info-system security
+      if (any(grepl("system|shell|pipe|url|file|socket|fifo|open|Sys[.]", input$edit_polezerolocAngle,ignore.case=FALSE))) return() # info-system security
       n1 <- try(eval(parse(text = input$edit_polezerolocRadius)),silent=TRUE)
       n2 <- try(eval(parse(text = input$edit_polezerolocAngle)),silent=TRUE)
       if (n2 > 2 * pi) {
@@ -14926,6 +15028,7 @@ labels=expression(-6*pi,-11*pi/2,-5*pi,-9L*pi/2,-4*pi,-7*pi/2,-3*pi,-5*pi/2,-2L*
         valueToBeAdded <- n1 * exp(1i * n2)
       }
       else {
+        if (any(grepl("system|shell|pipe|url|file|socket|fifo|open|Sys[.]", input$edit_currentSelectionText,ignore.case=FALSE))) return() # info-system security
         valueToBeAdded <-
           try(eval(parse(text = input$edit_currentSelectionText)),silent=TRUE)
       }
@@ -14955,6 +15058,8 @@ labels=expression(-6*pi,-11*pi/2,-5*pi,-9L*pi/2,-4*pi,-7*pi/2,-3*pi,-5*pi/2,-2L*
     }
     else if (input$tabPoleZeroEditing == "RealImag") {
       shiny::req(input$edit_polezeroloc, input$edit_polezerolocImag)
+      if (any(grepl("system|shell|pipe|url|file|socket|fifo|open|Sys[.]", input$edit_polezeroloc,ignore.case=FALSE))) return() # info-system security
+      if (any(grepl("system|shell|pipe|url|file|socket|fifo|open|Sys[.]", input$edit_polezerolocImag,ignore.case=FALSE))) return() # info-system security
       n1 <- try(eval(parse(text = input$edit_polezeroloc)),silent=TRUE)
       n2 <- try(eval(parse(text = input$edit_polezerolocImag)),silent=TRUE)
       if (is.infinite(Im(n2))) {
@@ -14972,6 +15077,7 @@ labels=expression(-6*pi,-11*pi/2,-5*pi,-9L*pi/2,-4*pi,-7*pi/2,-3*pi,-5*pi/2,-2L*
           valueToBeAdded <- n1 + 1i * n2
         }
         else {
+          if (any(grepl("system|shell|pipe|url|file|socket|fifo|open|Sys[.]", input$edit_currentSelectionText,ignore.case=FALSE))) return() # info-system security
           valueToBeAdded <-
             try(eval(parse(text = input$edit_currentSelectionText)),silent=TRUE)
         }
@@ -15018,6 +15124,7 @@ labels=expression(-6*pi,-11*pi/2,-5*pi,-9L*pi/2,-4*pi,-7*pi/2,-3*pi,-5*pi/2,-2L*
         inputFilterCommandString <- input$edit_currentSelectionText
       }
       if (grepl("Zpg|sftrans|bilinear", inputFilterCommandString)) {
+        if (any(grepl("system|shell|pipe|url|file|socket|fifo|open|Sys[.]", inputFilterCommandString,ignore.case=FALSE))) return() # info-system security
         zpg <- try(eval(parse(text = inputFilterCommandString)),silent=TRUE)
         if (is.list(zpg)) {
         handles$zeroloc <- zpg$zero
@@ -15032,6 +15139,7 @@ labels=expression(-6*pi,-11*pi/2,-5*pi,-9L*pi/2,-4*pi,-7*pi/2,-3*pi,-5*pi/2,-2L*
         inputFilterCommandString
       )) {
         handles$poleloc <- c(0)
+        if (any(grepl("system|shell|pipe|url|file|socket|fifo|open|Sys[.]", inputFilterCommandString,ignore.case=FALSE))) return() # info-system security
         b <- try(eval(parse(text = inputFilterCommandString)),silent=TRUE)
         if (length(b) < 2L) {
           handles$zeroloc <- c(0)
@@ -15042,6 +15150,7 @@ labels=expression(-6*pi,-11*pi/2,-5*pi,-9L*pi/2,-4*pi,-7*pi/2,-3*pi,-5*pi/2,-2L*
       }
       else if (grepl("FftFilter", inputFilterCommandString)) {
         handles$poleloc <- c(0)
+        if (any(grepl("system|shell|pipe|url|file|socket|fifo|open|Sys[.]", inputFilterCommandString,ignore.case=FALSE))) return() # info-system security
         b <- try(eval(parse(text = inputFilterCommandString)),silent=TRUE)
         if (length(b) < 2L) {
           handles$zeroloc <- c(0)
@@ -15051,6 +15160,7 @@ labels=expression(-6*pi,-11*pi/2,-5*pi,-9L*pi/2,-4*pi,-7*pi/2,-3*pi,-5*pi/2,-2L*
         }
       }
       else {
+        if (any(grepl("system|shell|pipe|url|file|socket|fifo|open|Sys[.]", inputFilterCommandString,ignore.case=FALSE))) return() # info-system security
         a <- try(eval(parse(text = paste0(inputFilterCommandString, "$a"))),silent=TRUE)
         if (length(a) < 2L) {
           handles$poleloc <- c(0)
@@ -15058,6 +15168,7 @@ labels=expression(-6*pi,-11*pi/2,-5*pi,-9L*pi/2,-4*pi,-7*pi/2,-3*pi,-5*pi/2,-2L*
         else {
           handles$poleloc <- try(polyroot(rev(a)),silent=TRUE) # numerical stability may be an issue for all but low-degree polynomials
         }
+        if (any(grepl("system|shell|pipe|url|file|socket|fifo|open|Sys[.]", inputFilterCommandString,ignore.case=FALSE))) return() # info-system security
         b <- try(eval(parse(text = paste0(inputFilterCommandString, "$b"))),silent=TRUE)
         if (length(b) < 2L) {
           handles$zeroloc <- c(0)
@@ -15100,6 +15211,7 @@ labels=expression(-6*pi,-11*pi/2,-5*pi,-9L*pi/2,-4*pi,-7*pi/2,-3*pi,-5*pi/2,-2L*
         if (input$coordsevaluateImport) {
           importedPolesValues <- rep(0, length(importedPoles))
           for (i in 1L:length(importedPoles)) {
+            if (any(grepl("system|shell|pipe|url|file|socket|fifo|open|Sys[.]", importedPoles[i],ignore.case=FALSE))) return() # info-system security
             importedPolesValues[i] <- try(eval(parse(text = importedPoles[i])),silent=TRUE)
           }
         }
@@ -15126,6 +15238,7 @@ labels=expression(-6*pi,-11*pi/2,-5*pi,-9L*pi/2,-4*pi,-7*pi/2,-3*pi,-5*pi/2,-2L*
         if (input$coordsevaluateImport) {
           importedZerosValues <- rep(0, length(importedZeros))
           for (i in 1L:length(importedZeros)) {
+            if (any(grepl("system|shell|pipe|url|file|socket|fifo|open|Sys[.]", importedZeros[i],ignore.case=FALSE))) return() # info-system security
             importedZerosValues[i] <- try(eval(parse(text = importedZeros[i])),silent=TRUE)
           }
         }
@@ -15182,10 +15295,12 @@ labels=expression(-6*pi,-11*pi/2,-5*pi,-9L*pi/2,-4*pi,-7*pi/2,-3*pi,-5*pi/2,-2L*
         # cat(file=stderr(),"L12389 length(data$mypolescopy):",length(data$mypolescopy),".\n")
         # cat(file=stderr(),"L12390 length(data$myzeroscopy):",length(data$myzeroscopy),".\n")
         for (i in (1L:length(data$mypolescopy))) {
+          if (any(grepl("system|shell|pipe|url|file|socket|fifo|open|Sys[.]", data$mypolescopy[i],ignore.case=FALSE))) return() # info-system security
           handles$poleloc[i] <- try(eval(parse(text = data$mypolescopy[i])),silent=TRUE)
         }
         length(handles$poleloc) <- length(data$mypolescopy)
         for (i in (1L:length(data$myzeroscopy))) {
+          if (any(grepl("system|shell|pipe|url|file|socket|fifo|open|Sys[.]", data$myzeroscopy[i],ignore.case=FALSE))) return() # info-system security
           handles$zeroloc[i] <- try(eval(parse(text = data$myzeroscopy[i])),silent=TRUE)
         }
         length(handles$zeroloc) <- length(data$myzeroscopy)
@@ -15222,6 +15337,7 @@ labels=expression(-6*pi,-11*pi/2,-5*pi,-9L*pi/2,-4*pi,-7*pi/2,-3*pi,-5*pi/2,-2L*
                       value = input$listbox_pole)
     }
     else if (input$tabPoleZeroEditing == "rtheta") {
+      if (any(grepl("system|shell|pipe|url|file|socket|fifo|open|Sys[.]", input$listbox_pole,ignore.case=FALSE))) return() # info-system security
       evaluatedinputlistbox_pole <- try(eval(parse(text = input$listbox_pole)),silent=TRUE)
       updateTextInput(
         session,
@@ -15261,6 +15377,7 @@ labels=expression(-6*pi,-11*pi/2,-5*pi,-9L*pi/2,-4*pi,-7*pi/2,-3*pi,-5*pi/2,-2L*
                       value = input$listbox_zero)
     }
     else if (input$tabPoleZeroEditing == "rtheta") {
+      if (any(grepl("system|shell|pipe|url|file|socket|fifo|open|Sys[.]", input$listbox_zero,ignore.case=FALSE))) return() # info-system security
       evaluatedinputlistbox_zero <- try(eval(parse(text = input$listbox_zero)),silent=TRUE)
       updateTextInput(
         session,
@@ -15301,6 +15418,8 @@ labels=expression(-6*pi,-11*pi/2,-5*pi,-9L*pi/2,-4*pi,-7*pi/2,-3*pi,-5*pi/2,-2L*
           if ((is.null(input$edit_currentSelectionText)) ||
               (is.na(input$edit_currentSelectionText)) ||
               (input$edit_currentSelectionText == "")) {
+            if (any(grepl("system|shell|pipe|url|file|socket|fifo|open|Sys[.]", input$edit_polezerolocRadius,ignore.case=FALSE))) return() # info-system security
+            if (any(grepl("system|shell|pipe|url|file|socket|fifo|open|Sys[.]", input$edit_polezerolocAngle,ignore.case=FALSE))) return() # info-system security
             valueToReplace <-
               try(eval(parse(text = input$edit_polezerolocRadius)) *
               exp(1i * eval(parse(
@@ -15308,6 +15427,7 @@ labels=expression(-6*pi,-11*pi/2,-5*pi,-9L*pi/2,-4*pi,-7*pi/2,-3*pi,-5*pi/2,-2L*
               ))),silent=TRUE)
           }
           else {
+            if (any(grepl("system|shell|pipe|url|file|socket|fifo|open|Sys[.]", input$edit_currentSelectionText,ignore.case=FALSE))) return() # info-system security
             valueToReplace <-
               try(eval(parse(text = input$edit_currentSelectionText)),silent=TRUE)
           }
@@ -15316,6 +15436,8 @@ labels=expression(-6*pi,-11*pi/2,-5*pi,-9L*pi/2,-4*pi,-7*pi/2,-3*pi,-5*pi/2,-2L*
           if ((is.null(input$edit_currentSelectionText)) ||
               (is.na(input$edit_currentSelectionText)) ||
               (input$edit_currentSelectionText == "")) {
+            if (any(grepl("system|shell|pipe|url|file|socket|fifo|open|Sys[.]", input$edit_polezeroloc,ignore.case=FALSE))) return() # info-system security
+            if (any(grepl("system|shell|pipe|url|file|socket|fifo|open|Sys[.]", input$edit_polezerolocImag,ignore.case=FALSE))) return() # info-system security
             n1 <- try(eval(parse(text = input$edit_polezeroloc)),silent=TRUE)
             n2 <- try(eval(parse(text = input$edit_polezerolocImag)),silent=TRUE)
             if (is.infinite(Im(n2))) {
@@ -15331,6 +15453,7 @@ labels=expression(-6*pi,-11*pi/2,-5*pi,-9L*pi/2,-4*pi,-7*pi/2,-3*pi,-5*pi/2,-2L*
             }
           }
           else {
+            if (any(grepl("system|shell|pipe|url|file|socket|fifo|open|Sys[.]", input$edit_currentSelectionText,ignore.case=FALSE))) return() # info-system security
             valueToReplace <-
               try(eval(parse(text = input$edit_currentSelectionText)),silent=TRUE)
           }
@@ -15372,6 +15495,8 @@ labels=expression(-6*pi,-11*pi/2,-5*pi,-9L*pi/2,-4*pi,-7*pi/2,-3*pi,-5*pi/2,-2L*
           if ((is.null(input$edit_currentSelectionText)) ||
               (is.na(input$edit_currentSelectionText)) ||
               (input$edit_currentSelectionText == "")) {
+            if (any(grepl("system|shell|pipe|url|file|socket|fifo|open|Sys[.]", input$edit_polezerolocRadius,ignore.case=FALSE))) return() # info-system security
+            if (any(grepl("system|shell|pipe|url|file|socket|fifo|open|Sys[.]", input$edit_polezerolocAngle,ignore.case=FALSE))) return() # info-system security
             valueToReplace <-
               try(eval(parse(text = input$edit_polezerolocRadius)) *
               exp(1i * eval(parse(
@@ -15379,6 +15504,7 @@ labels=expression(-6*pi,-11*pi/2,-5*pi,-9L*pi/2,-4*pi,-7*pi/2,-3*pi,-5*pi/2,-2L*
               ))),silent=TRUE)
           }
           else {
+            if (any(grepl("system|shell|pipe|url|file|socket|fifo|open|Sys[.]", input$edit_currentSelectionText,ignore.case=FALSE))) return() # info-system security
             valueToReplace <-
               try(eval(parse(text = input$edit_currentSelectionText)),silent=TRUE)
           }
@@ -15387,6 +15513,8 @@ labels=expression(-6*pi,-11*pi/2,-5*pi,-9L*pi/2,-4*pi,-7*pi/2,-3*pi,-5*pi/2,-2L*
           if ((is.null(input$edit_currentSelectionText)) ||
               (is.na(input$edit_currentSelectionText)) ||
               (input$edit_currentSelectionText == "")) {
+            if (any(grepl("system|shell|pipe|url|file|socket|fifo|open|Sys[.]", input$edit_polezeroloc,ignore.case=FALSE))) return() # info-system security
+            if (any(grepl("system|shell|pipe|url|file|socket|fifo|open|Sys[.]", input$edit_polezerolocImag,ignore.case=FALSE))) return() # info-system security
             n1 <- try(eval(parse(text = input$edit_polezeroloc)),silent=TRUE)
             n2 <- try(eval(parse(text = input$edit_polezerolocImag)),silent=TRUE)
             if (is.infinite(Im(n2))) {
@@ -15402,6 +15530,7 @@ labels=expression(-6*pi,-11*pi/2,-5*pi,-9L*pi/2,-4*pi,-7*pi/2,-3*pi,-5*pi/2,-2L*
             }
           }
           else {
+            if (any(grepl("system|shell|pipe|url|file|socket|fifo|open|Sys[.]", input$edit_currentSelectionText,ignore.case=FALSE))) return() # info-system security
             valueToReplace <-
               try(eval(parse(text = input$edit_currentSelectionText)),silent=TRUE)
           }
