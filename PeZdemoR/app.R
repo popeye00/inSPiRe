@@ -676,7 +676,7 @@ animation: blinker 1s linear infinite;
                     HTML(
                       markdown::markdownToHTML(
                         fragment.only = TRUE,
-                        text = paste0("This is an sample web-application made with Shiny to demonstrate some basic DSP concepts."
+                        text = paste0("This is a sample web-application made with Shiny to demonstrate some basic DSP concepts."
                         ) # end paste0
                       ) # end markdownToHTML
                     ), # end HTML
