@@ -1490,6 +1490,10 @@ $('#loadmessage').fadeOut(500).fadeIn(500, blink);
                               `IIR Comb-Filter, delay-line, 5 poles w/3 zeros` = "Arma(b=c(1,0,0, 0.5^3), a=c(1,0,0,0,0, 0.9^5))",
                               `Feedback Comb-filter (peaks), delay-line, poles only, delay=8, positive alpha`="K=8;alpha=0.9;Arma(b=c(1), a=c(1,rep(0,times=K-1),alpha))",
                               `Feed-forward Comb-filter (humps), delay-line, zeros only, delay=8, negative alpha`="K=8;alpha=-1;Arma(b=c(1,rep(0,times=K-1),alpha), a=c(1))",
+                              `unicomb, Universal Comb, delay-line (Zol02), FIR, tines-down, FFwd=r.v.`="delayM=6;FB=0;FFwd=0.7+runif(1,min=0,max=0.3);BL=runif(1,min=0.1,max=0.9);Arma(b=c(BL,rep(0,times=delayM-1),FFwd),a=c(1))",
+                              `unicomb, Universal Comb, delay-line (Zol02), IIR, tines-up, FB=r.v.`="delayM=6;FB=0.7+runif(1,min=0,max=0.3);FFwd=0;BL=1;Arma(b=c(BL),a=c(1,rep(0,times=delayM-1),-FB))",
+                              `unicomb, Universal Comb, delay-line (Zol02), allpass, FB=0.4`="delayM=6;FB=0.4;FFwd=(1-eps);BL=-FB;Arma(b=c(BL,rep(0,times=delayM-1),FFwd),a=c(1,rep(0,times=delayM-1),-FB))",
+                              `unicomb, Universal Comb, delay-line (Zol02), delay only, BL=0`="delayM=6;BL=1e-10;FB=0;FFwd=(1-eps);Arma(b=c(BL,rep(0,times=delayM-1),FFwd),a=c(1))",
                               `Integrator/ Accumulator, 1/s, given b,a; pole at +1, zero at -1` = "Arma(b=c(1,1), a=c(1,-(1-eps)))",
                               `pole at -1, zero at +1`= "Zpg(zero=c(1), pole=c(-(1-eps)), gain=1)",
                               `Notch-filter comb, Fractional-Sample Delay-line, D=2pi/omega0 (Pei Tseng '98 Fig 2)` = "omega0=2/9*pi;D=2*pi/omega0;rho=0.99;Arma(b=c(1,rep(0,times=floor(D-1)),-1), a=c(1,rep(0,times=floor(D-1)),-(rho)^D))",
@@ -1528,6 +1532,11 @@ $('#loadmessage').fadeOut(500).fadeIn(500, blink);
                               `1st-order All-Pass, (cutoff=0.2), Zolz2003`="omegac=0.2;omegacprime=tan(omegac*pi/2);cc=(omegacprime-1)/(omegacprime+1);Zpg(zero=c(-1/cc), pole=c(-cc), gain=cc)",
                               `1st-order Parametric LPF, cutoff=0.2, Zolz2003`="omegac=0.2;omegacprime=tan(omegac*pi/2);cc=(omegacprime-1)/(omegacprime+1);Zpg(zero=c(-1), pole=c(-cc), gain=cc/2)",
                               `1st-order Parametric HPF, cutoff=0.2, Zolz2003`="omegac=0.2;omegacprime=tan(omegac*pi/2);cc=(omegacprime-1)/(omegacprime+1);Zpg(zero=c(1), pole=c(-cc), gain=cc/2)",
+                              `1st-order Shelving (LF), Bass-boost=10dB, cutoff=0.01`="omegac=0.01;G=10;f1=omegac;f2=f1*(10^(G/20));L1=exp(-pi*f2);K1=exp(-pi*f1);b0=-1;b1=L1;a0=1;a1=K1;Arma(b=c(b0,b1),a=c(1,-a1))",
+                              # `1st-order Shelving (LF), Bass-cut=-10dB, cutoff=0.01`="omegac=0.01;G=10;f1=omegac;f2=f1*(10^(G/20));L1=exp(-pi*f2);K1=exp(-pi*f1);b0=-1;b1=L1;a0=1;a1=K1;Arma(b=c(1,-a1),a=c(b0,b1))",
+                              # `1st-order Shelving (HF), Treble-boost=10dB, cutoff=0.05`="omegac=0.05;G=10;f1=omegac;f2=f1*(10^(G/20));L1=exp(-pi*f2);K1=exp(-pi*f1);b0=-1;b1=L1;a0=1;a1=-K1;normalize=(1-a1)/(b0+b1);b0=normalize*b0;b1=normalize*b1;Arma(b=c(b0,b1),a=c(1,-a1))",
+                              # `1st-order Shelving (HF), Treble-cut=-10dB, cutoff=0.05`="omegac=0.8;G=-12;f1=omegac;f2=f1*(10^(G/20));L1=exp(-pi*f2);K1=exp(-pi*f1);b0=-1;b1=L1;a0=1;a1=-K1;normalize=(1-a1)/(b0+b1);b0=normalize*b0;b1=normalize*b1;Arma(b=c(1,-a1),a=c(b0,b1))",
+                              `1st-order Shelving (LF), Bass-boost=10dB, cutoff=0.01, Orfanidis 2010`="omegac=0.01;G=10^(10/20);G0=10^(0/20);Gc=sqrt((G^2)/2);beta=sqrt(((Gc^2)-(G0^2))/((G^2)-(Gc^2)))*(tan(pi*omegac/2));b0=(G0+((G*beta))/(1+beta));b1=(G0-((G*beta))/(1+beta));a1=(1-beta)/(1+beta);Arma(b=c(b0,-b1),a=c(1,-a1))",
                               `2nd-order All-Pass, (cutoff=0.2, bandwidth=0.022), Zolz2003`="omegac=0.2;omegab=0.022;omegabprime=tan(omegab*pi);cc=(omegabprime-1)/(omegabprime+1);dd=-cos(pi*omegac);bvectr=c(-cc,dd*(1-cc),1);Arma(b=bvectr,a=rev(bvectr))",
                               `2nd-order Parametric BPF, center=0.2, bandwidth=0.022, Zolz2003`="omegac=0.2;omegab=0.022;omegabprime=tan(omegab*pi);cc=(omegabprime-1)/(omegabprime+1);dd=-cos(pi*omegac);Zpg(zero=c(1,-1),pole=c((-dd*(1-cc)+sqrt(dd^2*(1-cc)^2+4*cc+0i))/2,(-dd*(1-cc)-sqrt(dd^2*(1-cc)^2+4*cc+0i))/2),gain=(1+cc)/2)",
                               `2nd-order Parametric BSF, center=0.2, bandwidth=0.022, Zolz2003`="omegac=0.2;omegab=0.022;omegabprime=tan(omegab*pi);cc=(omegabprime-1)/(omegabprime+1);dd=-cos(pi*omegac);Zpg(zero=c(-dd+sqrt(dd^2-1+0i),-dd-sqrt(dd^2-1+0i)),pole=c((-dd*(1-cc)+sqrt(dd^2*(1-cc)^2+4*cc+0i))/2,(-dd*(1-cc)-sqrt(dd^2*(1-cc)^2+4*cc+0i))/2),gain=(1-cc)/2)",
@@ -3217,6 +3226,15 @@ $('#loadmessage').fadeOut(500).fadeIn(500, blink);
                 label = "Logarithmic-scale for Frequency-Axis",
                 value = FALSE
               ),
+              numericInput(
+                inputId = "minimumLogFreqDisplayed",
+                label = "minimum (normalized) Log freq to be displayed",
+                value = 0.001,
+                # min = 0.000001,
+                max = 1.0
+                # ,step = 0.0001
+              ),
+              br(),
               checkboxInput(
                 inputId = "showPhaseOnMagPlot",
                 label = "Show Phase on Magnitude-plots",
@@ -3238,12 +3256,12 @@ $('#loadmessage').fadeOut(500).fadeIn(500, blink);
               ),
               checkboxInput(
                 inputId = "normalizedMagPlotAmplitude",
-                label = "normalize the Magnitude-Response's plotted-amplitude to unity, 1L (or to 0L dB)",
+                label = "normalize the Magnitude-Response's plotted-amplitude to unity, 1 (or to 0 dB)",
                 value = TRUE
               ),
               checkboxInput(
                 inputId = "logarithmicMagPlotAmplitude",
-                label = "Logarithmic-scale for plotting Magnitude-Response's relative-amplitude (i.e. wrt 0L dB at max)",
+                label = "Logarithmic-scale for plotting Magnitude-Response's relative-amplitude (i.e. wrt 0 dB at max)",
                 value = TRUE
               ),
               br(),
@@ -8183,7 +8201,7 @@ plot(
     ""
   },
   xlim = if (params$logarithmicFreqAxis) {
-    c(max(c(0.01, 1e-04 * params$samplingfreq / 2),na.rm=TRUE),
+    c(max(c(params$minimumLogFreqDisplayed, 1e-04 * params$samplingfreq / 2),na.rm=TRUE),
       params$samplingfreq / 2)
   }
   else {
@@ -8491,7 +8509,7 @@ if (params$showMaxMinsOnMagPlot == TRUE) {
         }
         if (!(params$normalizedMagPlotAmplitude)) {
           indxs <- which(params$magnmaximumsa < (20 * log10(max(Mod(rv$h), na.rm = TRUE
-                                                             )) - 0.01))
+                                                             )) - params$minimumLogFreqDisplayed))
           paramsmagnmaximumsa <-
             params$magnmaximumsa[indxs]
           paramsmagnmaximumsf <-
@@ -8541,7 +8559,7 @@ if (params$showMaxMinsOnMagPlot == TRUE) {
         }
         if (!(params$normalizedMagPlotAmplitude)) {
           indxs <- which(params$magnmaximumsa < (20L *log10(max(Mod(rv$h), na.rm = TRUE
-                                                             )) - 0.01))
+                                                             )) - params$minimumLogFreqDisplayed))
           paramsmagnmaximumsa <-
             params$magnmaximumsa[indxs]
           paramsmagnmaximumsf <-
@@ -9280,6 +9298,7 @@ license()
             zoomlimYpassband = input$zoomlimYpassband,
             zoomlimXstopband = input$zoomlimXstopband,
             zoomlimYstopband = input$zoomlimYstopband,
+            minimumLogFreqDisplayed = input$minimumLogFreqDisplayed,
             includeSourceCode = ((input$reportFormat == "html") || input$reportFormat == "slidy"),
             appwd = getwd()
           )
@@ -9388,7 +9407,7 @@ license()
       if (NROW(point) == 0L)
         return(NULL)
       left_pct <- (if (input$logarithmicFreqAxis) {
-        0.001 * log10(Myhover$x)
+        input$minimumLogFreqDisplayed * log10(Myhover$x)
       }
       else {
         Myhover$x
@@ -11842,7 +11861,7 @@ license()
         ""
       },
       xlim = if (input$logarithmicFreqAxis) {
-        c(max(c(0.01, 1e-04 * input$samplingfreq / 2),na.rm=TRUE),
+        c(max(c(input$minimumLogFreqDisplayed, 1e-04 * input$samplingfreq / 2),na.rm=TRUE),
           input$samplingfreq / 2)
       }
       else {
@@ -12151,7 +12170,7 @@ labels=expression(-6*pi,-11*pi/2,-5*pi,-9L*pi/2,-4*pi,-7*pi/2,-3*pi,-5*pi/2,-2L*
               indxs <- which(isolate(handles$magnmaximumsa) < (20L *
                                                                  log10(max(
                                                                    Mod(rv$h), na.rm = TRUE
-                                                                 ),na.rm=TRUE) - 0.01))
+                                                                 )) - input$minimumLogFreqDisplayed)) # 0.01))
               handles$magnmaximumsa <-
                 isolate(handles$magnmaximumsa[indxs])
               handles$magnmaximumsf <-
@@ -12204,7 +12223,7 @@ labels=expression(-6*pi,-11*pi/2,-5*pi,-9L*pi/2,-4*pi,-7*pi/2,-3*pi,-5*pi/2,-2L*
               indxs <- which(isolate(handles$magnmaximumsa) < (20L *
                                                                  log10(max(
                                                                    Mod(rv$h), na.rm = TRUE
-                                                                 ,na.rm=TRUE)) - 0.01))
+                                                                 )) - input$minimumLogFreqDisplayed)) # 0.01))
               handles$magnmaximumsa <-
                 isolate(handles$magnmaximumsa[indxs])
               handles$magnmaximumsf <-
