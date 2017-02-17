@@ -1494,8 +1494,8 @@ $('#loadmessage').fadeOut(500).fadeIn(500, blink);
                               `unicomb, Universal Comb, delay-line (Zol02), IIR, tines-up, FB=r.v.`="delayM=6;FB=0.7+runif(1,min=0,max=0.3);FFwd=0;BL=1;Arma(b=c(BL),a=c(1,rep(0,times=delayM-1),-FB))",
                               `unicomb, Universal Comb, delay-line (Zol02), allpass, FB=0.4`="delayM=6;FB=0.4;FFwd=(1-eps);BL=-FB;Arma(b=c(BL,rep(0,times=delayM-1),FFwd),a=c(1,rep(0,times=delayM-1),-FB))",
                               `unicomb, Universal Comb, delay-line (Zol02), delay only, BL=0`="delayM=6;BL=1e-10;FB=0;FFwd=(1-eps);Arma(b=c(BL,rep(0,times=delayM-1),FFwd),a=c(1))",
-                              `Integrator/ Accumulator, 1/s, given b,a; pole at +1, zero at -1` = "Arma(b=c(1,1), a=c(1,-(1-eps)))",
-                              `pole at -1, zero at +1`= "Zpg(zero=c(1), pole=c(-(1-eps)), gain=1)",
+                              `Integrator/ Accumulator (LPF), 1/s, given b,a; pole at +1, zero at -1` = "Arma(b=c(1,1), a=c(1,-(1-eps)))",
+                              `Differentiator/ Slope (HPF), pole at -1, zero at +1`= "Zpg(zero=c(1), pole=c(-(1-eps)), gain=1)",
                               `Notch-filter comb, Fractional-Sample Delay-line, D=2pi/omega0 (Pei Tseng '98 Fig 2)` = "omega0=2/9*pi;D=2*pi/omega0;rho=0.99;Arma(b=c(1,rep(0,times=floor(D-1)),-1), a=c(1,rep(0,times=floor(D-1)),-(rho)^D))",
                               `Peaking-filter/ Resonance, fc=ray-slider` = "theta=input$slider1;rp=0.999;rz=0.997;Zpg(zero=c(rz*exp(theta*pi*1i),rz*exp(-theta*pi*1i)), pole=c(rp*exp(theta*pi*1i),rp*exp(-theta*pi*1i)), gain=1)",
                               `Notch-Out Filter, fc=ray-slider` = "theta=input$slider1;rp=0.997;rz=0.999;Zpg(zero=c(rz*exp(theta*pi*1i),rz*exp(-theta*pi*1i)), pole=c(rp*exp(theta*pi*1i),rp*exp(-theta*pi*1i)), gain=1)",
@@ -1507,7 +1507,7 @@ $('#loadmessage').fadeOut(500).fadeIn(500, blink);
                               `Min. Phase, GrpDelay < 2 (Oppenheim Schafer Buck, 1989, Fig 5.30a)` = "Zpg(zero=c(0.9*exp(0.6*pi*1i),0.9*exp(-0.6*pi*1i),0.8*exp(0.8*pi*1i),0.8*exp(-0.8*pi*1i)), pole=c(0), gain=1)",
                               `Max. Phase, GrpDelay < 12 (Oppenheim Schafer Buck, 1989, Fig 5.30b)` = "Zpg(zero=c(1/0.9*exp(0.6*pi*1i),1/0.9*exp(-0.6*pi*1i),1/0.8*exp(0.8*pi*1i),1/0.8*exp(-0.8*pi*1i)), pole=c(0), gain=1)",
                               `Hilbert allpass (absolute values), order 40, Hamming window (WSL)` = "N=41;M=20;hz=matrix(data=0,nrow=1,ncol=M);zw=seq(1,(M-1),by=2);hz[seq(1,(M-1),by=2)]=2/ (pi*zw);hd=c(-pracma::fliplr(as.matrix(hz)),0,hz);w=signal::hamming(N);hd*w",
-                              `Ideal Differentiator (noiseless inputs only; else, corruption), 23pt Hamming,fs=512,fc=0.3 (WSL)` = "t=seq(0,2-1/512,by=1/512);fs=512;Ts=1/fs;N=23;M=(N-1)/2;n=1:M;h=cos(n*pi)/(Ts*n);h=c(-pracma::fliplr(as.matrix(t(h))),0,h);win=signal::hamming(N);win*h",
+                              `Ideal Differentiator (HPF) (noiseless-inputs only; else, corruption), 23pt Hamming,fs=512,fc=0.3 (WSL)` = "t=seq(0,2-1/512,by=1/512);fs=512;Ts=1/fs;N=23;M=(N-1)/2;n=1:M;h=cos(n*pi)/(Ts*n);h=c(-pracma::fliplr(as.matrix(t(h))),0,h);win=signal::hamming(N);win*h",
                               `Differentiator, Band-Limited, 23-pt Hamming window, fs=512, fc=0.3 (WSL)` = "fs=512;Ts=1/fs;N1=23;M=(N1-1)/2;n=0:(M-1);k=M-n;k2=k^2;fc=0.3*pi;h1=sin(k*fc);h2=(fc*k)*cos(k*fc);hd=(h1-h2)/(Ts*pi*k2);hd=c(hd,0,-pracma::fliplr(as.matrix(t(hd))));win=signal::hamming(N1);win*hd",
                               `Butterworth, order 5, LPF, 0.3` = "butter(n=5,W=0.3,type=\"low\")",
                               `Butterworth, order 5, HPF, 0.65` = "butter(n=5,W=0.65,type=\"high\")",
@@ -7898,7 +7898,9 @@ abline(h=input$slider1, # (maxSpgFreq-minSpgFreq)*(input$slider1-minSpgFreq/ (Fs
 
 '---
 title: "Dynamic Report 112"
-author: ', rmarkdown::metadata$author, '
+author: ', 
+'_(PeZdemoR)_', # rmarkdown::metadata$author,
+'
 date: "`r Sys.Date()`"
 output:
 ', 
@@ -7968,41 +7970,42 @@ runtime: shiny'
 ),
 '
 params:
-  n: NA
-  inputcommonFilters: NA
-  handlesb: NA
-  handlesa: NA
-  zeroloc: NA
-  poleloc: NA
-  normalizedMagPlotAmplitude: NA
-  ForegroundColor: NA
-  LineWidth: NA
-  FFTshifted: NA
-  unwrapPhase: NA
-  twosidedFFT: NA
-  samplingfreq: NA
-  showPhaseOnMagPlot: NA
-  logarithmicFreqAxis: NA
-  grcolor: NA
-  freqaxisunits: NA
-  checkboxRAY: NA
-  slider1: NA
-  secondaryaxis: NA
-  logarithmicMagPlotAmplitude: NA
-  BackgroundColor: NA
-  edit_gain: NA
-  showLegend: NA
-  showMaxMinsOnMagPlot: NA
-  magnminimumsa: NA
-  magnminimumsf: NA
-  magnmaximumsa: NA
-  magnmaximumsf: NA
-  zoomlimXpassband: NA
-  zoomlimYpassband: NA
-  zoomlimXstopband: NA
-  zoomlimYstopband: NA
-  includeSourceCode: NA
-  appwd: NA
+  n: 50
+  inputcommonFilters: "(template)"
+  handlesb: !r c(1,1)
+  handlesa: !r c(1,1)
+  zeroloc: !r c(0.5,0.6)
+  poleloc: !r c(0.5,0.6)
+  normalizedMagPlotAmplitude: TRUE
+  ForegroundColor: "blue"
+  LineWidth: 3
+  FFTshifted: TRUE
+  unwrapPhase: FALSE
+  twosidedFFT: TRUE
+  samplingfreq: 44100
+  showPhaseOnMagPlot: FALSE
+  logarithmicFreqAxis: FALSE
+  grcolor: "#BCBCBC"
+  freqaxisunits: "zero2one"
+  checkboxRAY: TRUE
+  slider1: 1
+  secondaryaxis: TRUE
+  logarithmicMagPlotAmplitude: TRUE
+  BackgroundColor: "transparent"
+  edit_gain: 1
+  showLegend: FALSE
+  showMaxMinsOnMagPlot: TRUE
+  magnminimumsa: !r c(-100,-80)
+  magnminimumsf: !r c(0,0.9)
+  magnmaximumsa: !r c(-10,-20)
+  magnmaximumsf: !r c(0,0.9)
+  zoomlimXpassband: !r c(0,0.5)
+  zoomlimYpassband: !r c(-3,0)
+  zoomlimXstopband: !r c(0.5,1)
+  zoomlimYstopband: !r c(-130,-60)
+  includeSourceCode: TRUE
+  appwd: !r getwd()
+  minimumLogFreqDisplayed: 0.001
   todaysdate: !r Sys.Date()
 ---
 
@@ -9263,6 +9266,9 @@ license()
 '
           )
         )
+
+        try(file.copy(tempReport, "report.Rmd", overwrite=TRUE), silent=TRUE) # try and make a local-copy to view later
+        
         params <-
           list( # pass the parameters for TEMPLATE report.Rmd ----
             n = input$slider,
