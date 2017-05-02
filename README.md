@@ -37,3 +37,5 @@ S.W. Smith. The scientist and engineer’s guide to digital signal processing. 1
 
 R.H. Shumway and D.S. Stoffer. Time series analysis and its applications: with
 R examples. Springer, New York, 3rd edition, 2011. website: http://www.stat.pitt.edu/stoffer/tsa4/
+
+Squires, Peter. Visualizing DSP Concepts on the Web Using the R-Language shiny Package. University of Victoria, 2017. https://dspace.library.uvic.ca/handle/1828/7815
