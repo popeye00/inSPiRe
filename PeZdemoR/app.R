@@ -1,7 +1,10 @@
 # PeZdemoR
 # (c) &copy; 2016-2017 Peter Squires, `DiYZer Research Group`, ECE Dept, University of Victoria
 #
-options(shiny.sanitize.errors = TRUE) # http://shiny.rstudio.com/articles/sanitize-errors.html
+# Squires, Peter. Visualizing DSP Concepts on the Web Using the R-Language shiny Package. 
+#    University of Victoria, 2017. https://dspace.library.uvic.ca/handle/1828/7815
+#
+# options(shiny.sanitize.errors = TRUE) # http://shiny.rstudio.com/articles/sanitize-errors.html
 #options(rgl.useNULL = TRUE)
 memory.limit(size = 1e+05)
 
@@ -1484,16 +1487,16 @@ $('#loadmessage').fadeOut(500).fadeIn(500, blink);
                               `Sinusoidal/ Oscillator/ Resonator, 2 conjugate-poles, frq=ray-slider` = "theta=input$slider1;Zpg(zero=c(0), pole=0.99999999999999*c(exp(theta*pi*1i),exp(-theta*pi*1i)), gain=1)",
                               `L-point Moving-Average FIR, L=5` = "L=5;FftFilter(rep(1/L,times=L),n=512)$b",
                               `Delay-Line (three-terms) 'IIR-equivalent' CIC Mov-Avg filter, N=5` = "N=5;Arma(b=c(1/N,rep(0,times=N-1),-1/N),a=c(1,-(1-eps)))",
-                              `Echo/Slapback-effects (delay-line comb), N=450 Samples (at Fs; needs ~10-50msecs)` = "N=450;Arma(b=c(1/N,rep(0,times=N-1),-1/N),a=c(1))",
+                              `Echo/Slapback-effects (delay-line comb), N=450 Samples (at Fs; needs ~10-50msecs)` = "N=450;Arma(b=c(-1/N,rep(0,times=N-1),1/N),a=c(1))",
                               `Cascaded Integrator-Comb CIC (MovAvg FIR), delay R=5 (b,a)` = "R=5;M=1;Arma(b=c(1,rep(0,times=R*M-1),-1), a=c(1,-(1-eps)))",
                               `Cascaded Integrator-Comb CIC (MovAvg FIR), delay R=8 (Zpg)` = "N=8;Zpg(zero=c(1,-1,1i,-1i,1/sqrt(2)+1/sqrt(2)*1i,1/sqrt(2)-1/sqrt(2)*1i,-1/sqrt(2)+1/sqrt(2)*1i,-1/sqrt(2)-1/sqrt(2)*1i), pole=c(1-eps), gain=1/N)",
                               `IIR Comb-Filter, delay-line, 5 poles w/3 zeros` = "Arma(b=c(1,0,0, 0.5^3), a=c(1,0,0,0,0, 0.9^5))",
                               `Feedback Comb-filter (peaks), delay-line, poles only, delay=8, positive alpha`="K=8;alpha=0.9;Arma(b=c(1), a=c(1,rep(0,times=K-1),alpha))",
                               `Feed-forward Comb-filter (humps), delay-line, zeros only, delay=8, negative alpha`="K=8;alpha=-1;Arma(b=c(1,rep(0,times=K-1),alpha), a=c(1))",
-                              `unicomb, Universal Comb, delay-line (Zol02), FIR, tines-down, FFwd=r.v.`="delayM=6;FB=0;FFwd=0.7+runif(1,min=0,max=0.3);BL=runif(1,min=0.1,max=0.9);Arma(b=c(BL,rep(0,times=delayM-1),FFwd),a=c(1))",
-                              `unicomb, Universal Comb, delay-line (Zol02), IIR, tines-up, FB=r.v.`="delayM=6;FB=0.7+runif(1,min=0,max=0.3);FFwd=0;BL=1;Arma(b=c(BL),a=c(1,rep(0,times=delayM-1),-FB))",
-                              `unicomb, Universal Comb, delay-line (Zol02), allpass, FB=0.4`="delayM=6;FB=0.4;FFwd=(1-eps);BL=-FB;Arma(b=c(BL,rep(0,times=delayM-1),FFwd),a=c(1,rep(0,times=delayM-1),-FB))",
-                              `unicomb, Universal Comb, delay-line (Zol02), delay only, BL=0`="delayM=6;BL=1e-10;FB=0;FFwd=(1-eps);Arma(b=c(BL,rep(0,times=delayM-1),FFwd),a=c(1))",
+                              `unicomb, Universal Comb, delay-line (Zol02), FIR, tines-down, FFwd=r.v.`="delayM=8;FB=0;FFwd=0.7+runif(1,min=0,max=0.3);BL=runif(1,min=0.1,max=0.9);Arma(b=c(BL,rep(0,times=delayM-1),BL*FFwd),a=c(1))",
+                              `unicomb, Universal Comb, delay-line (Zol02), IIR, tines-up, FB=r.v.`="delayM=8;FB=0.7+runif(1,min=0,max=0.3);FFwd=0;BL=1;Arma(b=c(BL),a=c(1,rep(0,times=delayM-1),-BL*FB))",
+                              `unicomb, Universal Comb, delay-line (Zol02), allpass, FB=0.4`="delayM=8;FB=0.4;FFwd=(1-eps);BL=-FB;Arma(b=c(BL,rep(0,times=delayM-1),FFwd),a=c(1,rep(0,times=delayM-1),-FB))",
+                              `unicomb, Universal Comb, delay-line (Zol02), delay only, BL=0`="delayM=8;BL=1e-10;FB=0;FFwd=(1-eps);Arma(b=c(BL,rep(0,times=delayM-1),FFwd),a=c(1))",
                               `Integrator/ Accumulator (LPF), 1/s, given b,a; pole at +1, zero at -1` = "Arma(b=c(1,1), a=c(1,-(1-eps)))",
                               `Differentiator/ Slope (HPF), pole at -1, zero at +1`= "Zpg(zero=c(1), pole=c(-(1-eps)), gain=1)",
                               `Notch-filter comb, Fractional-Sample Delay-line, D=2pi/omega0 (Pei Tseng '98 Fig 2)` = "omega0=2/9*pi;D=2*pi/omega0;rho=0.99;Arma(b=c(1,rep(0,times=floor(D-1)),-1), a=c(1,rep(0,times=floor(D-1)),-(rho)^D))",
@@ -2487,8 +2490,8 @@ $('#loadmessage').fadeOut(500).fadeIn(500, blink);
                           inputId = "edit_gain",
                           label = "Gain",
                           value = 1L,
-                          min = 0L,
-                          max = 10L,
+                          # min = 0L,
+                          # max = 10L,
                           step = 0.1
                         ),
                         shinyBS::bsButton(
@@ -7974,6 +7977,7 @@ params:
   inputcommonFilters: "(template)"
   handlesb: !r c(1,1)
   handlesa: !r c(1,1)
+  handleshn: !r c(1,1)
   zeroloc: !r c(0.5,0.6)
   poleloc: !r c(0.5,0.6)
   normalizedMagPlotAmplitude: TRUE
@@ -9275,6 +9279,7 @@ license()
             inputcommonFilters = input$commonFilters,
             handlesb = handlesb(),
             handlesa = handlesa(),
+            handleshn = handleshn(),
             zeroloc = handles$zeroloc,
             poleloc = handles$poleloc,
             normalizedMagPlotAmplitude = input$normalizedMagPlotAmplitude,
@@ -13411,7 +13416,7 @@ labels=expression(-6*pi,-11*pi/2,-5*pi,-9L*pi/2,-4*pi,-7*pi/2,-3*pi,-5*pi/2,-2L*
   output$transferfn <- renderUI({
     withMathJax(
       paste0(
-        "$$\\begin{align}", # \\label{eq:txfrfn}",
+        "$$\\begin{aligned}", # \\label{eq:txfrfn}",
         "H(z) =",
         "\\frac{Y(z)}{X(z)} &= b_0\\cdot\\frac{",
         {
@@ -13425,7 +13430,8 @@ labels=expression(-6*pi,-11*pi/2,-5*pi,-9L*pi/2,-4*pi,-7*pi/2,-3*pi,-5*pi/2,-2L*
                                           paste0(if (i > 1L) {
                                             "\\cdot "
                                           }, if (abs(Im(handles$zeroloc[i])) <= 1e-06) {
-                                            "z"
+                                            # "z"
+                                            paste0("z^{",max(c(length(handles$zeroloc),length(handles$poleloc))),"}")
                                           } else {
                                             paste0(
                                               "(z-\\overbrace{z_{[",
@@ -13474,10 +13480,9 @@ labels=expression(-6*pi,-11*pi/2,-5*pi,-9L*pi/2,-4*pi,-7*pi/2,-3*pi,-5*pi/2,-2L*
               accumulatorstring <- paste0(accumulatorstring,
                                           if (i > 1L) {
                                             "\\cdot "
-                                          }, if (abs(Im(
-                                            handles$poleloc[i]
-                                          )) <= 1e-06) {
-                                            "z"
+                                          }, if (abs(Im( handles$poleloc[i] )) <= 1e-06) {
+                                            # "z"
+                                            paste0("z^{",max(c(length(handles$zeroloc),length(handles$poleloc))),"}")
                                           } else {
                                             paste0(
                                               "(z-\\underbrace{p_{[",
@@ -13539,10 +13544,9 @@ labels=expression(-6*pi,-11*pi/2,-5*pi,-9L*pi/2,-4*pi,-7*pi/2,-3*pi,-5*pi/2,-2L*
               accumulatorstring <- paste0(accumulatorstring,
                                           if (i > 1L) {
                                             "\\cdot "
-                                          }, if (abs(Im(
-                                            handles$zeroloc[i]
-                                          )) <= 1e-06) {
-                                            "z"
+                                          }, if (abs(Im( handles$zeroloc[i] )) <= 1e-06) {
+                                            # "z"
+                                            paste0("z^{",max(c(length(handles$zeroloc),length(handles$poleloc))),"}")
                                           } else {
                                             paste0(
                                               "(z-\\overbrace{(",
@@ -13676,10 +13680,9 @@ labels=expression(-6*pi,-11*pi/2,-5*pi,-9L*pi/2,-4*pi,-7*pi/2,-3*pi,-5*pi/2,-2L*
               accumulatorstring <- paste0(accumulatorstring,
                                           if (i > 1L) {
                                             "\\cdot "
-                                          }, if (abs(Im(
-                                            handles$poleloc[i]
-                                          )) <= 1e-06) {
-                                            "z"
+                                          }, if (abs(Im( handles$poleloc[i] )) <= 1e-06) {
+                                            # "z"
+                                            paste0("z^{",max(c(length(handles$zeroloc),length(handles$poleloc))),"}")
                                           } else {
                                             paste0(
                                               "(z-\\underbrace{(",
@@ -14350,7 +14353,7 @@ labels=expression(-6*pi,-11*pi/2,-5*pi,-9L*pi/2,-4*pi,-7*pi/2,-3*pi,-5*pi/2,-2L*
           }
           denominatorstring
         },
-        "}\\end{align}$$"
+        "}\\end{aligned}$$"
       ) # end paste0
     ) # end withMathJax
   })
@@ -14359,7 +14362,7 @@ labels=expression(-6*pi,-11*pi/2,-5*pi,-9L*pi/2,-4*pi,-7*pi/2,-3*pi,-5*pi/2,-2L*
   output$diffeqn <- renderUI({
     withMathJax(
       paste0(
-        "$$\\begin{align}", # \\label{eq:diffeqn}",
+        "$$\\begin{aligned}", # \\label{eq:diffeqn}",
         "y_{[n]}=",
         "\\left(",
         "\\sum_{k^{\\prime}=1}^{M}{a_{[k^{\\prime}]}\\cdot y_{[n-k^{\\prime}]}}",
@@ -14657,7 +14660,7 @@ labels=expression(-6*pi,-11*pi/2,-5*pi,-9L*pi/2,-4*pi,-7*pi/2,-3*pi,-5*pi/2,-2L*
           }
           accumulatorstring
         },
-        "\\end{align}$$"
+        "\\end{aligned}$$"
       ) # end paste0
     ) # end withMathJax
   })
